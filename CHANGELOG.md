@@ -15,3 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - clang-format configuration for C++20
 - editorconfig for consistent formatting
 - gitignore for C++/CMake/IDE/vcpkg patterns
+
+### Changed
+
+- Refined directory structure in architecture.md: added `halide/` top-level for AOT generator isolation, categorized plugins into `isp/`, `ai/`, `io/`, organized `src/platform/` by platform (`common/`, `linux/`, `android/`, `apple/`), added `src/common/` for shared utilities, split `src/compute/inference/` by backend, added `tests/fixtures/` and `examples/pipelines/`
+- Updated CLAUDE.md directory map to match refined structure with all new paths and plugin colocation notes

@@ -435,81 +435,228 @@ Communication between the pipeline editor (React Flow web app) and `cpipe serve`
 
 ```
 cpipe/
-├── CMakeLists.txt              # Root CMake configuration
-├── CMakePresets.json            # Build presets (Linux, macOS, Windows, Android)
-├── vcpkg.json                  # vcpkg manifest (dependencies)
-├── .clang-format               # C++ formatting rules
-├── .editorconfig               # Editor settings
+├── CMakeLists.txt                  # Root: project(), options, add_subdirectory() only
+├── CMakePresets.json               # Build presets (linux, macos, windows, android)
+├── vcpkg.json                      # vcpkg manifest (dependencies)
+├── .clang-format                   # C++ formatting rules
+├── .editorconfig                   # Editor settings
 ├── .gitignore
-├── LICENSE                     # Apache 2.0
+├── LICENSE                         # Apache 2.0
 ├── README.md
-├── CLAUDE.md                   # Agent development guide
+├── CLAUDE.md                       # Agent development guide
 ├── CHANGELOG.md
 │
 ├── docs/
-│   ├── architecture.md         # This document
-│   ├── tech.md                 # Technology selections
-│   ├── isp.md                  # ISP node reference + SOTA survey
-│   └── roadmap.md              # Milestone roadmap
+│   ├── architecture.md             # This document
+│   ├── tech.md                     # Technology selections
+│   ├── isp.md                      # ISP node reference + SOTA survey
+│   └── roadmap.md                  # Milestone roadmap
 │
-├── include/
+├── include/                        # Public headers only (minimal API surface)
 │   └── cpipe/
-│       ├── node_plugin.h       # C ABI plugin interface (C-only header)
-│       ├── buffer.h            # BufferDescriptor, BufferPool API
-│       ├── types.h             # Common types (PixelFormat, DeviceType, Status)
-│       └── version.h           # Version macros
+│       ├── node_plugin.h           # C ABI plugin interface (C-only header)
+│       ├── buffer.h                # BufferDescriptor, BufferPool public API
+│       ├── types.h                 # Common types (PixelFormat, DeviceType, Status)
+│       └── version.h               # Version macros
 │
 ├── src/
-│   ├── platform/               # Platform Layer
-│   │   ├── buffer/             #   BufferPool, platform-specific backends
-│   │   ├── dng/                #   DNG reader (libraw wrapper, Android bridge)
-│   │   └── heif/               #   HEIF writer (libheif wrapper, MediaCodec bridge)
+│   ├── CMakeLists.txt              # Orchestrates src/ subtargets
 │   │
-│   ├── compute/                # Compute Layer
-│   │   ├── halide/             #   Halide runtime context, buffer bridge
-│   │   ├── vulkan/             #   Native Vulkan compute (optimization only)
-│   │   ├── metal/              #   Native Metal compute (optimization only)
-│   │   └── inference/          #   InferenceBackend, ExecuTorch, ONNX Runtime
+│   ├── common/                     # Cross-layer shared utilities
+│   │   ├── CMakeLists.txt          # target: cpipe_common (STATIC)
+│   │   ├── error.h / error.cpp     #   Error types, cpipe_status_t helpers
+│   │   ├── log.h / log.cpp         #   spdlog initialization, global logger
+│   │   └── json_utils.h / .cpp     #   JSON parsing/serialization helpers
 │   │
-│   ├── engine/                 # Pipeline Engine
-│   │   ├── loader/             #   JSON pipeline loader, schema validation
-│   │   ├── scheduler/          #   DagScheduler (Taskflow), DeviceAllocator
-│   │   └── profiler/           #   Per-node timing, memory tracking
+│   ├── platform/                   # Platform abstraction layer
+│   │   ├── CMakeLists.txt          # target: cpipe_platform (STATIC)
+│   │   ├── common/                 #   Abstract interfaces + platform-agnostic code
+│   │   │   ├── buffer_pool.h / .cpp
+│   │   │   ├── buffer_descriptor.h
+│   │   │   ├── dng_reader.h        #   Abstract DNG reader interface
+│   │   │   └── heif_writer.h       #   Abstract HEIF writer interface
+│   │   ├── linux/                  #   Linux/desktop implementations
+│   │   │   ├── vulkan_buffer_backend.h / .cpp
+│   │   │   ├── libraw_dng_reader.h / .cpp
+│   │   │   └── libheif_writer.h / .cpp
+│   │   ├── android/                #   Android implementations
+│   │   │   ├── ahardware_buffer_backend.h / .cpp
+│   │   │   ├── platform_dng_reader.h / .cpp
+│   │   │   └── mediacodec_heif_writer.h / .cpp
+│   │   └── apple/                  #   macOS/iOS implementations
+│   │       ├── metal_buffer_backend.h / .cpp
+│   │       └── ...
 │   │
-│   ├── plugin/                 # Plugin System
-│   │   └── loader/             #   Dynamic library loader, PluginRegistry
+│   ├── compute/                    # Compute layer
+│   │   ├── CMakeLists.txt          # target: cpipe_compute (STATIC)
+│   │   ├── halide/                 #   Halide runtime context + buffer bridge
+│   │   │   ├── halide_context.h / .cpp
+│   │   │   └── halide_buffer_bridge.h / .cpp
+│   │   ├── vulkan/                 #   Native Vulkan compute (optimization only)
+│   │   │   └── vulkan_context.h / .cpp
+│   │   ├── metal/                  #   Native Metal compute (optimization only)
+│   │   │   └── metal_context.h / .mm
+│   │   └── inference/              #   AI inference abstraction
+│   │       ├── inference_backend.h #   Abstract interface
+│   │       ├── inference_session.h
+│   │       ├── executorch/         #   ExecuTorch backend
+│   │       │   ├── CMakeLists.txt  #   Guarded by option(WITH_EXECUTORCH)
+│   │       │   └── executorch_backend.h / .cpp
+│   │       └── onnxruntime/        #   ONNX Runtime backend
+│   │           ├── CMakeLists.txt  #   Guarded by option(WITH_ONNXRUNTIME)
+│   │           └── onnx_backend.h / .cpp
 │   │
-│   └── cli/                    # CLI Application
-│       └── main.cpp            #   CLI11 subcommand routing
+│   ├── engine/                     # Pipeline engine
+│   │   ├── CMakeLists.txt          # target: cpipe_engine (STATIC)
+│   │   ├── loader/                 #   JSON pipeline loader, schema validation
+│   │   │   ├── pipeline_loader.h / .cpp
+│   │   │   └── schema_validator.h / .cpp
+│   │   ├── scheduler/              #   DAG scheduling (Taskflow wrapper)
+│   │   │   ├── dag_scheduler.h / .cpp
+│   │   │   └── device_allocator.h / .cpp
+│   │   └── profiler/               #   Per-node timing, memory tracking
+│   │       └── profiler.h / .cpp
+│   │
+│   ├── plugin/                     # Plugin system
+│   │   ├── CMakeLists.txt          # target: cpipe_plugin (STATIC)
+│   │   ├── plugin_loader.h / .cpp  #   dlopen/LoadLibrary wrapper
+│   │   └── plugin_registry.h / .cpp
+│   │
+│   └── cli/                        # CLI application
+│       ├── CMakeLists.txt          # target: cpipe (EXECUTABLE)
+│       ├── main.cpp                #   CLI11 subcommand routing
+│       ├── cmd_process.cpp         #   `cpipe process` subcommand
+│       ├── cmd_list_plugins.cpp
+│       ├── cmd_inspect.cpp
+│       ├── cmd_benchmark.cpp
+│       └── cmd_serve.cpp           #   WebSocket server for editor
 │
-├── plugins/                    # Built-in ISP Node Plugins
-│   ├── isp_blc/                #   Black Level Correction
-│   ├── isp_lsc/                #   Lens Shading Correction
-│   ├── isp_bad_pixel/          #   Bad Pixel Correction
-│   ├── isp_demosaic/           #   CFA Demosaicing
-│   ├── isp_awb/                #   Auto White Balance
-│   ├── isp_ccm/                #   Color Correction Matrix
-│   └── isp_gamma/              #   Gamma / Tone Curve
+├── halide/                         # Halide AOT generators (host-side executables)
+│   ├── CMakeLists.txt              # Builds generators, calls add_halide_library()
+│   ├── blc_generator.cpp           # Generates optimized BLC kernel for target platform
+│   ├── lsc_generator.cpp
+│   ├── bad_pixel_generator.cpp
+│   ├── demosaic_generator.cpp
+│   ├── awb_generator.cpp
+│   ├── ccm_generator.cpp
+│   └── gamma_generator.cpp
+│
+├── plugins/                        # Node plugins (each is a shared library)
+│   ├── CMakeLists.txt              # Iterates type subdirectories
+│   ├── isp/                        # Classical ISP nodes (Halide-based)
+│   │   ├── CMakeLists.txt
+│   │   ├── blc/                    #   Each plugin is self-contained:
+│   │   │   ├── CMakeLists.txt      #     target: cpipe_isp_blc (MODULE)
+│   │   │   ├── blc.h              #     Internal header
+│   │   │   ├── blc.cpp            #     Implementation + C ABI exports
+│   │   │   └── blc_test.cpp       #     Plugin-specific unit test
+│   │   ├── lsc/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── lsc.h / lsc.cpp
+│   │   │   └── lsc_test.cpp
+│   │   ├── bad_pixel/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── bad_pixel.h / .cpp
+│   │   │   └── bad_pixel_test.cpp
+│   │   ├── demosaic/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── demosaic.h / .cpp
+│   │   │   └── demosaic_test.cpp
+│   │   ├── awb/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── awb.h / .cpp
+│   │   │   └── awb_test.cpp
+│   │   ├── ccm/
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── ccm.h / .cpp
+│   │   │   └── ccm_test.cpp
+│   │   └── gamma/
+│   │       ├── CMakeLists.txt
+│   │       ├── gamma.h / .cpp
+│   │       └── gamma_test.cpp
+│   ├── ai/                         # AI model nodes (M4)
+│   │   ├── CMakeLists.txt
+│   │   ├── denoise/                #   NAFNet-based RAW denoising
+│   │   │   ├── CMakeLists.txt
+│   │   │   ├── denoise.cpp
+│   │   │   └── denoise_test.cpp
+│   │   ├── awb/                    #   Learned AWB
+│   │   │   └── ...
+│   │   └── nilut/                  #   Neural 3D LUT color mapping
+│   │       └── ...
+│   └── io/                         # Utility/IO nodes (future)
+│       └── CMakeLists.txt
 │
 ├── tests/
-│   ├── unit/                   # GoogleTest unit tests
-│   ├── integration/            # Full pipeline integration tests
-│   └── benchmark/              # GoogleBenchmark performance tests
+│   ├── CMakeLists.txt              # Registers CTest suites
+│   ├── unit/                       # Unit tests (mirrors src/ structure)
+│   │   ├── CMakeLists.txt
+│   │   ├── common/                 #   Tests for src/common/
+│   │   ├── platform/               #   Tests for src/platform/
+│   │   ├── compute/                #   Tests for src/compute/
+│   │   ├── engine/                 #   Tests for src/engine/
+│   │   └── plugin/                 #   Tests for src/plugin/
+│   ├── integration/                # Full pipeline integration tests
+│   │   └── CMakeLists.txt
+│   ├── benchmark/                  # GoogleBenchmark performance tests
+│   │   └── CMakeLists.txt
+│   └── fixtures/                   # Test data (reference images, pipelines, expected output)
+│       ├── images/                 #   Reference DNG files (Git LFS)
+│       ├── pipelines/              #   Test pipeline JSON files
+│       └── reference/              #   Expected output images for IQA comparison
 │
-├── tools/
-│   └── iqa/                    # Python IQA evaluation scripts
-│       ├── evaluate.py
-│       └── requirements.txt    # IQA-PyTorch + dependencies
+├── examples/
+│   └── pipelines/                  # Sample pipeline JSON files
+│       ├── default_srgb.json       #   Standard RAW → sRGB pipeline
+│       └── minimal.json            #   Minimal: BLC → Demosaic → Gamma
 │
 ├── schemas/
-│   └── pipeline.schema.json    # JSON Schema for pipeline format
+│   └── pipeline.schema.json        # JSON Schema for pipeline format
 │
-├── editor/                     # React Flow Pipeline Editor (M3)
-│   ├── package.json
-│   ├── src/
-│   └── public/
+├── tools/
+│   └── iqa/                        # Python IQA evaluation scripts
+│       ├── evaluate.py
+│       └── requirements.txt
 │
-└── android/                    # Android App (M5)
-    ├── app/
-    └── build.gradle.kts
+├── editor/                         # React Flow Pipeline Editor (M3, placeholder)
+│
+└── android/                        # Android App (M5, placeholder)
 ```
+
+### Directory Structure Design Notes
+
+**`halide/` (top-level)**: Halide AOT generators are host-side executables with different
+build dependencies (link to `Halide::Generator`). Isolating them allows CMake to build
+generators for the host platform first, then invoke them to produce optimized kernels for
+the target platform. This is the pattern recommended by Halide's official CMake integration.
+
+**`plugins/` categorized by type**: Plugins are grouped into `isp/` (classical Halide-based),
+`ai/` (neural network models), and `io/` (utility/IO nodes). This enables selective
+installation (e.g., mobile builds may exclude heavy AI plugins) and clear organization
+as the plugin count grows.
+
+**Plugin self-containment**: Each plugin directory includes its own `CMakeLists.txt`,
+source files, internal headers, and unit tests. This makes plugins independently buildable
+and provides a clear template for third-party plugin developers.
+
+**`src/platform/` organized by platform**: Abstract interfaces live in `common/`. Each
+platform (`linux/`, `android/`, `apple/`) contains all implementations for that platform
+(buffer backend, DNG reader, HEIF writer). CMake selects the correct platform directory
+based on the target. This makes it easy to see all code needed for a given platform.
+
+**`src/common/`**: Cross-layer utilities (error types, logging, JSON helpers) that are
+used by platform, compute, engine, and plugin layers. Compiled as a static library
+(`cpipe_common`) to avoid circular dependencies between layers.
+
+**`src/compute/inference/` split by backend**: The `InferenceBackend` abstract interface
+lives in the parent directory. Each backend (`executorch/`, `onnxruntime/`) has its own
+`CMakeLists.txt` guarded by CMake options (`WITH_EXECUTORCH`, `WITH_ONNXRUNTIME`),
+allowing builds to include only the needed backends.
+
+**`tests/` mirrors `src/`**: Unit tests in `tests/unit/` follow the same directory
+structure as `src/` for easy navigation. Plugin-specific tests are colocated within each
+plugin directory. `tests/fixtures/` stores shared test data (reference images, pipeline
+JSON, expected outputs).
+
+**`examples/pipelines/`**: Sample pipeline JSON files serve as both user documentation
+and integration test inputs.

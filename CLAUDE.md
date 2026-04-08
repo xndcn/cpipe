@@ -150,21 +150,33 @@ ctest --preset default            # Test
 
 | Path | Contents |
 |------|----------|
-| `include/cpipe/` | Public C/C++ headers (plugin API, buffer, types) |
+| `include/cpipe/` | Public C/C++ headers (plugin API, buffer, types) -- minimal surface |
+| `src/common/` | Cross-layer shared utilities: error types, logging, JSON helpers |
 | `src/platform/` | Platform layer: buffer pool, DNG reader, HEIF writer |
+| `src/platform/common/` | Abstract interfaces + platform-agnostic code |
+| `src/platform/{linux,android,apple}/` | Platform-specific implementations |
 | `src/compute/` | Compute backends: Halide, Vulkan, Metal, AI inference |
+| `src/compute/inference/{executorch,onnxruntime}/` | AI inference backend implementations |
 | `src/engine/` | Pipeline engine: JSON loader, DAG scheduler, profiler |
 | `src/plugin/` | Plugin system: dynamic loader, registry |
 | `src/cli/` | CLI application (main.cpp, subcommands) |
-| `plugins/` | Built-in ISP node plugins (each a shared library) |
-| `tests/unit/` | GoogleTest unit tests |
+| `halide/` | Halide AOT generators (host-side executables, build phase isolation) |
+| `plugins/` | Built-in node plugins (each a self-contained shared library) |
+| `plugins/isp/` | Classical ISP nodes (Halide-based): blc, lsc, demosaic, etc. |
+| `plugins/ai/` | AI model nodes (M4): denoise, awb, nilut |
+| `plugins/io/` | Utility/IO nodes (future) |
+| `tests/unit/` | GoogleTest unit tests (mirrors src/ structure) |
 | `tests/integration/` | Full pipeline integration tests |
 | `tests/benchmark/` | GoogleBenchmark performance tests |
+| `tests/fixtures/` | Test data: reference images, pipeline JSON, expected outputs |
+| `examples/pipelines/` | Sample pipeline JSON files (also used as integration test inputs) |
 | `tools/iqa/` | Python IQA evaluation scripts |
 | `schemas/` | JSON Schema for pipeline format |
-| `editor/` | React Flow pipeline editor (M3) |
-| `android/` | Android app (M5) |
+| `editor/` | React Flow pipeline editor (M3, placeholder) |
+| `android/` | Android app (M5, placeholder) |
 | `docs/` | Architecture, tech selections, ISP reference, roadmap |
+
+Note: Plugin tests are colocated within each plugin directory (e.g., `plugins/isp/blc/blc_test.cpp`).
 
 ## Key Dependencies
 
