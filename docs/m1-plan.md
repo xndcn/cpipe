@@ -210,47 +210,47 @@ C++ RAII wrapper around BufferPool:
 - **Files**: `include/cpipe/types.h`, `include/cpipe/buffer.h`
 - **Description**: Define all C-compatible types in `types.h`. Define C++ BufferPool/BufferDescriptor public API in `buffer.h`.
 - **Acceptance criteria**:
-  - [ ] All types from the specification above are defined
-  - [ ] types.h compiles in both C and C++ modes
-  - [ ] buffer.h provides BufferDescriptor, Buffer, BufferPool declarations
+  - [x] All types from the specification above are defined
+  - [x] types.h compiles in both C and C++ modes
+  - [x] buffer.h provides BufferDescriptor, Buffer, BufferPool declarations
 
 #### Task 1.2: cpipe_common Library (expand from cpipe_core)
 
 - **Files**: `src/common/CMakeLists.txt`, `src/common/error.h`, `src/common/error.cpp`, `src/common/log.h`, `src/common/log.cpp`, `src/common/json_utils.h`, `src/common/json_utils.cpp`
 - **Description**: Rename cpipe_core → cpipe_common. Add Error type (cpipe_status_t + message), spdlog initialization, JSON helper utilities. Add tl-expected and nlohmann-json dependencies.
 - **Acceptance criteria**:
-  - [ ] `cpipe::Error` type with status code and message
-  - [ ] `cpipe::expected<T, Error>` alias working (tl::expected or std::expected)
-  - [ ] spdlog initialization with configurable level
-  - [ ] JSON parse/serialize helpers
-  - [ ] Existing version tests still pass
-  - [ ] Build succeeds on Linux + macOS
+  - [x] `cpipe::Error` type with status code and message
+  - [x] `cpipe::expected<T, Error>` alias working (tl::expected or std::expected)
+  - [x] spdlog initialization with configurable level
+  - [x] JSON parse/serialize helpers
+  - [x] Existing version tests still pass
+  - [x] Build succeeds on Linux + macOS
 
 #### Task 1.3: BufferPool + BufferDescriptor (Host Memory Backend)
 
 - **Files**: `src/platform/common/buffer_pool.h`, `src/platform/common/buffer_pool.cpp`, `src/platform/common/buffer_descriptor.h`, `src/platform/CMakeLists.txt`
 - **Description**: Implement BufferPool with host memory backend. 64-byte aligned allocation. Reference-counted buffers via shared_ptr. Pool reuses freed buffers when matching descriptor is requested.
 - **Acceptance criteria**:
-  - [ ] Allocate buffers with specified width/height/format
-  - [ ] Correct stride calculation with alignment
-  - [ ] Reference counting: buffer returns to pool when last reference drops
-  - [ ] Pool reuse: freed buffer descriptor match → reuse memory
-  - [ ] Edge cases: zero-size request returns error, oversized request handled
-  - [ ] Thread safety: concurrent allocate/release
+  - [x] Allocate buffers with specified width/height/format
+  - [x] Correct stride calculation with alignment
+  - [x] Reference counting: buffer returns to pool when last reference drops
+  - [x] Pool reuse: freed buffer descriptor match → reuse memory
+  - [x] Edge cases: zero-size request returns error, oversized request handled
+  - [x] Thread safety: concurrent allocate/release
 
 #### Task 1.4: Phase 1 Unit Tests
 
 - **Files**: `tests/unit/common/error_test.cpp`, `tests/unit/platform/buffer_pool_test.cpp`
 - **Description**: Comprehensive tests for Error type and BufferPool lifecycle.
 - **Acceptance criteria**:
-  - [ ] Error type construction, status code extraction, message formatting
-  - [ ] BufferPool: allocate → use → release → reuse cycle
-  - [ ] BufferPool: reference counting correctness
-  - [ ] BufferPool: alignment verification (64-byte)
-  - [ ] BufferPool: boundary conditions
-  - [ ] All tests pass on Linux + macOS
+  - [x] Error type construction, status code extraction, message formatting
+  - [x] BufferPool: allocate → use → release → reuse cycle
+  - [x] BufferPool: reference counting correctness
+  - [x] BufferPool: alignment verification (64-byte)
+  - [x] BufferPool: boundary conditions
+  - [x] All tests pass on Linux + macOS
 
-**Checkpoint 1**: `cmake --build --preset default && ctest --preset default` passes. BufferPool lifecycle tests green.
+**Checkpoint 1**: ✅ `cmake --build --preset default && ctest --preset default` passes. 54 tests green (including BufferPool lifecycle, overflow guards, thread safety).
 
 ---
 

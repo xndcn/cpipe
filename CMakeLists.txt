@@ -7,8 +7,11 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 find_package(spdlog CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(tl-expected CONFIG REQUIRED)
 
 add_subdirectory(src/common)
+add_subdirectory(src/platform)
 
 option(CPIPE_BUILD_TESTS "Build tests" ON)
 if(CPIPE_BUILD_TESTS)

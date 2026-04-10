@@ -189,6 +189,7 @@ Note: Plugin tests are colocated within each plugin directory (e.g., `plugins/is
 | ONNX Runtime | AI inference (desktop) | v1.24.4 | FetchContent |
 | spdlog | Logging | latest | vcpkg |
 | nlohmann/json | JSON parsing | latest | vcpkg |
+| tl-expected | std::expected polyfill | v1.3.1 | vcpkg |
 | CLI11 | CLI argument parsing | latest | vcpkg |
 | GoogleTest | Unit testing | latest | vcpkg |
 | GoogleBenchmark | Performance benchmarks | latest | vcpkg |

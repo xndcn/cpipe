@@ -144,6 +144,15 @@ Both backends are exposed through a common `InferenceBackend` interface. Pipelin
 - **Subcommands**: `process`, `list-plugins`, `inspect`, `benchmark`, `serve`
 - **Alternatives considered**: cxxopts (no subcommand support), Boost.ProgramOptions (heavy dependency), argparse (Python-esque but less C++ idiomatic).
 
+## Error Handling
+
+### tl::expected (v1.3.1)
+
+- **Rationale**: `std::expected<T,E>` (C++23) provides type-safe error returns without exceptions; tl::expected is the widely-used polyfill that mirrors the C++23 API exactly.
+- **Usage**: All fallible internal functions return `cpipe::expected<T, cpipe::Error>`. The polyfill is compiled in automatically; when a compiler with `std::expected` support is detected the standard version is used transparently.
+- **Policy**: No exception propagation across C ABI boundaries; all errors surface as `cpipe_status_t` codes at plugin boundaries.
+- **vcpkg package**: `tl-expected` (header-only)
+
 ## Logging
 
 ### spdlog
