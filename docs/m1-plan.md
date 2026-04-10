@@ -120,11 +120,11 @@ typedef enum cpipe_pixel_format_t {
     CPIPE_PIXEL_FORMAT_RGB_FLOAT32,
 } cpipe_pixel_format_t;
 
-/* Device types */
+/* Device types (power-of-two for bitmask use in supported_devices) */
 typedef enum cpipe_device_type_t {
-    CPIPE_DEVICE_CPU  = 0,
-    CPIPE_DEVICE_GPU  = 1,
-    CPIPE_DEVICE_NPU  = 2,
+    CPIPE_DEVICE_CPU  = 1,
+    CPIPE_DEVICE_GPU  = 2,
+    CPIPE_DEVICE_NPU  = 4,
 } cpipe_device_type_t;
 
 /* Buffer descriptor (C-compatible) */
