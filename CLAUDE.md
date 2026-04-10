@@ -175,6 +175,7 @@ ctest --preset default            # Test
 | `editor/` | React Flow pipeline editor (M3, placeholder) |
 | `android/` | Android app (M5, placeholder) |
 | `docs/` | Architecture, tech selections, ISP reference, roadmap |
+| `docs/solutions/` | Documented solutions to past problems and best practices, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`) |
 
 Note: Plugin tests are colocated within each plugin directory (e.g., `plugins/isp/blc/blc_test.cpp`).
 

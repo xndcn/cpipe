@@ -62,10 +62,11 @@ See [docs/architecture.md](docs/architecture.md) for the full system design.
 - [Technology Selections](docs/tech.md) -- Dependency rationale, versions, and alternatives
 - [ISP Reference](docs/isp.md) -- SOTA algorithms, node specifications, IQA metrics
 - [Roadmap](docs/roadmap.md) -- Milestone-based development plan (M0-M7)
+- [Solutions](docs/solutions/) -- Documented solutions and best practices, organized by category
 
 ## Project Status
 
-Currently in **M0** (scaffolding and documentation). See the [roadmap](docs/roadmap.md) for details.
+**M0 complete** (scaffolding, build system, CI). See the [roadmap](docs/roadmap.md) for details.
 
 ## License
 
