@@ -34,6 +34,7 @@ cpipe follows a milestone-based development approach. Each milestone builds on t
   - Platform abstraction: DNG reader (libraw desktop, platform API Android)
   - Platform abstraction: HEIF writer (libheif desktop, MediaCodec Android)
   - Unit tests for buffer lifecycle, plugin loading, format I/O
+- **Implementation Plan**: [docs/m1-plan.md](m1-plan.md)
 - **Dependencies**: M0
 
 ### M2: PipelineEngine + DAG Scheduling + Basic ISP + CLI
