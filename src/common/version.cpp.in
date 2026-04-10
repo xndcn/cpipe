@@ -1,0 +1,9 @@
+#include <cpipe/version.h>
+
+namespace cpipe {
+
+std::string_view version_string() noexcept {
+    return "@PROJECT_VERSION@";
+}
+
+}  // namespace cpipe

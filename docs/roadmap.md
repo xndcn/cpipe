@@ -8,15 +8,16 @@ cpipe follows a milestone-based development approach. Each milestone builds on t
 
 ### M0: Project Scaffolding + Documentation + CI/CD
 
-- **Status**: IN PROGRESS
+- **Status**: COMPLETE (2026-04-10)
 - **Goal**: Establish repository structure, documentation, and development conventions
 - **Deliverables**:
-  - Project documentation: README, architecture, tech selections, ISP reference, roadmap
-  - CLAUDE.md agent development guide
-  - Apache 2.0 license, .clang-format, .editorconfig, .gitignore
-  - CMake project skeleton with vcpkg.json (next step)
-  - GitHub Actions CI: build matrix for Linux, macOS, Windows
-  - GoogleTest harness with CTest integration
+  - Project documentation: README, architecture, tech selections, ISP reference, roadmap ✓
+  - CLAUDE.md agent development guide ✓
+  - Apache 2.0 license, .clang-format, .editorconfig, .gitignore ✓
+  - CMake build system: `cpipe_core` static library, `CMakePresets.json` (Debug/Release), vcpkg manifest ✓
+  - GitHub Actions CI: build matrix for Linux (ubuntu-24.04, GCC) and macOS (macos-14, Apple Clang) with clang-format check and artifact upload ✓
+  - GoogleTest harness with CTest integration; 3 version tests passing ✓
+- **Notes**: Windows CI deferred to a later milestone; Linux + macOS covers initial development
 - **Dependencies**: None
 
 ### M1: Foundation
