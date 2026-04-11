@@ -229,27 +229,24 @@ expected<PluginHandle, Error> PluginLoader::load(const std::filesystem::path& pa
     auto get_parameter_schema = load_symbol<PluginHandle::node_get_parameter_schema_fn>(handle.native_handle_, "cpipe_node_get_parameter_schema", path);
     auto process = load_symbol<PluginHandle::node_process_fn>(handle.native_handle_, "cpipe_node_process", path);
 
-    if (!shutdown.has_value() || !create.has_value() || !destroy.has_value() ||
-        !get_info.has_value() || !get_parameter_schema.has_value() || !process.has_value()) {
-        const Error* first_error = nullptr;
-        for (const auto* candidate : {shutdown.has_value() ? nullptr : &shutdown.error(),
-                                      create.has_value() ? nullptr : &create.error(),
-                                      destroy.has_value() ? nullptr : &destroy.error(),
-                                      get_info.has_value() ? nullptr : &get_info.error(),
-                                      get_parameter_schema.has_value() ? nullptr : &get_parameter_schema.error(),
-                                      process.has_value() ? nullptr : &process.error()}) {
-            if (candidate != nullptr) {
-                first_error = candidate;
-                break;
-            }
+    const Error* first_error = nullptr;
+    for (const auto* candidate : {shutdown.has_value() ? nullptr : &shutdown.error(),
+                                  create.has_value() ? nullptr : &create.error(),
+                                  destroy.has_value() ? nullptr : &destroy.error(),
+                                  get_info.has_value() ? nullptr : &get_info.error(),
+                                  get_parameter_schema.has_value() ? nullptr : &get_parameter_schema.error(),
+                                  process.has_value() ? nullptr : &process.error()}) {
+        if (candidate != nullptr) {
+            first_error = candidate;
+            break;
         }
+    }
 
-        if (first_error != nullptr) {
-            CPIPE_LOG_WARN("{}", first_error->message);
-            auto error = *first_error;
-            handle.release();
-            return unexpected<Error>(std::move(error));
-        }
+    if (first_error != nullptr) {
+        CPIPE_LOG_WARN("{}", first_error->message);
+        auto error = *first_error;
+        handle.release();
+        return unexpected<Error>(std::move(error));
     }
 
     handle.plugin_shutdown = shutdown.value();

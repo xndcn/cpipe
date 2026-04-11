@@ -14,6 +14,8 @@
 
 namespace {
 
+constexpr std::uint8_t kInputPatternModulus = 251u;
+
 using cpipe::plugin::PluginLoader;
 using cpipe::platform::BufferPool;
 using cpipe::platform::BufferDescriptor;
@@ -154,7 +156,7 @@ TEST(PluginLoader, FullLifecycle_CreateProcessDestroy_Succeeds) {
     auto* input_bytes = static_cast<std::uint8_t*>(input.data());
     auto* output_bytes = static_cast<std::uint8_t*>(output.data());
     for (std::size_t i = 0; i < desc.size(); ++i) {
-        input_bytes[i] = static_cast<std::uint8_t>(i % 251u);
+        input_bytes[i] = static_cast<std::uint8_t>(i % kInputPatternModulus);
         output_bytes[i] = 0u;
     }
 
