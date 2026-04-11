@@ -1,6 +1,9 @@
 cmake_minimum_required(VERSION 3.25)
-project(cpipe VERSION 0.0.1 LANGUAGES CXX)
+project(cpipe VERSION 0.0.1 LANGUAGES C CXX)
 
+set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
@@ -12,6 +15,7 @@ find_package(tl-expected CONFIG REQUIRED)
 
 add_subdirectory(src/common)
 add_subdirectory(src/platform)
+add_subdirectory(src/plugin)
 
 option(CPIPE_BUILD_TESTS "Build tests" ON)
 if(CPIPE_BUILD_TESTS)

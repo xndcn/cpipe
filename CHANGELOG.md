@@ -12,12 +12,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `include/cpipe/types.h`: C-compatible public type definitions — `cpipe_status_t`, `cpipe_pixel_format_t`, `cpipe_device_type_t`, `cpipe_buffer_t`, `cpipe_node_info_t`
 - `include/cpipe/error.h`: public `cpipe::Error` struct and `cpipe::expected<T,E>` alias (tl::expected polyfill with automatic std::expected promotion when available)
 - `include/cpipe/buffer.h`: public `BufferDescriptor`, `Buffer`, and `BufferPool` C++ API
+- `include/cpipe/node_plugin.h`: pure C plugin ABI header with `cpipe_host_api_t`, opaque `cpipe_node_t`, and the 7 required plugin/node entry points
 - `src/common/types.hpp`: C++ enum wrappers (`PixelFormat`, `DeviceType`) with `bytes_per_pixel()` helper
 - `src/common/error.h/cpp`: `status_to_string()` and `make_error()` utilities
 - `src/common/log.h/cpp`: spdlog-backed `cpipe::log` namespace with `init()`/`get()` and `CPIPE_LOG_*` macros; level overridable via `CPIPE_LOG_LEVEL` env var
 - `src/common/json_utils.h/cpp`: `cpipe::json::parse_string()`, `parse_file()`, and `get<T>()` returning `expected<T, Error>`
 - `src/platform/common/buffer_pool.cpp`: `BufferPool` implementation with 64-byte-aligned allocation via `std::aligned_alloc`, free-list keyed by full `BufferDescriptor` (device-aware reuse), and thread-safe ref-counted buffer lifecycle
+- `src/plugin/plugin_loader.h/cpp`: dynamic plugin loading, directory scanning, symbol resolution, probe-node metadata extraction, and ABI mismatch handling
+- `src/plugin/plugin_registry.h/cpp`: in-memory `plugin_id` registry with duplicate rejection and iteration helpers
+- `tests/fixtures/mock_plugin/`: C mock plugin fixtures for valid, ABI-mismatched, and missing-symbol shared-library cases
+- `tests/unit/plugin/plugin_loader_test.cpp` and `plugin_registry_test.cpp`: focused plugin system tests covering load, scan, rejection, registration, and full lifecycle execution
 - `cpipe_platform` CMake target linking `cpipe::common`
+- `cpipe_plugin` CMake target linking `cpipe::common` and `cpipe::platform`
 - `nlohmann-json` and `tl-expected` vcpkg dependencies
 - 51 new unit tests across `error_test`, `log_test`, `json_utils_test`, `buffer_pool_test` (54 total, up from 3)
 

@@ -263,49 +263,49 @@ C++ RAII wrapper around BufferPool:
 - **Files**: `include/cpipe/node_plugin.h`
 - **Description**: Define the complete C ABI plugin interface as specified above. Include cpipe_host_api_t, cpipe_node_t (opaque type), and all 7 exported function declarations. Header must be pure C (no C++ constructs).
 - **Acceptance criteria**:
-  - [ ] Compiles as C (tested with `gcc -std=c11`)
-  - [ ] Compiles as C++ (tested with `g++ -std=c++20`)
-  - [ ] All function signatures match architecture.md specification
-  - [ ] cpipe_host_api_t includes log, buffer_allocate/release, api_version
-  - [ ] Include guards via `#pragma once` + extern "C" for C++
+  - [x] Compiles as C (tested with `gcc -std=c11`)
+  - [x] Compiles as C++ (tested with `g++ -std=c++20`)
+  - [x] All function signatures match architecture.md specification
+  - [x] cpipe_host_api_t includes log, buffer_allocate/release, api_version
+  - [x] Include guards via `#pragma once` + extern "C" for C++
 
 #### Task 2.2: PluginLoader
 
 - **Files**: `src/plugin/plugin_loader.h`, `src/plugin/plugin_loader.cpp`, `src/plugin/CMakeLists.txt`
 - **Description**: Implement dynamic library loading wrapper. Supports directory scanning (load all .so/.dylib in a directory) and explicit file loading. Loading flow: dlopen → dlsym(cpipe_plugin_init) → call init(host_api) → check abi_version → dlsym remaining functions → return PluginHandle.
 - **Acceptance criteria**:
-  - [ ] Load a single plugin by file path
-  - [ ] Scan a directory and load all plugins found
-  - [ ] ABI version mismatch: reject plugin, log warning, continue
-  - [ ] Invalid file (not a shared library): log warning, skip
-  - [ ] Missing required symbols: log warning, skip
-  - [ ] Return structured PluginHandle with function pointers
-  - [ ] Platform abstraction: dlopen on Linux/macOS (LoadLibrary stub for future Windows)
+  - [x] Load a single plugin by file path
+  - [x] Scan a directory and load all plugins found
+  - [x] ABI version mismatch: reject plugin, log warning, continue
+  - [x] Invalid file (not a shared library): log warning, skip
+  - [x] Missing required symbols: log warning, skip
+  - [x] Return structured PluginHandle with function pointers
+  - [x] Platform abstraction: dlopen on Linux/macOS (LoadLibrary stub for future Windows)
 
 #### Task 2.3: PluginRegistry
 
 - **Files**: `src/plugin/plugin_registry.h`, `src/plugin/plugin_registry.cpp`
 - **Description**: In-memory registry mapping plugin_id → PluginHandle. Supports registration, lookup by ID, and iteration (for list-plugins).
 - **Acceptance criteria**:
-  - [ ] Register a loaded plugin by plugin_id
-  - [ ] Lookup by plugin_id returns PluginHandle or error
-  - [ ] Iterate all registered plugins
-  - [ ] Duplicate plugin_id: reject with warning (first-registered wins)
+  - [x] Register a loaded plugin by plugin_id
+  - [x] Lookup by plugin_id returns PluginHandle or error
+  - [x] Iterate all registered plugins
+  - [x] Duplicate plugin_id: reject with warning (first-registered wins)
 
 #### Task 2.4: Mock Plugin + Plugin System Tests
 
 - **Files**: `tests/fixtures/mock_plugin/CMakeLists.txt`, `tests/fixtures/mock_plugin/mock_plugin.c`, `tests/unit/plugin/plugin_loader_test.cpp`, `tests/unit/plugin/plugin_registry_test.cpp`
 - **Description**: Build a minimal mock plugin as a shared library (MODULE target in CMake). The mock plugin implements all C ABI functions with trivial logic (e.g., process copies input to output). Tests verify the full load → register → lookup → create → process → destroy → shutdown cycle.
 - **Acceptance criteria**:
-  - [ ] Mock plugin compiles as MODULE (shared library)
-  - [ ] Mock plugin implements all 7 C ABI functions
-  - [ ] PluginLoader test: load mock plugin, verify all function pointers
-  - [ ] PluginLoader test: reject ABI-mismatched plugin (build a second mock with wrong version)
-  - [ ] PluginLoader test: directory scan finds mock plugin
-  - [ ] PluginRegistry test: register, lookup, iterate
-  - [ ] Full cycle test: load → register → create node → process → destroy → shutdown
+  - [x] Mock plugin compiles as MODULE (shared library)
+  - [x] Mock plugin implements all 7 C ABI functions
+  - [x] PluginLoader test: load mock plugin, verify all function pointers
+  - [x] PluginLoader test: reject ABI-mismatched plugin (build a second mock with wrong version)
+  - [x] PluginLoader test: directory scan finds mock plugin
+  - [x] PluginRegistry test: register, lookup, iterate
+  - [x] Full cycle test: load → register → create node → process → destroy → shutdown
 
-**Checkpoint 2**: All Phase 1 + Phase 2 tests pass. Mock plugin loads, registers, and executes correctly.
+**Checkpoint 2**: ✅ All Phase 1 + Phase 2 tests pass. Mock plugin loads, registers, and executes correctly.
 
 ---
 

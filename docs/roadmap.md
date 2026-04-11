@@ -22,7 +22,7 @@ cpipe follows a milestone-based development approach. Each milestone builds on t
 
 ### M1: Foundation
 
-- **Status**: IN_PROGRESS (Phase 1 complete 2026-04-10)
+- **Status**: IN_PROGRESS (Phases 1-2 complete 2026-04-11)
 - **Phase 1 completed**:
   - `include/cpipe/types.h` — C-compatible public types (status codes, pixel formats, device types, buffer/node structs) ✓
   - `include/cpipe/error.h` — public `cpipe::Error` and `cpipe::expected<T,E>` alias with tl::expected polyfill ✓
@@ -31,6 +31,11 @@ cpipe follows a milestone-based development approach. Each milestone builds on t
   - `cpipe_platform` library: `BufferPool` with 64-byte-aligned allocation, free-list reuse, thread-safe ref-counted lifecycle ✓
   - `nlohmann-json` and `tl-expected` added to vcpkg.json ✓
   - 54 unit tests passing (up from 3) ✓
+- **Phase 2 completed**:
+  - `include/cpipe/node_plugin.h` — pure C plugin ABI header with host callbacks and 7 exported entry points ✓
+  - `cpipe_plugin` library: dynamic plugin loader with directory scanning, symbol resolution, and ABI validation ✓
+  - `PluginRegistry` — plugin registration, lookup, and iteration by `plugin_id` ✓
+  - Mock plugin fixtures and plugin-system unit tests covering load, scan, ABI mismatch, missing symbols, registration, and end-to-end process lifecycle ✓
 - **Goal**: Platform abstraction layer, compute backends, buffer management, and plugin interface
 - **Deliverables**:
   - `BufferPool` + `BufferDescriptor` with platform-specific backends
