@@ -1,19 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/nodes/Passthrough.hpp>
 #include <cpipe/runtime/AbiBridge.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/Registry.hpp>
-#include <nlohmann/json-schema.hpp>
-#include <nlohmann/json.hpp>
-
-#include <algorithm>
 #include <cstdint>
 #include <filesystem>
 #include <fstream>
+#include <nlohmann/json-schema.hpp>
+#include <nlohmann/json.hpp>
 #include <vector>
 
 extern const char PASSTHROUGH_MANIFEST_JSON[];
@@ -71,10 +70,10 @@ TEST_CASE("test_passthrough_node: process copies RGBA8 bytes through compute sui
         cpipe::runtime::Registry::load_builtin_nodes().find("com.cpipe.builtin.passthrough");
     REQUIRE(desc != nullptr);
 
-    CpuBuffer input(rgba_layout(), BufferUsage::Input | BufferUsage::CpuRead |
-                                       BufferUsage::CpuWrite);
-    CpuBuffer output(rgba_layout(), BufferUsage::Output | BufferUsage::CpuRead |
-                                        BufferUsage::CpuWrite);
+    CpuBuffer input(rgba_layout(),
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    CpuBuffer output(rgba_layout(),
+                     BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     auto* input_bytes = static_cast<std::uint8_t*>(input.lock_cpu(IBuffer::CpuAccess::ReadWrite));
     REQUIRE(input_bytes != nullptr);

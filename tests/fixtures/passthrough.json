@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.1.json",
+  "version": "0.1",
+  "id": "passthrough-smoke",
+  "nodes": [
+    {
+      "id": "copy",
+      "type": "com.cpipe.builtin.passthrough",
+      "params": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "$input",
+      "to": "copy"
+    },
+    {
+      "from": "copy",
+      "to": "$output"
+    }
+  ]
+}

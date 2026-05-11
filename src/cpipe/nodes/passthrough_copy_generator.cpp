@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/nodes/Passthrough.hpp>
-
 #include <algorithm>
+#include <cpipe/nodes/Passthrough.hpp>
 #include <cstddef>
 #include <cstring>
 
@@ -17,7 +16,8 @@ int passthrough_copy(const runtime::HalideBufferView* const* inputs, std::size_t
     }
     const auto* input = inputs[0];
     auto* output = outputs[0];
-    if (input == nullptr || output == nullptr || input->host == nullptr || output->host == nullptr) {
+    if (input == nullptr || output == nullptr || input->host == nullptr ||
+        output->host == nullptr) {
         return CPIPE_BAD_INDEX;
     }
     if (input->size_bytes != output->size_bytes) {

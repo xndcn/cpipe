@@ -10,6 +10,7 @@ add_executable(
     test_cpu_buffer.cpp
     test_halide_adapter.cpp
     test_passthrough_node.cpp
+    test_pipeline_load.cpp
     test_pixel_format.cpp
     test_registry.cpp
     test_scheduler_topo.cpp
