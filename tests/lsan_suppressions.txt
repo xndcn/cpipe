@@ -1,0 +1,7 @@
+# Known loader/driver allocations retained until process exit by Vulkan ICDs.
+leak:libvulkan
+leak:libVkLayer
+leak:libGLX_nvidia
+leak:libnvidia
+leak:lavapipe
+leak:swrast

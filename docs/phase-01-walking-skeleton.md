@@ -264,15 +264,15 @@ Twelve vertical tasks ([PD-34](#4-phase-decisions-pd-n)). Each ships in dependen
 **Description.** Switch on `CPIPE_ENABLE_HALIDE_VULKAN=ON` ([PD-72](#4-phase-decisions-pd-n)); install Mesa Lavapipe in `build-and-test.yml` and wire `VK_ICD_FILENAMES` for the test step ([PD-70](#4-phase-decisions-pd-n)); add `LSAN_OPTIONS=suppressions=...` to the Debug preset ([PD-73](#4-phase-decisions-pd-n)); land the `vcpkg-configuration.json` overlay scaffold so subsequent T-tasks can drop in libraw / libheif / kvazaar / OCIO / lcms2 / OpenImageIO / VMA / Vulkan-Headers / Vulkan-Loader / Tracy without churn. No new dependency is *enabled* yet — only the structural deltas.
 
 **Acceptance criteria:**
-- [ ] `cmake --preset linux-debug` reconfigures with `CPIPE_ENABLE_HALIDE_VULKAN=ON` and Halide rebuilds with the Vulkan backend.
-- [ ] CI `build-debug` job installs `mesa-vulkan-drivers libvulkan1 git-lfs` and exports `VK_ICD_FILENAMES` for the test step; a dummy Vulkan smoke test (`vulkaninfo --summary`) succeeds.
-- [ ] `tests/lsan_suppressions.txt` is wired into both Debug presets; ASAN+UBSAN P0 tests still pass.
-- [ ] `vcpkg-configuration.json` carries an empty `overlay-ports` block ready for downstream T to populate; the cold rebuild budget remains ≤ 50 min on first CI run after this T.
-- [ ] No regression in P0 tests; existing 25 tests still green.
+- [x] `cmake --preset linux-debug` reconfigures with `CPIPE_ENABLE_HALIDE_VULKAN=ON` and Halide rebuilds with the Vulkan backend.
+- [x] CI `build-debug` job installs `mesa-vulkan-drivers libvulkan1 git-lfs` and exports `VK_ICD_FILENAMES` for the test step; a dummy Vulkan smoke test (`vulkaninfo --summary`) succeeds.
+- [x] `tests/lsan_suppressions.txt` is wired into both Debug presets; ASAN+UBSAN P0 tests still pass.
+- [x] `vcpkg-configuration.json` carries an empty `overlay-ports` block ready for downstream T to populate; the cold rebuild budget remains ≤ 50 min on first CI run after this T.
+- [x] No regression in P0 tests; existing 25 tests still green.
 
 **Verification:**
-- [ ] CI run logs show `Halide Vulkan backend: ENABLED` and `Lavapipe detected (VK_ICD_FILENAMES=...)`.
-- [ ] `vulkaninfo --summary` in the CI test step prints `GPU0 = llvmpipe`.
+- [x] CI run logs show `Halide Vulkan backend: ENABLED` and `Lavapipe detected (VK_ICD_FILENAMES=...)`.
+- [x] `vulkaninfo --summary` in the CI test step prints `GPU0 = llvmpipe`.
 
 **Dependencies:** T1.
 

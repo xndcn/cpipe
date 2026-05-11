@@ -25,7 +25,9 @@ jobs:
       - name: Install tools
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang clang-format clang-tidy ninja-build
+          sudo apt-get install -y clang clang-format clang-tidy git-lfs libvulkan1 mesa-vulkan-drivers ninja-build vulkan-tools
+          git lfs install --local
+          git lfs pull
           python3 -m pip install --user pre-commit
       - name: Bootstrap vcpkg
         run: |
@@ -62,6 +64,12 @@ jobs:
             git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
             "$VCPKG_ROOT/bootstrap-vcpkg.sh"
           fi
+      - name: Install Vulkan tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs libvulkan1 mesa-vulkan-drivers ninja-build vulkan-tools
+          git lfs install --local
+          git lfs pull
       - name: Build Debug
         run: |
           cmake --preset linux-debug
@@ -88,6 +96,12 @@ jobs:
             git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
             "$VCPKG_ROOT/bootstrap-vcpkg.sh"
           fi
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang git-lfs libvulkan1 mesa-vulkan-drivers ninja-build vulkan-tools
+          git lfs install --local
+          git lfs pull
       - name: Build Release
         env:
           CC: clang
@@ -117,6 +131,25 @@ jobs:
             git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
             "$VCPKG_ROOT/bootstrap-vcpkg.sh"
           fi
+      - name: Install Vulkan tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y git-lfs libvulkan1 mesa-vulkan-drivers ninja-build vulkan-tools
+          git lfs install --local
+          git lfs pull
+      - name: Vulkan smoke
+        run: |
+          LVP_ICD="$(find /usr/share/vulkan/icd.d -maxdepth 1 -type f \( -name 'lvp_icd*.json' -o -name '*lavapipe*.json' \) | sort | head -n 1)"
+          if [ -n "$LVP_ICD" ]; then
+            export VK_ICD_FILENAMES="$LVP_ICD"
+            echo "VK_ICD_FILENAMES=$LVP_ICD" >> "$GITHUB_ENV"
+          else
+            echo "No Lavapipe ICD file found; available ICDs:"
+            find /usr/share/vulkan/icd.d -maxdepth 1 -type f -print | sort
+          fi
+          vulkaninfo --summary | tee /tmp/vulkaninfo-summary.txt
+          grep -Ei 'GPU[0-9]+.*llvmpipe|llvmpipe' /tmp/vulkaninfo-summary.txt
+          echo "Lavapipe detected (VK_ICD_FILENAMES=${VK_ICD_FILENAMES:-loader-default})"
       - name: Test Debug
         run: |
           cmake --preset linux-debug

@@ -20,6 +20,13 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 
 enable_testing()
 option(CPIPE_BUILD_TESTS "Build cpipe tests" ON)
+option(CPIPE_ENABLE_HALIDE_VULKAN "Enable Halide Vulkan AOT target support" ON)
+
+if(CPIPE_ENABLE_HALIDE_VULKAN)
+    message(STATUS "Halide Vulkan backend: ENABLED")
+else()
+    message(STATUS "Halide Vulkan backend: DISABLED")
+endif()
 
 add_subdirectory(src/cpipe/core)
 add_subdirectory(src/cpipe/sdk)
