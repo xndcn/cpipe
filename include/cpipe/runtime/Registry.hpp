@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
 #include <cstddef>
 #include <string_view>
 #include <vector>
-
-#include <cpipe/sdk/cpipe_node.h>
 
 namespace cpipe::runtime {
 

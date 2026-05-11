@@ -3,6 +3,8 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -10,12 +12,9 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <tl/expected.hpp>
 #include <utility>
 #include <vector>
-
-#include <tl/expected.hpp>
-
-#include <cpipe/sdk/cpipe_node.h>
 
 namespace cpipe::sdk {
 
@@ -133,9 +132,9 @@ public:
         const auto id = std::string(aot_id);
         const auto raw_inputs = collect_inputs(inputs);
         const auto raw_outputs = collect_outputs(outputs);
-        const auto status = static_cast<cpipe_status_t>(suite_->submit_halide(
-            impl_, id.c_str(), raw_inputs.data(), raw_inputs.size(), raw_outputs.data(),
-            raw_outputs.size()));
+        const auto status = static_cast<cpipe_status_t>(
+            suite_->submit_halide(impl_, id.c_str(), raw_inputs.data(), raw_inputs.size(),
+                                  raw_outputs.data(), raw_outputs.size()));
         if (status != CPIPE_OK) {
             return tl::unexpected(Error{status, "Halide submission failed"});
         }
@@ -222,9 +221,9 @@ public:
         const auto model = std::string(model_id);
         const auto raw_inputs = ComputeContext::collect_inputs(inputs);
         const auto raw_outputs = ComputeContext::collect_outputs(outputs);
-        const auto status = static_cast<cpipe_status_t>(suite_->submit_inference(
-            impl_, model.c_str(), raw_inputs.data(), raw_inputs.size(), raw_outputs.data(),
-            raw_outputs.size()));
+        const auto status = static_cast<cpipe_status_t>(
+            suite_->submit_inference(impl_, model.c_str(), raw_inputs.data(), raw_inputs.size(),
+                                     raw_outputs.data(), raw_outputs.size()));
         if (status != CPIPE_OK) {
             return tl::unexpected(Error{status, "inference submission failed"});
         }
@@ -320,8 +319,7 @@ public:
     }
 
     virtual Result<void> process(ComputeContext&, InferenceContext*, const ParamView&,
-                                 std::span<const Buffer*> inputs,
-                                 std::span<Buffer*> outputs) = 0;
+                                 std::span<const Buffer*> inputs, std::span<Buffer*> outputs) = 0;
 };
 
 namespace detail {
@@ -420,8 +418,8 @@ int dispatch(const char* action, cpipe_host_t* host, cpipe_node_t* node, cpipe_p
                 output_ptrs.push_back(&outputs.back());
             }
 
-            return status_code(instance->process(compute, &inference, param_view, input_ptrs,
-                                                 output_ptrs));
+            return status_code(
+                instance->process(compute, &inference, param_view, input_ptrs, output_ptrs));
         }
 
         return CPIPE_REPLY_DEFAULT;

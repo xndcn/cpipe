@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/Registry.hpp>
-
 #include <spdlog/spdlog.h>
+
+#include <cpipe/runtime/Registry.hpp>
 
 extern "C" {
 extern const cpipe_plugin_desc_t __start_cpipe_registry[] __attribute__((weak));
