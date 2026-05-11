@@ -1,37 +1,29 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <algorithm>
-#include <cpipe/nodes/Passthrough.hpp>
-#include <cstddef>
-#include <cstring>
+#include <Halide.h>
+
+#include <cstdint>
 
 namespace cpipe::nodes {
-namespace {
 
-int passthrough_copy(const runtime::HalideBufferView* const* inputs, std::size_t n_in,
-                     runtime::HalideBufferView* const* outputs, std::size_t n_out) {
-    if (n_in != 1 || n_out != 1) {
-        return CPIPE_BAD_INDEX;
-    }
-    const auto* input = inputs[0];
-    auto* output = outputs[0];
-    if (input == nullptr || output == nullptr || input->host == nullptr ||
-        output->host == nullptr) {
-        return CPIPE_BAD_INDEX;
-    }
-    if (input->size_bytes != output->size_bytes) {
-        return CPIPE_FAILED;
+class PassthroughCopy final : public Halide::Generator<PassthroughCopy> {
+public:
+    Input<Halide::Buffer<std::uint8_t, 1>> input{"input"};
+    Output<Halide::Buffer<std::uint8_t, 1>> output{"output"};
+
+    void generate() {
+        output(x_) = input(x_);
     }
 
-    std::memcpy(output->host, input->host, static_cast<std::size_t>(input->size_bytes));
-    return CPIPE_OK;
-}
+    void schedule() {
+        output.parallel(x_);
+    }
 
-}  // namespace
-
-void register_passthrough_halide(runtime::ComputeContext& context) {
-    context.register_halide("passthrough_copy", &passthrough_copy);
-}
+private:
+    Halide::Var x_{"x"};
+};
 
 }  // namespace cpipe::nodes
+
+HALIDE_REGISTER_GENERATOR(cpipe::nodes::PassthroughCopy, PassthroughCopy)

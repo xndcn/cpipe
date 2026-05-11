@@ -30,19 +30,19 @@ BufferLayout rgba_layout() {
     };
 }
 
-int passthrough_copy(const cpipe::runtime::HalideBufferView* const* inputs, std::size_t n_in,
-                     cpipe::runtime::HalideBufferView* const* outputs, std::size_t n_out) {
-    if (n_in != 1 || n_out != 1) {
-        return CPIPE_BAD_INDEX;
-    }
-
-    const auto* in = inputs[0];
-    auto* out = outputs[0];
-    if (in == nullptr || out == nullptr || in->size_bytes != out->size_bytes) {
+int passthrough_copy(halide_buffer_t* input, halide_buffer_t* output) {
+    if (input == nullptr || output == nullptr || input->dimensions != 1 ||
+        output->dimensions != 1) {
         return CPIPE_FAILED;
     }
 
-    std::memcpy(out->host, in->host, static_cast<std::size_t>(in->size_bytes));
+    const auto input_size = input->dim[0].extent;
+    const auto output_size = output->dim[0].extent;
+    if (input_size != output_size) {
+        return CPIPE_FAILED;
+    }
+
+    std::memcpy(output->host, input->host, static_cast<std::size_t>(input_size));
     return CPIPE_OK;
 }
 
@@ -53,15 +53,13 @@ TEST_CASE("test_halide_adapter: maps CpuBuffer to byte-addressed Halide view") {
                      BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     cpipe::runtime::HalideBufferAdapter adapter(buffer, IBuffer::CpuAccess::ReadWrite);
-    const auto& view = adapter.view();
+    const auto& view = adapter.buffer();
 
     REQUIRE(view.host != nullptr);
-    CHECK(view.ndim == 2);
-    CHECK(view.dim[0].extent == 8 * 4);
+    CHECK(view.dimensions == 1);
+    CHECK(view.type == halide_type_of<std::uint8_t>());
+    CHECK(view.dim[0].extent == 8 * 4 * 4);
     CHECK(view.dim[0].stride == 1);
-    CHECK(view.dim[1].extent == 4);
-    CHECK(view.dim[1].stride == 8 * 4);
-    CHECK(view.size_bytes == 8 * 4 * 4);
 }
 
 TEST_CASE("test_halide_adapter: ComputeContext submit_halide invokes registered AOT entry") {
