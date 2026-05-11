@@ -3,6 +3,8 @@ find_package(Taskflow CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 
+cpipe_add_halide_runtime(cpipe-halide-runtime)
+
 add_library(
     cpipe-runtime
     STATIC
@@ -24,7 +26,8 @@ target_link_libraries(
         spdlog::spdlog
         Taskflow::Taskflow
         nlohmann_json::nlohmann_json
-        nlohmann_json_schema_validator::validator)
+        nlohmann_json_schema_validator::validator
+        cpipe-halide-runtime)
 cpipe_embed_json(
     cpipe-runtime
     "${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.1.json"

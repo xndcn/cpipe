@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <HalideRuntime.h>
 #include <cpipe/sdk/cpipe_node.h>
 
 #include <cstddef>
@@ -21,6 +22,7 @@ struct ScheduledNode {
 class Scheduler {
 public:
     Scheduler();
+    ~Scheduler();
 
     [[nodiscard]] cpipe_status_t run_serial(std::span<const ScheduledNode> nodes) const;
     [[nodiscard]] std::size_t worker_count() const noexcept;

@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <cpipe/nodes/Passthrough.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
 #include <span>
+
+#include "passthrough_copy.h"
 
 extern const char PASSTHROUGH_MANIFEST_JSON[];
 
@@ -20,6 +23,10 @@ public:
         return compute.submit_halide("passthrough_copy", inputs, outputs);
     }
 };
+
+void register_passthrough_halide(runtime::ComputeContext& context) {
+    context.register_halide("passthrough_copy", &passthrough_copy);
+}
 
 }  // namespace cpipe::nodes
 

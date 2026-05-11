@@ -2,9 +2,7 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <cpipe/runtime/ComputeContext.hpp>
-#include <memory>
 #include <utility>
-#include <vector>
 
 namespace cpipe::runtime {
 
@@ -19,45 +17,22 @@ cpipe_status_t ComputeContext::submit_halide(std::string_view aot_id,
     if (found == halide_entries_.end() || found->second == nullptr) {
         return CPIPE_UNSUPPORTED;
     }
-
-    std::vector<std::unique_ptr<HalideBufferAdapter>> input_adapters;
-    std::vector<std::unique_ptr<HalideBufferAdapter>> output_adapters;
-    std::vector<const HalideBufferView*> input_views;
-    std::vector<HalideBufferView*> output_views;
-
-    input_adapters.reserve(inputs.size());
-    output_adapters.reserve(outputs.size());
-    input_views.reserve(inputs.size());
-    output_views.reserve(outputs.size());
-
-    for (const auto* input : inputs) {
-        if (input == nullptr) {
-            return CPIPE_BAD_INDEX;
-        }
-        auto adapter = std::make_unique<HalideBufferAdapter>(*const_cast<compute::IBuffer*>(input),
-                                                             compute::IBuffer::CpuAccess::Read);
-        if (adapter->view().host == nullptr) {
-            return CPIPE_FAILED;
-        }
-        input_views.push_back(&adapter->view());
-        input_adapters.push_back(std::move(adapter));
+    if (inputs.size() != 1 || outputs.size() != 1) {
+        return CPIPE_BAD_INDEX;
+    }
+    if (inputs[0] == nullptr || outputs[0] == nullptr) {
+        return CPIPE_BAD_INDEX;
     }
 
-    for (auto* output : outputs) {
-        if (output == nullptr) {
-            return CPIPE_BAD_INDEX;
-        }
-        auto adapter =
-            std::make_unique<HalideBufferAdapter>(*output, compute::IBuffer::CpuAccess::Write);
-        if (adapter->view().host == nullptr) {
-            return CPIPE_FAILED;
-        }
-        output_views.push_back(&adapter->view());
-        output_adapters.push_back(std::move(adapter));
+    HalideBufferAdapter input_adapter(*const_cast<compute::IBuffer*>(inputs[0]),
+                                      compute::IBuffer::CpuAccess::Read);
+    HalideBufferAdapter output_adapter(*outputs[0], compute::IBuffer::CpuAccess::Write);
+    if (input_adapter.buffer().host == nullptr || output_adapter.buffer().host == nullptr) {
+        return CPIPE_FAILED;
     }
 
-    return static_cast<cpipe_status_t>(found->second(input_views.data(), input_views.size(),
-                                                     output_views.data(), output_views.size()));
+    return static_cast<cpipe_status_t>(
+        found->second(&input_adapter.buffer(), &output_adapter.buffer()));
 }
 
 }  // namespace cpipe::runtime

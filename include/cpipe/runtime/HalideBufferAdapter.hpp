@@ -3,26 +3,12 @@
 
 #pragma once
 
+#include <HalideRuntime.h>
+
 #include <array>
 #include <cpipe/core/IBuffer.hpp>
-#include <cstdint>
 
 namespace cpipe::runtime {
-
-struct HalideDimension {
-    std::int32_t min = 0;
-    std::int32_t extent = 0;
-    std::int32_t stride = 0;
-    std::uint32_t flags = 0;
-};
-
-struct HalideBufferView {
-    std::uint8_t* host = nullptr;
-    compute::PixelFormat format = compute::PixelFormat::UNDEFINED;
-    std::uint8_t ndim = 0;
-    std::array<HalideDimension, 8> dim{};
-    std::uint64_t size_bytes = 0;
-};
 
 class HalideBufferAdapter {
 public:
@@ -34,17 +20,17 @@ public:
     HalideBufferAdapter(HalideBufferAdapter&&) = delete;
     HalideBufferAdapter& operator=(HalideBufferAdapter&&) = delete;
 
-    [[nodiscard]] HalideBufferView& view() noexcept;
-    [[nodiscard]] const HalideBufferView& view() const noexcept;
+    [[nodiscard]] halide_buffer_t& buffer() noexcept;
+    [[nodiscard]] const halide_buffer_t& buffer() const noexcept;
 
 private:
     compute::IBuffer& buffer_;
     compute::IBuffer::CpuAccess access_;
     bool locked_ = false;
-    HalideBufferView view_{};
+    std::array<halide_dimension_t, 1> dims_{};
+    halide_buffer_t halide_buffer_{};
 };
 
-using HalideFilterEntry = int (*)(const HalideBufferView* const* inputs, std::size_t n_in,
-                                  HalideBufferView* const* outputs, std::size_t n_out);
+using HalideFilterEntry = int (*)(halide_buffer_t* input, halide_buffer_t* output);
 
 }  // namespace cpipe::runtime
