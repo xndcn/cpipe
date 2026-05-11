@@ -1,7 +1,8 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) in progress. APIs unstable; no usable ISP release
-> yet. Phase 0 only proves the repository, build, plugin ABI, and passthrough pipeline.
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) released; Phase 1 not yet started. APIs unstable;
+> no usable ISP release yet. `v0.1` only proves the repository, build, plugin ABI, and
+> passthrough pipeline — first real ISP work lands in Phase 1 (`v0.2`).
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
