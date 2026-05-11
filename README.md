@@ -51,7 +51,7 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-We're in **Phase 0** (`v0.1`). The local implementation is green, and GitHub Actions is green on `main` and on a placeholder PR. The remaining gates are the 24-hour green window and the `v0.1` tag/release. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+**Phase 0** (`v0.1`) is released. It proves the repository, build, plugin ABI, and passthrough pipeline; real ISP work starts in Phase 1. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
 ## Build
 
@@ -72,7 +72,7 @@ The first vcpkg bootstrap can be slow. The Debug preset enables ASAN and UBSAN.
 
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
-| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | CI green; 24h/tag pending |
+| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | planned     |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |

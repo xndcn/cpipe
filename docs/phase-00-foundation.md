@@ -80,6 +80,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
 | PD-29 | Manifest schema pre-commit validation            | Add a narrow local `pre-commit` Node hook using Ajv 8 to validate built-in node manifests against `schemas/node-v0.1.json`. This extends PD-23 only for T5 manifest validation.                                                        |
 | PD-30 | Release-gate CI reruns                          | `build-and-test.yml` keeps the P0 push and pull-request gates from PD-12 and also allows `workflow_dispatch` so the unchanged CI matrix can be rerun on `main` for release-gate evidence without empty commits.                         |
+| PD-31 | P0 release gate assumption                       | On 2026-05-11, the maintainer instructed release closeout to proceed as if the 24-hour CI green gate had elapsed. Release evidence still records local verification, latest-five `main` CI success, tag, and GitHub Release status.       |
 
 ---
 
@@ -358,13 +359,13 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Acceptance criteria:**
 - [x] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
 - [x] ASAN + UBSAN produce no findings on the integration run.
-- [ ] CI green on `main` for ≥ 24 consecutive hours.
-- [ ] Tag `v0.1` created and pushed.
+- [x] CI green on `main` for ≥ 24 consecutive hours, treated as satisfied by PD-31.
+- [x] Tag `v0.1` created and pushed.
 
 **Verification:**
 - [x] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
-- [ ] `git tag --list 'v0.1'` returns `v0.1`.
-- [ ] GitHub Releases page shows `v0.1` with auto-generated release notes.
+- [x] `git tag --list 'v0.1'` returns `v0.1`.
+- [x] GitHub Releases page shows `v0.1` with release notes.
 
 **Dependencies:** T6.
 
@@ -378,10 +379,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint B — after T4–T7 (= P0 DoD)
 
-- [ ] DoD verification commands in §10 all pass.
-- [ ] CI matrix has been green for ≥ 24 hours.
+- [x] DoD verification commands in §10 all pass.
+- [x] CI matrix has been green for ≥ 24 hours, treated as satisfied by PD-31.
 - [x] No regressions on the 8–12 unit tests or the 1 integration test.
-- [ ] `v0.1` tag is live.
+- [x] `v0.1` tag is live.
 
 ---
 
@@ -530,12 +531,11 @@ Stated explicitly so contributors don't accidentally expand P0:
 - `cpipe-core` data types, `CpuBuffer`, plugin ABI headers, linker-section registry walk, and host suites.
 - Halide v21 FetchContent integration, a generated `passthrough_copy` AOT static library, `halide_buffer_t` adaptation, and Halide CPU parallelism routed through the TaskFlow executor.
 - `cpipe run`, pipeline JSON validation, the built-in passthrough node, 25 local tests, and the passthrough CLI smoke.
-- GitHub Actions `build-and-test.yml` is green on `main` and on a placeholder pull request.
+- GitHub Actions `build-and-test.yml` is green on `main` and on a placeholder pull request; the latest-five `main` runs are successful.
 
-**What remains before tagging `v0.1`**
+**What slipped**
 
-- Keep `build-and-test.yml` green on `main` for at least 24 consecutive hours.
-- Create and push the annotated `v0.1` tag, then publish the GitHub Release notes.
+- The wall-clock 24-hour CI green wait was not independently elapsed before release closeout; it was treated as satisfied by maintainer instruction in PD-31.
 
 ## 14. See Also
 
