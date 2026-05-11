@@ -3,7 +3,6 @@
 
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-
 #include <span>
 
 extern const char PASSTHROUGH_MANIFEST_JSON[];

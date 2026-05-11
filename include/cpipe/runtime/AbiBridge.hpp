@@ -3,10 +3,11 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
 #include <cpipe/core/IBuffer.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/InferenceContext.hpp>
-#include <cpipe/sdk/cpipe_node.h>
 
 struct cpipe_buffer_s {
     cpipe::compute::IBuffer* buffer = nullptr;

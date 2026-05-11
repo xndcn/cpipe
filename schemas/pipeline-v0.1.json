@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/pipeline/v0.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["$schema", "version", "id", "nodes", "edges"],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.cpipe.dev/pipeline/v0.1.json"
+    },
+    "version": {
+      "const": "0.1"
+    },
+    "id": {
+      "type": "string"
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "type", "params"],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "type": {
+            "type": "string",
+            "pattern": "^com\\.cpipe\\.[a-z0-9_.-]+$"
+          },
+          "params": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from", "to"],
+        "properties": {
+          "from": {
+            "type": "string"
+          },
+          "to": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}
