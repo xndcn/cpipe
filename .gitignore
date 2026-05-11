@@ -1,0 +1,18 @@
+# Build outputs
+/build/
+/out/
+/CMakeUserPresets.json
+
+# vcpkg local state
+/vcpkg_installed/
+
+# Python tooling
+/.cache/
+/.mypy_cache/
+/.pytest_cache/
+/.venv/
+
+# Editor and OS state
+*.swp
+*~
+.DS_Store
