@@ -19,6 +19,7 @@ TEST_CASE("test_pixel_format: reports byte-addressable pixel sizes") {
     CHECK(bytes_per_pixel(PixelFormat::R10G10B10A2_UNORM) == 4);
     CHECK(bytes_per_pixel(PixelFormat::R16G16B16A16_SFLOAT) == 8);
     CHECK(bytes_per_pixel(PixelFormat::R16G16B16_SFLOAT) == 6);
+    CHECK(bytes_per_pixel(PixelFormat::R16_SFLOAT) == 2);
     CHECK(bytes_per_pixel(PixelFormat::R32G32B32A32_SFLOAT) == 16);
     CHECK(bytes_per_pixel(PixelFormat::R32G32B32_SFLOAT) == 12);
     CHECK(bytes_per_pixel(PixelFormat::R32_SFLOAT) == 4);
@@ -37,6 +38,7 @@ TEST_CASE("test_pixel_format: has stable strings") {
     CHECK(to_string(PixelFormat::R10G10B10A2_UNORM) == "R10G10B10A2_UNORM");
     CHECK(to_string(PixelFormat::R16G16B16A16_SFLOAT) == "R16G16B16A16_SFLOAT");
     CHECK(to_string(PixelFormat::R16G16B16_SFLOAT) == "R16G16B16_SFLOAT");
+    CHECK(to_string(PixelFormat::R16_SFLOAT) == "R16_SFLOAT");
     CHECK(to_string(PixelFormat::R32G32B32A32_SFLOAT) == "R32G32B32A32_SFLOAT");
     CHECK(to_string(PixelFormat::R32G32B32_SFLOAT) == "R32G32B32_SFLOAT");
     CHECK(to_string(PixelFormat::R32_SFLOAT) == "R32_SFLOAT");

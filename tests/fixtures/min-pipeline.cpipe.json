@@ -1,0 +1,75 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "version": "0.2",
+  "id": "min-dng-to-heif",
+  "inputs": [
+    {
+      "port": "raw",
+      "source": "dng"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "linearize",
+      "type": "com.cpipe.builtin.linearize",
+      "params": {}
+    },
+    {
+      "id": "blacklevel",
+      "type": "com.cpipe.builtin.blacklevel",
+      "params": {}
+    },
+    {
+      "id": "wb",
+      "type": "com.cpipe.builtin.wb.dual_illuminant",
+      "params": {}
+    },
+    {
+      "id": "demosaic",
+      "type": "com.cpipe.demosaic.bilinear",
+      "params": {}
+    },
+    {
+      "id": "colormatrix",
+      "type": "com.cpipe.colormatrix.dng_to_working",
+      "params": {}
+    },
+    {
+      "id": "heif",
+      "type": "com.cpipe.output.heif_sdr",
+      "params": {
+        "quality": 92
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "$inputs.raw",
+      "to": "linearize.in"
+    },
+    {
+      "from": "linearize.out",
+      "to": "blacklevel.in"
+    },
+    {
+      "from": "blacklevel.out",
+      "to": "wb.in"
+    },
+    {
+      "from": "wb.out",
+      "to": "demosaic.in"
+    },
+    {
+      "from": "demosaic.out",
+      "to": "colormatrix.in"
+    },
+    {
+      "from": "colormatrix.out",
+      "to": "heif.in"
+    },
+    {
+      "from": "heif.out",
+      "to": "$outputs.heif"
+    }
+  ]
+}

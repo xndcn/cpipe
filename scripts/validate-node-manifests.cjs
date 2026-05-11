@@ -9,24 +9,38 @@ Module.globalPaths.push(path.resolve(path.dirname(process.execPath), "..", "lib"
 
 const Ajv2020 = require("ajv/dist/2020").default;
 
-const schemaPath = "schemas/node-v0.1.json";
-const manifestPaths = ["src/cpipe/nodes/passthrough.json"];
+const validations = [
+    {
+        schemaPath: "schemas/node-v0.1.json",
+        documentPaths: ["src/cpipe/nodes/passthrough.json"],
+    },
+    {
+        schemaPath: "schemas/node-v0.2.json",
+        documentPaths: ["src/cpipe/nodes/passthrough.json"],
+    },
+    {
+        schemaPath: "schemas/pipeline-v0.2.json",
+        documentPaths: ["tests/fixtures/min-pipeline.cpipe.json"],
+    },
+];
 
 const readJson = (jsonPath) => JSON.parse(fs.readFileSync(jsonPath, "utf8"));
 
-const ajv = new Ajv2020({ allErrors: true, strict: true });
-const validate = ajv.compile(readJson(schemaPath));
-
 let failed = false;
-for (const manifestPath of manifestPaths) {
-    const valid = validate(readJson(manifestPath));
-    if (valid) {
-        continue;
-    }
+for (const { schemaPath, documentPaths } of validations) {
+    const ajv = new Ajv2020({ allErrors: true, strict: true });
+    const validate = ajv.compile(readJson(schemaPath));
 
-    failed = true;
-    console.error(`${manifestPath} failed ${schemaPath}`);
-    console.error(ajv.errorsText(validate.errors, { separator: "\n" }));
+    for (const documentPath of documentPaths) {
+        const valid = validate(readJson(documentPath));
+        if (valid) {
+            continue;
+        }
+
+        failed = true;
+        console.error(`${documentPath} failed ${schemaPath}`);
+        console.error(ajv.errorsText(validate.errors, { separator: "\n" }));
+    }
 }
 
 if (failed) {
