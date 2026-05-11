@@ -2,7 +2,6 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <cpipe/core/BufferLayout.hpp>
-
 #include <cstddef>
 
 namespace cpipe::compute {
@@ -23,9 +22,8 @@ namespace {
     }
 
     if (layout.kind == BufferKind::Image2D && layout.format == PixelFormat::R10_PACKED) {
-        const auto row_bytes = ceil_div(static_cast<std::uint64_t>(layout.dims[0]) *
-                                            bits_per_pixel(layout.format),
-                                        8);
+        const auto row_bytes =
+            ceil_div(static_cast<std::uint64_t>(layout.dims[0]) * bits_per_pixel(layout.format), 8);
         return row_bytes * static_cast<std::uint64_t>(layout.dims[1]);
     }
 

@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/core/CpuBuffer.hpp>
+#include <spdlog/spdlog.h>
 
+#include <cpipe/core/CpuBuffer.hpp>
 #include <cstdlib>
 #include <new>
-
-#include <spdlog/spdlog.h>
 
 namespace cpipe::compute {
 

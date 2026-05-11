@@ -3,11 +3,10 @@
 
 #pragma once
 
+#include <cpipe/core/BufferLayout.hpp>
 #include <cstdint>
 #include <memory>
 #include <string_view>
-
-#include <cpipe/core/BufferLayout.hpp>
 
 namespace cpipe::compute {
 
@@ -26,8 +25,7 @@ public:
     virtual void flush_cpu_writes() = 0;
 
     virtual std::shared_ptr<IBuffer> sub_view(std::uint32_t x0, std::uint32_t y0,
-                                              std::uint32_t width,
-                                              std::uint32_t height) = 0;
+                                              std::uint32_t width, std::uint32_t height) = 0;
 };
 
 }  // namespace cpipe::compute

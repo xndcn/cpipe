@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/core/BufferLayout.hpp>
-
 #include <catch2/catch_test_macros.hpp>
+#include <cpipe/core/BufferLayout.hpp>
 
 namespace {
 
@@ -13,7 +12,7 @@ using cpipe::compute::PixelFormat;
 
 }  // namespace
 
-TEST_CASE("BufferLayout computes contiguous Image2D byte size") {
+TEST_CASE("test_buffer_layout: computes contiguous Image2D byte size") {
     BufferLayout layout{
         .kind = BufferKind::Image2D,
         .format = PixelFormat::R8G8B8A8_UNORM,
@@ -25,7 +24,7 @@ TEST_CASE("BufferLayout computes contiguous Image2D byte size") {
     CHECK(layout.size_bytes() == 64 * 32 * 4);
 }
 
-TEST_CASE("BufferLayout respects explicit row stride") {
+TEST_CASE("test_buffer_layout: respects explicit row stride") {
     BufferLayout layout{
         .kind = BufferKind::Image2D,
         .format = PixelFormat::R8G8B8A8_UNORM,
@@ -37,7 +36,7 @@ TEST_CASE("BufferLayout respects explicit row stride") {
     CHECK(layout.size_bytes() == 320 * 32);
 }
 
-TEST_CASE("BufferLayout computes RAW10 packed rows") {
+TEST_CASE("test_buffer_layout: computes RAW10 packed rows") {
     BufferLayout layout{
         .kind = BufferKind::Image2D,
         .format = PixelFormat::R10_PACKED,
@@ -49,7 +48,7 @@ TEST_CASE("BufferLayout computes RAW10 packed rows") {
     CHECK(layout.size_bytes() == 17 * 7);
 }
 
-TEST_CASE("BufferLayout computes Volume3D, TensorND, and Blob sizes") {
+TEST_CASE("test_buffer_layout: computes Volume3D, TensorND, and Blob sizes") {
     BufferLayout lut{
         .kind = BufferKind::Volume3D,
         .format = PixelFormat::R16G16B16A16_SFLOAT,
