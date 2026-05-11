@@ -1,6 +1,7 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) in progress. APIs unstable; no usable release yet. First runnable build expected at `v0.2`.
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) in progress. APIs unstable; no usable ISP release
+> yet. Phase 0 only proves the repository, build, plugin ABI, and passthrough pipeline.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -51,6 +52,21 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 ## Current Status
 
 We're in **Phase 0** (`v0.1`). See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+
+## Build
+
+Phase 0 uses CMake presets and vcpkg manifest mode. From a fresh checkout:
+
+```bash
+export VCPKG_ROOT=/path/to/vcpkg
+pre-commit install
+cmake --preset linux-debug
+cmake --build --preset linux-debug -j
+ctest --preset ci --output-on-failure
+pre-commit run --all-files
+```
+
+The first vcpkg bootstrap can be slow. The Debug preset enables ASAN and UBSAN.
 
 ## Roadmap
 

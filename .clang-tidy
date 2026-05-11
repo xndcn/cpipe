@@ -1,0 +1,14 @@
+Checks: >
+  -*,
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  -fuchsia-*,
+  -llvm-*,
+  -google-readability-todo
+WarningsAsErrors: '*'
+HeaderFilterRegex: '(.*/)?(include|src|tests)/cpipe/.*'
+FormatStyle: file
