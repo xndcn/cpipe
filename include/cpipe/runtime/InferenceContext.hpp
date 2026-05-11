@@ -3,11 +3,11 @@
 
 #pragma once
 
-#include <span>
-#include <string_view>
+#include <cpipe/sdk/cpipe_node.h>
 
 #include <cpipe/core/IBuffer.hpp>
-#include <cpipe/sdk/cpipe_node.h>
+#include <span>
+#include <string_view>
 
 namespace cpipe::runtime {
 

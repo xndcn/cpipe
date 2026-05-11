@@ -3,14 +3,13 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
 #include <cstddef>
 #include <functional>
 #include <span>
 #include <string>
-
 #include <taskflow/taskflow.hpp>
-
-#include <cpipe/sdk/cpipe_node.h>
 
 namespace cpipe::runtime {
 

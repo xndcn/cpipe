@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
+#include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HalideBufferAdapter.hpp>
 #include <cpipe/runtime/InferenceContext.hpp>
-
-#include <algorithm>
 #include <cstdint>
 #include <cstring>
 #include <vector>
-
-#include <catch2/catch_test_macros.hpp>
 
 namespace {
 
@@ -51,8 +49,8 @@ int passthrough_copy(const cpipe::runtime::HalideBufferView* const* inputs, std:
 }  // namespace
 
 TEST_CASE("test_halide_adapter: maps CpuBuffer to byte-addressed Halide view") {
-    CpuBuffer buffer(rgba_layout(), BufferUsage::Input | BufferUsage::CpuRead |
-                                        BufferUsage::CpuWrite);
+    CpuBuffer buffer(rgba_layout(),
+                     BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     cpipe::runtime::HalideBufferAdapter adapter(buffer, IBuffer::CpuAccess::ReadWrite);
     const auto& view = adapter.view();
@@ -67,10 +65,10 @@ TEST_CASE("test_halide_adapter: maps CpuBuffer to byte-addressed Halide view") {
 }
 
 TEST_CASE("test_halide_adapter: ComputeContext submit_halide invokes registered AOT entry") {
-    CpuBuffer input(rgba_layout(), BufferUsage::Input | BufferUsage::CpuRead |
-                                       BufferUsage::CpuWrite);
-    CpuBuffer output(rgba_layout(), BufferUsage::Output | BufferUsage::CpuRead |
-                                        BufferUsage::CpuWrite);
+    CpuBuffer input(rgba_layout(),
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    CpuBuffer output(rgba_layout(),
+                     BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     auto* in_bytes = static_cast<std::uint8_t*>(input.lock_cpu(IBuffer::CpuAccess::ReadWrite));
     REQUIRE(in_bytes != nullptr);
@@ -88,7 +86,8 @@ TEST_CASE("test_halide_adapter: ComputeContext submit_halide invokes registered 
     std::vector<IBuffer*> outputs{&output};
     REQUIRE(context.submit_halide("passthrough_copy", inputs, outputs) == CPIPE_OK);
 
-    const auto* copied = static_cast<const std::uint8_t*>(output.lock_cpu(IBuffer::CpuAccess::Read));
+    const auto* copied =
+        static_cast<const std::uint8_t*>(output.lock_cpu(IBuffer::CpuAccess::Read));
     REQUIRE(copied != nullptr);
     CHECK(std::equal(copied, copied + static_cast<std::size_t>(output.size_bytes()),
                      expected.begin()));

@@ -4,9 +4,8 @@
 #pragma once
 
 #include <array>
-#include <cstdint>
-
 #include <cpipe/core/IBuffer.hpp>
+#include <cstdint>
 
 namespace cpipe::runtime {
 

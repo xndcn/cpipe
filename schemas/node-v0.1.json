@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/node/v0.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "id",
+    "version",
+    "label",
+    "category",
+    "doc",
+    "ports",
+    "implementations"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.cpipe.dev/node/v0.1.json"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^com\\.cpipe\\.[a-z0-9_.-]+$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "label": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "doc": {
+      "type": "string"
+    },
+    "ports": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "kind", "caps", "cardinality"],
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": ["in", "out"]
+          },
+          "caps": {
+            "type": "object"
+          },
+          "cardinality": {
+            "enum": ["single", "array"]
+          }
+        }
+      }
+    },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["device", "backend", "aot_id"],
+        "properties": {
+          "device": {
+            "type": "string"
+          },
+          "backend": {
+            "const": "halide_aot"
+          },
+          "aot_id": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

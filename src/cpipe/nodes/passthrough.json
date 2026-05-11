@@ -1,0 +1,35 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.builtin.passthrough",
+  "version": "1.0.0",
+  "label": "Passthrough",
+  "category": "builtin/test",
+  "doc": "Copies one RGBA8 Image2D input to one output through the P0 Halide AOT path.",
+  "ports": [
+    {
+      "name": "in",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "formats": ["R8G8B8A8_UNORM"]
+      },
+      "cardinality": "single"
+    },
+    {
+      "name": "out",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "formats": ["R8G8B8A8_UNORM"]
+      },
+      "cardinality": "single"
+    }
+  ],
+  "implementations": [
+    {
+      "device": "cpu",
+      "backend": "halide_aot",
+      "aot_id": "passthrough_copy"
+    }
+  ]
+}
