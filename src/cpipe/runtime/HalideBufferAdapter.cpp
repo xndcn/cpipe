@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/HalideBufferAdapter.hpp>
-
-#include <cstddef>
-
 #include <cpipe/core/PixelFormat.hpp>
+#include <cpipe/runtime/HalideBufferAdapter.hpp>
+#include <cstddef>
 
 namespace cpipe::runtime {
 namespace {
@@ -35,8 +33,8 @@ HalideBufferAdapter::HalideBufferAdapter(compute::IBuffer& buffer,
     if (layout.kind == compute::BufferKind::Image2D && layout.ndim == 2) {
         const auto row_bytes = row_stride_bytes(layout);
         view_.ndim = 2;
-        view_.dim[0].extent =
-            to_i32(static_cast<std::uint64_t>(layout.dims[0]) * compute::bytes_per_pixel(layout.format));
+        view_.dim[0].extent = to_i32(static_cast<std::uint64_t>(layout.dims[0]) *
+                                     compute::bytes_per_pixel(layout.format));
         view_.dim[0].stride = 1;
         view_.dim[1].extent = to_i32(layout.dims[1]);
         view_.dim[1].stride = to_i32(row_bytes);

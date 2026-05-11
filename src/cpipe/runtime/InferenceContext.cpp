@@ -5,8 +5,7 @@
 
 namespace cpipe::runtime {
 
-cpipe_status_t InferenceContext::submit(std::string_view,
-                                        std::span<const compute::IBuffer* const>,
+cpipe_status_t InferenceContext::submit(std::string_view, std::span<const compute::IBuffer* const>,
                                         std::span<compute::IBuffer* const>) const {
     return CPIPE_UNSUPPORTED;
 }

@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/Scheduler.hpp>
-
 #include <algorithm>
+#include <cpipe/runtime/Scheduler.hpp>
 #include <thread>
 
 namespace cpipe::runtime {

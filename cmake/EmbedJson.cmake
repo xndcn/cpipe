@@ -11,9 +11,9 @@ function(cpipe_embed_json target input output_symbol)
     add_custom_command(
         OUTPUT "${ARG_OUTPUT}"
         COMMAND ${CMAKE_COMMAND}
-                -DINPUT="${input}"
-                -DOUTPUT="${ARG_OUTPUT}"
-                -DSYMBOL="${output_symbol}"
+                -DINPUT=${input}
+                -DOUTPUT=${ARG_OUTPUT}
+                -DSYMBOL=${output_symbol}
                 -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/EmbedJsonScript.cmake"
         DEPENDS "${input}" "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/EmbedJsonScript.cmake"
         VERBATIM)
