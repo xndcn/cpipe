@@ -339,12 +339,13 @@ A minimal, three-node pipeline:
 
 ```json
 {
-  "$schema": "https://schemas.cpipe.dev/pipeline/v0.1.json",
-  "version": "0.1",
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "version": "0.2",
   "id": "min-dng-to-heif",
+  "inputs": [
+    { "port": "raw", "source": "dng" }
+  ],
   "nodes": [
-    { "id": "src",  "type": "com.cpipe.builtin.dng_input",
-      "params": {} },
     { "id": "dem",  "type": "com.cpipe.demosaic.amaze",
       "params": { "quality": "high" } },
     { "id": "wb",   "type": "com.cpipe.wb.dual_illuminant",
@@ -355,15 +356,15 @@ A minimal, three-node pipeline:
       "params": { "quality": 92 } }
   ],
   "edges": [
-    { "from": "src.raw",  "to": "dem.in" },
-    { "from": "dem.rgb",  "to": "wb.in" },
-    { "from": "wb.rgb",   "to": "tone.in" },
-    { "from": "tone.rgb", "to": "out.in" }
+    { "from": "$inputs.raw", "to": "dem.in" },
+    { "from": "dem.rgb",     "to": "wb.in" },
+    { "from": "wb.rgb",      "to": "tone.in" },
+    { "from": "tone.rgb",    "to": "out.in" }
   ]
 }
 ```
 
-The schema mirrors the manifest's port/cardinality/precision rules. The runtime validates against `pipeline-v0.1.json`; the Editor (Ajv) validates against the same compiled schema served by the runtime at `/api/schemas/pipeline`.
+External producers (`DngReader`, `Camera2BufferProducer`) are host classes per [`buffer.md` §10`](buffer.md#10-external-producers); they appear in the pipeline JSON's top-level `inputs[]` block, *not* as plugin nodes. Edges address them through the `$inputs.<port>` syntax so the schema explicitly distinguishes external-input edges from node-output edges. The schema mirrors the manifest's port/cardinality/precision rules. The runtime validates against `pipeline-v0.2.json`; the Editor (Ajv) validates against the same compiled schema served by the runtime at `/api/schemas/pipeline`.
 
 ---
 
@@ -502,7 +503,7 @@ These come from [Research 00 §9](research/00-summary.md#9-consolidated-open-que
 | Q12 | Windows v1 build for parity with Linux CLI. | Resolved: **not in v1**; CMake stays portable. |
 | Q13 | Multi-camera (logical multi-camera burst). | v2; reserves manifest port `cardinality: "array"`. |
 | Q14 | NPU vendor SDK for MediaTek / Samsung — v2 or v3? | v2; isolated to the `DevicePlane`. |
-| Q15 | Editor-side authoring of new node types. | Resolved: **not in v1**; editor edits `pipeline.cpipe.json` only. |
+| Q15 | Editor-side authoring of new node types. | Resolved: **not in v1**; editor edits `pipeline.cpipe.json` only. v1's external-producer mechanism (DngReader / Camera2BufferProducer in [`buffer.md` §10`](buffer.md#10-external-producers)) is expressed through the pipeline JSON's top-level `inputs[]` block ([phase-01-walking-skeleton.md PD-67](phase-01-walking-skeleton.md#4-phase-decisions-pd-n)), so external inputs do not require editor-side node code. |
 
 ---
 

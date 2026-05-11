@@ -1,8 +1,9 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) released; Phase 1 not yet started. APIs unstable;
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) released; Phase 1 in progress. APIs unstable;
 > no usable ISP release yet. `v0.1` only proves the repository, build, plugin ABI, and
-> passthrough pipeline — first real ISP work lands in Phase 1 (`v0.2`).
+> passthrough pipeline — first real ISP work (DNG → SDR HEIF on Linux) is landing in
+> Phase 1 (`v0.2`); see [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md).
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -52,7 +53,7 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-**Phase 0** (`v0.1`) is released. It proves the repository, build, plugin ABI, and passthrough pipeline; real ISP work starts in Phase 1. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+**Phase 1** (`v0.2`) is in progress. Phase 0 (`v0.1`) is released and proved the repository, build, plugin ABI, and passthrough pipeline. Phase 1 lands a real DNG → SDR HEIF pipeline on Linux through five canonical ISP stages, plus a TaskFlow-driven scheduler, a Vulkan device-plane minimum, golden-image fixtures, and OCIO + lcms2 + libheif/kvazaar output. See [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) for the active plan and [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md) for the predecessor.
 
 ## Build
 
@@ -74,7 +75,7 @@ The first vcpkg bootstrap can be slow. The Debug preset enables ASAN and UBSAN.
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released |
-| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | planned     |
+| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | in progress |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |
@@ -94,7 +95,8 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 | [`docs/tech.md`](docs/tech.md)                                      | Every external dependency, version pin, and license verdict                   |
 | [`docs/buffer.md`](docs/buffer.md)                                  | `IBuffer` subsystem; B1–B12 locked decisions; allocator + external imports    |
 | [`docs/plugin-sdk.md`](docs/plugin-sdk.md)                          | Plugin C ABI (P1–P16); JSON manifest; `CPIPE_REGISTER_NODE` lifecycle         |
-| [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Active phase plan (Phase 0)                                                   |
+| [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Phase 0 plan (closed at `v0.1`)                                               |
+| [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Active phase plan (Phase 1, targeting `v0.2`)                              |
 | [`docs/research/_toc.md`](docs/research/_toc.md)                    | D1–D19 locked decisions; research cluster map; methodology                    |
 | [`docs/research/00-summary.md`](docs/research/00-summary.md)        | Master research synthesis — recommended stack, cross-cluster matrix, risks    |
 

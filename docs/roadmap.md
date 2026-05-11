@@ -74,7 +74,7 @@ Each subsequent section follows the same template:
 | Phase | Tag | Status | Evidence |
 |-------|-----|--------|----------|
 | P0 | `v0.1` | Released | Debug + Release builds and 25 tests pass locally; passthrough CLI smoke passes. GitHub Actions is green on `main` and on a placeholder PR. Release closeout used the P0 gate assumption recorded in `phase-00-foundation.md` PD-31. |
-| P1 | `v0.2` | Planned | Starts after P0 tag. |
+| P1 | `v0.2` | In Progress | Detailed plan: [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md). Twelve vertical tasks (T1–T12) plus three checkpoints land DNG → SDR HEIF on Linux. |
 | P2 | `v0.3` | Planned | Starts after P1 tag. |
 | P3 | `v0.4` | Planned | Starts after P2 tag. |
 | P4 | `v0.5` | Planned | Starts after P3 tag. |
