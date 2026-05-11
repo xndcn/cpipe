@@ -78,6 +78,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-26 | Test coverage in P0                              | 8–12 unit tests (Catch2) + 1 integration smoke test. No coverage percentage gate; tests target the obvious invariants per §8.                                                                                                          |
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
+| PD-29 | Manifest schema pre-commit validation            | Add a narrow local `pre-commit` Node hook using Ajv 8 to validate built-in node manifests against `schemas/node-v0.1.json`. This extends PD-23 only for T5 manifest validation.                                                        |
 
 ---
 
@@ -179,9 +180,9 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Initialize the public GitHub repo, write the top-level CMake / vcpkg / preset files, drop in tooling configs, scaffold the six empty targets, and stand up GitHub Actions.
 
 **Acceptance criteria:**
-- [ ] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
-- [ ] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
-- [ ] `pre-commit run --all-files` passes.
+- [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
+- [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
+- [x] `pre-commit run --all-files` passes.
 - [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
@@ -206,16 +207,16 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the core data types from [`buffer.md` §3–§5](buffer.md#3-pixelformat): `PixelFormat`, `BufferLayout`, `BufferKind`, `BufferUsage`, `IBuffer` interface, status codes, and a working `CpuBuffer` backed by `posix_memalign`.
 
 **Acceptance criteria:**
-- [ ] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
-- [ ] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
-- [ ] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
-- [ ] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
+- [x] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
+- [x] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
+- [x] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
+- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
 
 **Verification:**
-- [ ] `ctest -R test_pixel_format` green.
-- [ ] `ctest -R test_buffer_layout` green.
-- [ ] `ctest -R test_cpu_buffer` green.
-- [ ] `ctest -R test_status` green.
+- [x] `ctest -R test_pixel_format` green.
+- [x] `ctest -R test_buffer_layout` green.
+- [x] `ctest -R test_cpu_buffer` green.
+- [x] `ctest -R test_status` green.
 
 **Dependencies:** T1.
 
@@ -236,15 +237,15 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Drop in the full `cpipe_node.h` per [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh), the C++ SDK header `sdk.hpp` per [`plugin-sdk.md` §6](plugin-sdk.md#6-c-sdk-cpipesdkhpp), the registration macro `CPIPE_REGISTER_NODE` and Linux-ELF linker-section helpers per [`plugin-sdk.md` §5](plugin-sdk.md#5-registration-cpipe_register_node--linker-section), and a runtime-side `Registry` that walks `__start_/__stop_cpipe_registry`. The `inference` suite host-side returns `CPIPE_UNSUPPORTED` for any call (PD-15).
 
 **Acceptance criteria:**
-- [ ] `cpipe_node.h` compiles as C99 (verified by a tiny C file in `tests/unit`).
-- [ ] `sdk.hpp` compiles as C++20 with `-fexceptions` and no warnings under PD-8 flags.
-- [ ] `CPIPE_REGISTER_NODE` produces a `cpipe_plugin_desc_t` in the `cpipe_registry` section.
-- [ ] `runtime::Registry::load_builtin_nodes()` finds the test descriptor between `__start_cpipe_registry` and `__stop_cpipe_registry`.
-- [ ] `host->get_suite("inference", 1)->submit_inference(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `cpipe_node.h` compiles as C99 (verified by a tiny C file in `tests/unit`).
+- [x] `sdk.hpp` compiles as C++20 with `-fexceptions` and no warnings under PD-8 flags.
+- [x] `CPIPE_REGISTER_NODE` produces a `cpipe_plugin_desc_t` in the `cpipe_registry` section.
+- [x] `runtime::Registry::load_builtin_nodes()` finds the test descriptor between `__start_cpipe_registry` and `__stop_cpipe_registry`.
+- [x] `host->get_suite("inference", 1)->submit_inference(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_registry` green.
-- [ ] `nm $(find . -name "*.a") | grep cpipe_registry` shows section symbols.
+- [x] `ctest -R test_registry` green.
+- [x] `nm $(find . -name "*.a") | grep cpipe_registry` shows section symbols.
 
 **Dependencies:** T2 (uses status codes; tests need `CpuBuffer`).
 
@@ -264,8 +265,8 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 - [ ] All three tasks merged; `main` is green.
 - [ ] Repo compiles end-to-end on the CI matrix.
-- [ ] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
-- [ ] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
+- [x] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
+- [x] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
 
 ---
 
@@ -274,14 +275,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the minimum `cpipe-runtime` needed to dispatch one node: a TaskFlow `Executor` (sized to `std::thread::hardware_concurrency() - 1` per [`architecture.md` §4](architecture.md#4-process-and-thread-model)), a `Scheduler` that walks the topo order serially (PD-20), a `ComputeContext` whose `submit_halide` host-side adapts `cpipe_buffer_t*` → `halide_buffer_t*` per [`plugin-sdk.md` §9.1](plugin-sdk.md#91-halide-aot), and an `InferenceContext` returning `CPIPE_UNSUPPORTED`.
 
 **Acceptance criteria:**
-- [ ] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
-- [ ] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
-- [ ] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
-- [ ] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
+- [x] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
+- [x] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
+- [x] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_scheduler_topo` green.
-- [ ] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
+- [x] `ctest -R test_scheduler_topo` green.
+- [x] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
 
 **Dependencies:** T3.
 
@@ -301,14 +302,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the Halide generator `passthrough_copy` (CPU target only — Vulkan target reserved for P1), wire `add_halide_library()` to compile it into a static archive, write `nodes/passthrough.cpp` (the C++ `Passthrough` class), `nodes/passthrough.json` (manifest), and the `EmbedJson.cmake` step that turns the JSON into a `.cpp` literal per [`plugin-sdk.md` §7.2](plugin-sdk.md#72-embedding-in-the-binary). Register via `CPIPE_REGISTER_NODE`.
 
 **Acceptance criteria:**
-- [ ] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
-- [ ] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
-- [ ] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
-- [ ] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
+- [x] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
+- [x] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
+- [x] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
+- [x] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_node` green.
-- [ ] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
+- [x] `ctest -R test_passthrough_node` green.
+- [x] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
 
 **Dependencies:** T4.
 
@@ -329,12 +330,12 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement `cpipe-cli` (CLI11-based, single `run` subcommand per PD-18). `Pipeline::load` parses pipeline JSON via nlohmann/json, validates against an embedded `pipeline-v0.1.json` schema, topologically sorts, and runs the minimum memory plan (allocates `CpuBuffer` for each intermediate).
 
 **Acceptance criteria:**
-- [ ] `cpipe run input.bin -p pipeline.json -o output.bin` exits 0 on the passthrough pipeline.
-- [ ] `cpipe run` rejects an invalid pipeline JSON (e.g. unknown node type, dangling edge) with a non-zero exit and a clear error message.
+- [x] `cpipe run input.bin -p pipeline.json -o output.bin` exits 0 on the passthrough pipeline.
+- [x] `cpipe run` rejects an invalid pipeline JSON (e.g. unknown node type, dangling edge) with a non-zero exit and a clear error message.
 
 **Verification:**
-- [ ] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/passthrough.json -o /tmp/out.bin && cmp /tmp/out.bin tests/fixtures/passthrough.bin` succeeds.
-- [ ] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/invalid_pipeline.json -o /tmp/out.bin` exits non-zero.
+- [x] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/passthrough.json -o /tmp/out.bin && cmp /tmp/out.bin tests/fixtures/passthrough.bin` succeeds.
+- [x] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/invalid_pipeline.json -o /tmp/out.bin` exits non-zero.
 
 **Dependencies:** T5.
 
@@ -354,13 +355,13 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the single integration test that drives the whole chain — registry walk → Pipeline::load → Scheduler dispatch → ComputeContext::submit_halide → CpuBuffer compare. Run it under both Debug (ASAN+UBSAN) and Release in CI. Tag `v0.1` once green for ≥ 24 hours.
 
 **Acceptance criteria:**
-- [ ] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
-- [ ] ASAN + UBSAN produce no findings on the integration run.
+- [x] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
+- [x] ASAN + UBSAN produce no findings on the integration run.
 - [ ] CI green on `main` for ≥ 24 consecutive hours.
 - [ ] Tag `v0.1` created and pushed.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
+- [x] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
 - [ ] `git tag --list 'v0.1'` returns `v0.1`.
 - [ ] GitHub Releases page shows `v0.1` with auto-generated release notes.
 
@@ -378,7 +379,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 - [ ] DoD verification commands in §10 all pass.
 - [ ] CI matrix has been green for ≥ 24 hours.
-- [ ] No regressions on the 8–12 unit tests or the 1 integration test.
+- [x] No regressions on the 8–12 unit tests or the 1 integration test.
 - [ ] `v0.1` tag is live.
 
 ---
@@ -520,7 +521,22 @@ Stated explicitly so contributors don't accidentally expand P0:
 
 ---
 
-## 13. See Also
+## 13. What Shipped / What Slipped
+
+**What shipped locally**
+
+- Repository skeleton, CMake presets, vcpkg manifest, tooling hooks, Apache 2.0 license, and the six P0 CMake targets.
+- `cpipe-core` data types, `CpuBuffer`, plugin ABI headers, linker-section registry walk, and host suites.
+- Halide v21 FetchContent integration, a generated `passthrough_copy` AOT static library, `halide_buffer_t` adaptation, and Halide CPU parallelism routed through the TaskFlow executor.
+- `cpipe run`, pipeline JSON validation, the built-in passthrough node, 25 local tests, and the passthrough CLI smoke.
+
+**What remains before tagging `v0.1`**
+
+- Push the Phase 0 commits so GitHub sees `LICENSE` on `main`; `gh repo view` currently reports `PUBLIC` but `licenseInfo: null` until then.
+- Let `build-and-test.yml` run on `main` and remain green for at least 24 consecutive hours.
+- Create and push the annotated `v0.1` tag, then publish the GitHub Release notes.
+
+## 14. See Also
 
 - [`roadmap.md`](roadmap.md) — overall phase plan, RD-NN decisions.
 - [`architecture.md`](architecture.md) — six-target layout, threading model, lifecycle.
