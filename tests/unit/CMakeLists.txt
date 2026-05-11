@@ -6,8 +6,10 @@ add_executable(
     test_buffer_layout.cpp
     test_buffer_usage.cpp
     test_cpu_buffer.cpp
+    test_halide_adapter.cpp
     test_pixel_format.cpp
     test_registry.cpp
+    test_scheduler_topo.cpp
     test_status.cpp)
 
 target_link_libraries(

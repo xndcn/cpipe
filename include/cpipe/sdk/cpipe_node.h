@@ -51,15 +51,13 @@ typedef struct {
 } cpipe_buffer_suite_v1;
 
 typedef struct {
-    int (*submit_halide)(cpipe_compute_t*, const char* aot_id,
-                         const cpipe_buffer_t* const* inputs, size_t n_in,
-                         cpipe_buffer_t* const* outputs, size_t n_out);
-    int (*submit_slang)(cpipe_compute_t*, const char* slang_module_id,
-                        const char* entry_point, const cpipe_buffer_t* const* inputs,
-                        size_t n_in, cpipe_buffer_t* const* outputs, size_t n_out,
-                        const void* push_constants, size_t pc_size);
-    int (*request_scratch)(cpipe_compute_t*, uint64_t bytes, int kind,
-                           cpipe_buffer_t** out);
+    int (*submit_halide)(cpipe_compute_t*, const char* aot_id, const cpipe_buffer_t* const* inputs,
+                         size_t n_in, cpipe_buffer_t* const* outputs, size_t n_out);
+    int (*submit_slang)(cpipe_compute_t*, const char* slang_module_id, const char* entry_point,
+                        const cpipe_buffer_t* const* inputs, size_t n_in,
+                        cpipe_buffer_t* const* outputs, size_t n_out, const void* push_constants,
+                        size_t pc_size);
+    int (*request_scratch)(cpipe_compute_t*, uint64_t bytes, int kind, cpipe_buffer_t** out);
     void (*record_marker)(cpipe_compute_t*, const char* label);
 } cpipe_compute_suite_v1;
 
@@ -74,8 +72,8 @@ typedef struct {
     int (*get_int)(const cpipe_props_t*, const char* key, int64_t* out);
     int (*get_bool)(const cpipe_props_t*, const char* key, int* out);
     int (*get_enum)(const cpipe_props_t*, const char* key, const char** out);
-    int (*get_curve)(const cpipe_props_t*, const char* key, const float** xs,
-                     const float** ys, size_t* n);
+    int (*get_curve)(const cpipe_props_t*, const char* key, const float** xs, const float** ys,
+                     size_t* n);
     int (*get_color)(const cpipe_props_t*, const char* key, float rgba[4]);
 } cpipe_param_suite_v1;
 
@@ -97,9 +95,8 @@ typedef struct {
     size_t n_out;
 } cpipe_process_ctx;
 
-typedef int (*cpipe_main_entry_t)(const char* action, cpipe_host_t* host,
-                                  cpipe_node_t* node, cpipe_props_t* params,
-                                  void* in_ctx, void* out_ctx);
+typedef int (*cpipe_main_entry_t)(const char* action, cpipe_host_t* host, cpipe_node_t* node,
+                                  cpipe_props_t* params, void* in_ctx, void* out_ctx);
 
 typedef struct {
     uint32_t abi_major;

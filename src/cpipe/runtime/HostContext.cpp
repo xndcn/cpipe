@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/HostContext.hpp>
+#include <spdlog/spdlog.h>
 
+#include <cpipe/runtime/HostContext.hpp>
 #include <cstdlib>
 #include <cstring>
-
-#include <spdlog/spdlog.h>
 
 namespace cpipe::runtime {
 namespace {
@@ -45,8 +44,8 @@ int unsupported_submit_halide(cpipe_compute_t*, const char*, const cpipe_buffer_
 }
 
 int unsupported_submit_slang(cpipe_compute_t*, const char*, const char*,
-                             const cpipe_buffer_t* const*, std::size_t,
-                             cpipe_buffer_t* const*, std::size_t, const void*, std::size_t) {
+                             const cpipe_buffer_t* const*, std::size_t, cpipe_buffer_t* const*,
+                             std::size_t, const void*, std::size_t) {
     return CPIPE_UNSUPPORTED;
 }
 

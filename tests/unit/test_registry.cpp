@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <catch2/catch_test_macros.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-
 #include <span>
-
-#include <catch2/catch_test_macros.hpp>
 
 namespace {
 
@@ -44,8 +42,8 @@ TEST_CASE("test_registry: walks cpipe_registry section") {
 TEST_CASE("test_registry: HostContext exposes unsupported inference suite") {
     cpipe::runtime::HostContext context;
     auto* host = context.c_host();
-    const auto* suite = static_cast<const cpipe_inference_suite_v1*>(
-        host->get_suite(host, "inference", 1));
+    const auto* suite =
+        static_cast<const cpipe_inference_suite_v1*>(host->get_suite(host, "inference", 1));
 
     REQUIRE(suite != nullptr);
     CHECK(suite->submit_inference(nullptr, "model", nullptr, 0, nullptr, 0) == CPIPE_UNSUPPORTED);

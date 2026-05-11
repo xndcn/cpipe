@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <cstddef>
-
 #include <cpipe/sdk/cpipe_node.h>
+
+#include <cstddef>
 
 namespace cpipe::runtime {
 
