@@ -1,13 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
-
 #include <cstdint>
 #include <cstring>
 #include <memory>
-
-#include <catch2/catch_test_macros.hpp>
 
 namespace {
 
@@ -30,9 +28,9 @@ BufferLayout rgba_layout() {
 
 }  // namespace
 
-TEST_CASE("CpuBuffer locks, unlocks, and preserves bytes across cycles") {
-    CpuBuffer buffer(rgba_layout(), BufferUsage::Input | BufferUsage::CpuRead |
-                                        BufferUsage::CpuWrite);
+TEST_CASE("test_cpu_buffer: locks, unlocks, and preserves bytes across cycles") {
+    CpuBuffer buffer(rgba_layout(),
+                     BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     auto* first = static_cast<std::uint8_t*>(buffer.lock_cpu(IBuffer::CpuAccess::ReadWrite));
     REQUIRE(first != nullptr);
@@ -40,7 +38,8 @@ TEST_CASE("CpuBuffer locks, unlocks, and preserves bytes across cycles") {
     std::memset(first, 0x2a, static_cast<std::size_t>(buffer.size_bytes()));
     buffer.unlock_cpu();
 
-    const auto* second = static_cast<const std::uint8_t*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
+    const auto* second =
+        static_cast<const std::uint8_t*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
     REQUIRE(second != nullptr);
     CHECK(second[0] == 0x2a);
     CHECK(second[static_cast<std::size_t>(buffer.size_bytes()) - 1] == 0x2a);
@@ -48,7 +47,7 @@ TEST_CASE("CpuBuffer locks, unlocks, and preserves bytes across cycles") {
     buffer.flush_cpu_writes();
 }
 
-TEST_CASE("CpuBuffer reports layout and reserves sub_view for v2") {
+TEST_CASE("test_cpu_buffer: reports layout and reserves sub_view for v2") {
     auto buffer = std::make_shared<CpuBuffer>(
         rgba_layout(), BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 

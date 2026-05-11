@@ -3,11 +3,10 @@
 
 #pragma once
 
-#include <mutex>
-#include <string>
-
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/IBuffer.hpp>
+#include <mutex>
+#include <string>
 
 namespace cpipe::compute {
 

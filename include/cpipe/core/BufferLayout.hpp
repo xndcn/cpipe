@@ -3,9 +3,8 @@
 
 #pragma once
 
-#include <cstdint>
-
 #include <cpipe/core/PixelFormat.hpp>
+#include <cstdint>
 
 namespace cpipe::compute {
 

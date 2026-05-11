@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/core/PixelFormat.hpp>
-
 #include <catch2/catch_test_macros.hpp>
+#include <cpipe/core/PixelFormat.hpp>
 
 namespace {
 
@@ -11,7 +10,7 @@ using cpipe::compute::PixelFormat;
 
 }  // namespace
 
-TEST_CASE("PixelFormat reports byte-addressable pixel sizes") {
+TEST_CASE("test_pixel_format: reports byte-addressable pixel sizes") {
     CHECK(bytes_per_pixel(PixelFormat::UNDEFINED) == 0);
     CHECK(bytes_per_pixel(PixelFormat::R16_UINT) == 2);
     CHECK(bytes_per_pixel(PixelFormat::R10_PACKED) == 0);
@@ -30,7 +29,7 @@ TEST_CASE("PixelFormat reports byte-addressable pixel sizes") {
     CHECK(bytes_per_pixel(PixelFormat::BLOB) == 1);
 }
 
-TEST_CASE("PixelFormat has stable strings") {
+TEST_CASE("test_pixel_format: has stable strings") {
     CHECK(to_string(PixelFormat::R16_UINT) == "R16_UINT");
     CHECK(to_string(PixelFormat::R10_PACKED) == "R10_PACKED");
     CHECK(to_string(PixelFormat::R8G8B8A8_UNORM) == "R8G8B8A8_UNORM");
