@@ -1,21 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/Pipeline.hpp>
-
-#include <nlohmann/json-schema.hpp>
-#include <nlohmann/json.hpp>
-
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/runtime/AbiBridge.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/InferenceContext.hpp>
+#include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/Registry.hpp>
-
+#include <cpipe/runtime/Scheduler.hpp>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
+#include <nlohmann/json-schema.hpp>
+#include <nlohmann/json.hpp>
 #include <queue>
 #include <unordered_map>
 #include <utility>
@@ -210,12 +208,12 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
         .dims = {static_cast<std::uint32_t>(input_bytes->size())},
         .stride = {},
     };
-    cpipe::compute::CpuBuffer input(
-        layout, cpipe::compute::BufferUsage::Input | cpipe::compute::BufferUsage::CpuRead |
-                    cpipe::compute::BufferUsage::CpuWrite);
-    cpipe::compute::CpuBuffer output(
-        layout, cpipe::compute::BufferUsage::Output | cpipe::compute::BufferUsage::CpuRead |
-                    cpipe::compute::BufferUsage::CpuWrite);
+    cpipe::compute::CpuBuffer input(layout, cpipe::compute::BufferUsage::Input |
+                                                cpipe::compute::BufferUsage::CpuRead |
+                                                cpipe::compute::BufferUsage::CpuWrite);
+    cpipe::compute::CpuBuffer output(layout, cpipe::compute::BufferUsage::Output |
+                                                 cpipe::compute::BufferUsage::CpuRead |
+                                                 cpipe::compute::BufferUsage::CpuWrite);
 
     auto* dst =
         static_cast<std::uint8_t*>(input.lock_cpu(cpipe::compute::IBuffer::CpuAccess::ReadWrite));
@@ -244,21 +242,38 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
         .n_out = 1,
     };
 
+    Scheduler scheduler;
+    std::vector<ScheduledNode> scheduled;
+    scheduled.reserve(nodes_.size());
+
     for (const auto& node : nodes_) {
-        void* state = nullptr;
-        auto status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
-            CPIPE_ACTION_CREATE, host_context.c_host(), nullptr, nullptr, nullptr, &state));
-        if (status == CPIPE_OK) {
-            status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
-                CPIPE_ACTION_PROCESS, host_context.c_host(), reinterpret_cast<cpipe_node_t*>(state),
-                nullptr, &process_ctx, nullptr));
-        }
-        static_cast<void>(node.descriptor->main_entry(CPIPE_ACTION_DESTROY, host_context.c_host(),
-                                                      nullptr, nullptr, state, nullptr));
-        if (status != CPIPE_OK) {
-            set_error(error, "pipeline node failed: " + node.id);
-            return status;
-        }
+        const auto* descriptor = node.descriptor;
+        scheduled.push_back({
+            .id = node.id,
+            .process =
+                [&host_context, &process_ctx, descriptor] {
+                    void* state = nullptr;
+                    auto status = static_cast<cpipe_status_t>(
+                        descriptor->main_entry(CPIPE_ACTION_CREATE, host_context.c_host(), nullptr,
+                                               nullptr, nullptr, &state));
+                    if (status == CPIPE_OK) {
+                        status = static_cast<cpipe_status_t>(
+                            descriptor->main_entry(CPIPE_ACTION_PROCESS, host_context.c_host(),
+                                                   reinterpret_cast<cpipe_node_t*>(state), nullptr,
+                                                   &process_ctx, nullptr));
+                    }
+                    static_cast<void>(descriptor->main_entry(CPIPE_ACTION_DESTROY,
+                                                             host_context.c_host(), nullptr,
+                                                             nullptr, state, nullptr));
+                    return status;
+                },
+        });
+    }
+
+    const auto run_status = scheduler.run_serial(scheduled);
+    if (run_status != CPIPE_OK) {
+        set_error(error, "pipeline node failed");
+        return run_status;
     }
 
     const auto* src =

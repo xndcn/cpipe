@@ -3,7 +3,6 @@
 
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
-
 #include <filesystem>
 #include <string>
 
