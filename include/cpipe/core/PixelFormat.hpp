@@ -17,6 +17,7 @@ enum class PixelFormat : std::uint16_t {
     R10G10B10A2_UNORM,
     R16G16B16A16_SFLOAT,
     R16G16B16_SFLOAT,
+    R16_SFLOAT,
     R32G32B32A32_SFLOAT,
     R32G32B32_SFLOAT,
     R32_SFLOAT,
@@ -42,6 +43,8 @@ enum class PixelFormat : std::uint16_t {
             return 64;
         case PixelFormat::R16G16B16_SFLOAT:
             return 48;
+        case PixelFormat::R16_SFLOAT:
+            return 16;
         case PixelFormat::R32G32B32A32_SFLOAT:
             return 128;
         case PixelFormat::R32G32B32_SFLOAT:
@@ -87,6 +90,8 @@ enum class PixelFormat : std::uint16_t {
             return "R16G16B16A16_SFLOAT";
         case PixelFormat::R16G16B16_SFLOAT:
             return "R16G16B16_SFLOAT";
+        case PixelFormat::R16_SFLOAT:
+            return "R16_SFLOAT";
         case PixelFormat::R32G32B32A32_SFLOAT:
             return "R32G32B32A32_SFLOAT";
         case PixelFormat::R32G32B32_SFLOAT:

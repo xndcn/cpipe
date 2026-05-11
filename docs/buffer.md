@@ -88,6 +88,7 @@ enum class PixelFormat : uint16_t {
     // 16-bit float RGB(A)  -- v1 working color space default (linear Rec.2020 + FP16)
     R16G16B16A16_SFLOAT,
     R16G16B16_SFLOAT,
+    R16_SFLOAT,        // single-channel Bayer-domain FP16 intermediate (2 bytes/pixel)
 
     // 32-bit float (calibration / debug / occasional high-precision paths)
     R32G32B32A32_SFLOAT,

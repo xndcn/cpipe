@@ -234,18 +234,18 @@ Twelve vertical tasks ([PD-34](#4-phase-decisions-pd-n)). Each ships in dependen
 **Description.** Write `phase-01-walking-skeleton.md`; update `roadmap.md` §2.1 (P1 *Planned* → *In Progress*) and `README.md` Current Status; patch `architecture.md` §11 example + §17 Q15 footnote per [PD-82](#4-phase-decisions-pd-n); patch `buffer.md` §3 enum table per [PD-83](#4-phase-decisions-pd-n); land `schemas/node-v0.2.json` + `schemas/pipeline-v0.2.json` ([PD-62](#4-phase-decisions-pd-n)); add `.gitattributes` LFS rules ([PD-65](#4-phase-decisions-pd-n)). Extend P0 `test_pixel_format` to cover `R16_SFLOAT`.
 
 **Acceptance criteria:**
-- [ ] `docs/phase-01-walking-skeleton.md` is committed and renders on GitHub.
-- [ ] `docs/roadmap.md` §2.1 P1 row reads *In Progress* with the new evidence link.
-- [ ] `README.md` Current Status table P1 row reads *In Progress*.
-- [ ] `docs/architecture.md` §11 example no longer references `com.cpipe.builtin.dng_input`; §17 Q15 row carries the v1-input footnote.
-- [ ] `docs/buffer.md` §3 PixelFormat enum table includes `R16_SFLOAT` with byte-width 2 and a one-line rationale.
-- [ ] `schemas/node-v0.2.json` + `schemas/pipeline-v0.2.json` validate the P0 passthrough manifest and the (placeholder) 5-node + `heif_sdr` graph.
-- [ ] `.gitattributes` declares `*.exr` and `*.dng` LFS-tracked; `git lfs ls-files` is empty (no binaries yet).
-- [ ] `ctest -R test_pixel_format` green with the new `R16_SFLOAT` case.
+- [x] `docs/phase-01-walking-skeleton.md` is committed and renders on GitHub.
+- [x] `docs/roadmap.md` §2.1 P1 row reads *In Progress* with the new evidence link.
+- [x] `README.md` Current Status table P1 row reads *In Progress*.
+- [x] `docs/architecture.md` §11 example no longer references `com.cpipe.builtin.dng_input`; §17 Q15 row carries the v1-input footnote.
+- [x] `docs/buffer.md` §3 PixelFormat enum table includes `R16_SFLOAT` with byte-width 2 and a one-line rationale.
+- [x] `schemas/node-v0.2.json` + `schemas/pipeline-v0.2.json` validate the P0 passthrough manifest and the (placeholder) 5-node + `heif_sdr` graph.
+- [x] `.gitattributes` declares `*.exr` and `*.dng` LFS-tracked; `git lfs ls-files` is empty (no binaries yet).
+- [x] `ctest -R test_pixel_format` green with the new `R16_SFLOAT` case.
 
 **Verification:**
-- [ ] `pre-commit run --all-files` passes (including the existing Ajv manifest hook against the new schemas).
-- [ ] `gh pr view --json files` shows the touched docs and schemas only — no source changes outside `include/cpipe/core/PixelFormat.hpp`.
+- [x] `pre-commit run --all-files` passes (including the existing Ajv manifest hook against the new schemas).
+- [x] `gh pr view --json files` shows the touched docs and schemas only — no source changes outside `include/cpipe/core/PixelFormat.hpp`.
 
 **Dependencies:** None.
 

@@ -18,4 +18,4 @@ repos:
         entry: node scripts/validate-node-manifests.cjs
         language: node
         additional_dependencies: [ajv@8.17.1]
-        files: ^(schemas/node-v0\.1\.json|src/cpipe/nodes/.*\.json)$
+        files: ^(schemas/(node|pipeline)-v0\.[12]\.json|src/cpipe/nodes/.*\.json|tests/fixtures/min-pipeline\.cpipe\.json)$

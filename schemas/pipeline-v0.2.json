@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$schema", "version", "id", "nodes", "edges"],
+      "properties": {
+        "$schema": {
+          "const": "https://schemas.cpipe.dev/pipeline/v0.1.json"
+        },
+        "version": {
+          "const": "0.1"
+        },
+        "id": {
+          "type": "string"
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "type", "params"],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string",
+                "pattern": "^com\\.cpipe\\.[a-z0-9_.-]+$"
+              },
+              "params": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": {
+                "type": "string"
+              },
+              "to": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["$schema", "version", "id", "inputs", "nodes", "edges"],
+      "properties": {
+        "$schema": {
+          "const": "https://schemas.cpipe.dev/pipeline/v0.2.json"
+        },
+        "version": {
+          "const": "0.2"
+        },
+        "id": {
+          "type": "string"
+        },
+        "inputs": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["port", "source"],
+            "properties": {
+              "port": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_]*$"
+              },
+              "source": {
+                "enum": ["dng", "camera2", "buffer"]
+              }
+            }
+          }
+        },
+        "nodes": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["id", "type", "params"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]*$"
+              },
+              "type": {
+                "type": "string",
+                "pattern": "^com\\.cpipe\\.[a-z0-9_.-]+$"
+              },
+              "params": {
+                "type": "object"
+              }
+            }
+          }
+        },
+        "edges": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to"],
+            "properties": {
+              "from": {
+                "type": "string",
+                "pattern": "^(\\$inputs\\.[a-z][a-z0-9_]*|[a-z][a-z0-9_-]*\\.[a-z][a-z0-9_]*)$"
+              },
+              "to": {
+                "type": "string",
+                "pattern": "^([a-z][a-z0-9_-]*\\.[a-z][a-z0-9_]*|\\$outputs\\.[a-z][a-z0-9_]*)$"
+              }
+            }
+          }
+        }
+      }
+    }
+  ]
+}
