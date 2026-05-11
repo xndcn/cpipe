@@ -183,11 +183,11 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
 - [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
 - [x] `pre-commit run --all-files` passes.
-- [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
+- [x] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
-- [ ] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
-- [ ] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
+- [x] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
+- [x] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
 
 **Dependencies:** None.
 
@@ -263,8 +263,8 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint A — after T1–T3
 
-- [ ] All three tasks merged; `main` is green.
-- [ ] Repo compiles end-to-end on the CI matrix.
+- [x] All three tasks merged; `main` is green.
+- [x] Repo compiles end-to-end on the CI matrix.
 - [x] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
 - [x] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
 
@@ -523,17 +523,17 @@ Stated explicitly so contributors don't accidentally expand P0:
 
 ## 13. What Shipped / What Slipped
 
-**What shipped locally**
+**What shipped**
 
 - Repository skeleton, CMake presets, vcpkg manifest, tooling hooks, Apache 2.0 license, and the six P0 CMake targets.
 - `cpipe-core` data types, `CpuBuffer`, plugin ABI headers, linker-section registry walk, and host suites.
 - Halide v21 FetchContent integration, a generated `passthrough_copy` AOT static library, `halide_buffer_t` adaptation, and Halide CPU parallelism routed through the TaskFlow executor.
 - `cpipe run`, pipeline JSON validation, the built-in passthrough node, 25 local tests, and the passthrough CLI smoke.
+- GitHub Actions `build-and-test.yml` is green on `main` and on a placeholder pull request.
 
 **What remains before tagging `v0.1`**
 
-- Push the Phase 0 commits so GitHub sees `LICENSE` on `main`; `gh repo view` currently reports `PUBLIC` but `licenseInfo: null` until then.
-- Let `build-and-test.yml` run on `main` and remain green for at least 24 consecutive hours.
+- Keep `build-and-test.yml` green on `main` for at least 24 consecutive hours.
 - Create and push the annotated `v0.1` tag, then publish the GitHub Release notes.
 
 ## 14. See Also
