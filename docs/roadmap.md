@@ -73,7 +73,7 @@ Each subsequent section follows the same template:
 
 | Phase | Tag | Status | Evidence |
 |-------|-----|--------|----------|
-| P0 | `v0.1` | Local green; CI/tag pending | Debug + Release builds and 25 tests pass locally; passthrough CLI smoke passes. Waiting on GitHub Actions 24-hour gate and `v0.1` release. |
+| P0 | `v0.1` | CI green; 24h/tag pending | Debug + Release builds and 25 tests pass locally; passthrough CLI smoke passes. GitHub Actions is green on `main` and on a placeholder PR; waiting on the 24-hour gate and `v0.1` release. |
 | P1 | `v0.2` | Planned | Starts after P0 tag. |
 | P2 | `v0.3` | Planned | Starts after P1 tag. |
 | P3 | `v0.4` | Planned | Starts after P2 tag. |
