@@ -11,3 +11,11 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c]
+  - repo: local
+    hooks:
+      - id: validate-node-manifests
+        name: validate node manifests
+        entry: node scripts/validate-node-manifests.cjs
+        language: node
+        additional_dependencies: [ajv@8.17.1]
+        files: ^(schemas/node-v0\.1\.json|src/cpipe/nodes/.*\.json)$

@@ -69,6 +69,17 @@ Each subsequent section follows the same template:
 - **Active risks** — references to `research/00-summary.md §7` R-numbers; this file does not restate.
 - **Decision points** — RD-NN locks consumed; lookahead to v1.1 decisions deferred (no live Q's open against v1.0 by phase entry).
 
+### 2.1 Phase Status
+
+| Phase | Tag | Status | Evidence |
+|-------|-----|--------|----------|
+| P0 | `v0.1` | Local green; CI/tag pending | Debug + Release builds and 25 tests pass locally; passthrough CLI smoke passes. Waiting on GitHub Actions 24-hour gate and `v0.1` release. |
+| P1 | `v0.2` | Planned | Starts after P0 tag. |
+| P2 | `v0.3` | Planned | Starts after P1 tag. |
+| P3 | `v0.4` | Planned | Starts after P2 tag. |
+| P4 | `v0.5` | Planned | Starts after P3 tag. |
+| P5 | `v1.0` | Planned | Starts after P4 tag. |
+
 ---
 
 ## 3. Phase 0 — Foundation (tag `v0.1`)
