@@ -79,6 +79,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
 | PD-29 | Manifest schema pre-commit validation            | Add a narrow local `pre-commit` Node hook using Ajv 8 to validate built-in node manifests against `schemas/node-v0.1.json`. This extends PD-23 only for T5 manifest validation.                                                        |
+| PD-30 | Release-gate CI reruns                          | `build-and-test.yml` keeps the P0 push and pull-request gates from PD-12 and also allows `workflow_dispatch` so the unchanged CI matrix can be rerun on `main` for release-gate evidence without empty commits.                         |
 
 ---
 
