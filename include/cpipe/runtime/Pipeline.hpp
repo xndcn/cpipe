@@ -3,21 +3,20 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
+#include <cpipe/runtime/ComputeContext.hpp>
 #include <cstddef>
 #include <filesystem>
 #include <optional>
 #include <string>
 #include <vector>
 
-#include <cpipe/runtime/ComputeContext.hpp>
-#include <cpipe/sdk/cpipe_node.h>
-
 namespace cpipe::runtime {
 
 class Pipeline {
 public:
-    static std::optional<Pipeline> load_file(const std::filesystem::path& path,
-                                             std::string* error);
+    static std::optional<Pipeline> load_file(const std::filesystem::path& path, std::string* error);
 
     [[nodiscard]] std::size_t node_count() const noexcept;
     [[nodiscard]] cpipe_status_t run_file(const std::filesystem::path& input_path,
