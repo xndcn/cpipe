@@ -37,6 +37,7 @@ jobs:
       - name: clang-tidy placeholder
         run: |
           cmake --preset linux-debug
+          cmake --build --preset linux-debug -j
           run-clang-tidy -p build/linux-debug
 
   build-debug:
