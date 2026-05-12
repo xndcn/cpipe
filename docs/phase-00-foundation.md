@@ -78,6 +78,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-26 | Test coverage in P0                              | 8–12 unit tests (Catch2) + 1 integration smoke test. No coverage percentage gate; tests target the obvious invariants per §8.                                                                                                          |
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
+| PD-29 | Registry bootstrap before built-in descriptors   | T3 declares the Linux ELF `__start_cpipe_registry` / `__stop_cpipe_registry` symbols as weak so `cpipe-runtime` links before T5 adds the first built-in node descriptor. `load_builtin_nodes()` treats a missing range as empty.        |
 
 ---
 
@@ -239,15 +240,16 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Drop in the full `cpipe_node.h` per [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh), the C++ SDK header `sdk.hpp` per [`plugin-sdk.md` §6](plugin-sdk.md#6-c-sdk-cpipesdkhpp), the registration macro `CPIPE_REGISTER_NODE` and Linux-ELF linker-section helpers per [`plugin-sdk.md` §5](plugin-sdk.md#5-registration-cpipe_register_node--linker-section), and a runtime-side `Registry` that walks `__start_/__stop_cpipe_registry`. The `inference` suite host-side returns `CPIPE_UNSUPPORTED` for any call (PD-15).
 
 **Acceptance criteria:**
-- [ ] `cpipe_node.h` compiles as C99 (verified by a tiny C file in `tests/unit`).
-- [ ] `sdk.hpp` compiles as C++20 with `-fexceptions` and no warnings under PD-8 flags.
-- [ ] `CPIPE_REGISTER_NODE` produces a `cpipe_plugin_desc_t` in the `cpipe_registry` section.
-- [ ] `runtime::Registry::load_builtin_nodes()` finds the test descriptor between `__start_cpipe_registry` and `__stop_cpipe_registry`.
-- [ ] `host->get_suite("inference", 1)->submit_inference(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `cpipe_node.h` compiles as C99 (verified by a tiny C file in `tests/unit`).
+- [x] `sdk.hpp` compiles as C++20 with `-fexceptions` and no warnings under PD-8 flags.
+- [x] `CPIPE_REGISTER_NODE` produces a `cpipe_plugin_desc_t` in the `cpipe_registry` section.
+- [x] `runtime::Registry::load_builtin_nodes()` finds the test descriptor between `__start_cpipe_registry` and `__stop_cpipe_registry`.
+- [x] `host->get_suite("inference", 1)->submit_inference(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_registry` green.
-- [ ] `nm $(find . -name "*.a") | grep cpipe_registry` shows section symbols.
+- [x] `ctest -R test_registry` green.
+- [x] `ctest -R test_abi_c_compile` green.
+- [x] `nm $(find . -name "*.a") | grep cpipe_registry` shows section symbols.
 
 **Dependencies:** T2 (uses status codes; tests need `CpuBuffer`).
 
@@ -256,8 +258,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - `include/cpipe/sdk/sdk.hpp`
 - `include/cpipe/sdk/registry.hpp`
 - `include/cpipe/sdk/section.hpp`
+- `include/cpipe/runtime/Registry.hpp`
 - `src/cpipe/runtime/Registry.cpp`
-- `tests/unit/test_registry.cpp` (and a tiny `.c` translation unit for the C99 compile check)
+- `tests/unit/test_registry.cpp`
+- `tests/unit/test_abi_c_compile.c`
 
 **Estimated scope:** M (4 headers + 1 source + 1 test).
 
@@ -398,6 +402,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 - **Compiler options helper**: `cmake/CompilerOptions.cmake` defines a `cpipe_target_warning_flags(<target>)` function. Every target in the project calls it; this localises the warning policy and avoids per-CMakeLists.txt drift.
 - **T1 target shape clarification**: T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is a header-only CMake target, not a static archive. The T1 build therefore emits four static archives (`cpipe-core`, `cpipe-runtime`, `cpipe-builtin-nodes`, `cpipe-server`), one `cpipe-sdk` interface target, and the `cpipe` CLI binary.
 - **T2 PixelFormat count clarification**: [`buffer.md` §3](buffer.md#3-pixelformat) defines `UNDEFINED` plus 15 concrete v1 entries, including `BLOB`. T2 therefore tests the 15 non-`UNDEFINED` entries, not the stale "14 v1 entries" wording in the original task text.
+- **T3 host suite staging**: `runtime::make_default_host()` exposes buffer / compute / param / inference suite pointers in T3 so SDK dispatch can negotiate the ABI. Buffer and compute methods intentionally return `CPIPE_UNSUPPORTED`, param lookups return `CPIPE_NEED_PARAM`, and inference returns `CPIPE_UNSUPPORTED`; T4–T6 replace only the pieces needed for passthrough execution.
 
 ---
 

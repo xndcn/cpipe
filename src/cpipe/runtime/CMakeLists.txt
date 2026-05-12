@@ -1,4 +1,4 @@
-add_library(cpipe-runtime STATIC RuntimeStub.cpp)
+add_library(cpipe-runtime STATIC Registry.cpp RuntimeStub.cpp)
 add_library(cpipe::runtime ALIAS cpipe-runtime)
 
 target_include_directories(
@@ -8,6 +8,6 @@ target_include_directories(
         $<INSTALL_INTERFACE:include>
 )
 
-target_link_libraries(cpipe-runtime PUBLIC cpipe-core)
+target_link_libraries(cpipe-runtime PUBLIC cpipe-core cpipe-sdk)
 
 cpipe_configure_target(cpipe-runtime)
