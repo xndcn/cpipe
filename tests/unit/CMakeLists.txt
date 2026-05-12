@@ -3,3 +3,12 @@ cpipe_add_unit_test(test_buffer_layout test_buffer_layout.cpp)
 cpipe_add_unit_test(test_buffer_usage test_buffer_usage.cpp)
 cpipe_add_unit_test(test_cpu_buffer test_cpu_buffer.cpp)
 cpipe_add_unit_test(test_status test_status.cpp)
+
+add_library(test_registry_node STATIC test_registry_node.cpp)
+target_link_libraries(test_registry_node PRIVATE cpipe-sdk)
+cpipe_target_defaults(test_registry_node)
+
+cpipe_add_unit_test(test_registry test_registry.cpp test_cpipe_node_c_abi.c)
+target_link_libraries(test_registry PRIVATE cpipe-runtime cpipe-sdk test_registry_node)
+set_property(TARGET test_registry PROPERTY C_STANDARD 99)
+set_property(TARGET test_registry PROPERTY C_STANDARD_REQUIRED ON)
