@@ -1,0 +1,107 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/node/v0.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "id",
+    "version",
+    "name",
+    "category",
+    "description",
+    "ports",
+    "implementations",
+    "params"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.cpipe.dev/node/v0.1.json"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^com\\.cpipe\\.[a-z0-9_]+\\.[a-z0-9_]+$"
+    },
+    "version": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "ports": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "inputs",
+        "outputs"
+      ],
+      "properties": {
+        "inputs": {
+          "$ref": "#/$defs/ports"
+        },
+        "outputs": {
+          "$ref": "#/$defs/ports"
+        }
+      }
+    },
+    "implementations": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "backend",
+          "aot_id"
+        ],
+        "properties": {
+          "backend": {
+            "const": "halide_cpu"
+          },
+          "aot_id": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "params": {
+      "type": "object"
+    }
+  },
+  "$defs": {
+    "ports": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "id",
+          "kind",
+          "format"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "enum": [
+              "Image2D",
+              "Volume3D",
+              "TensorND",
+              "Blob"
+            ]
+          },
+          "format": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

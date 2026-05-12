@@ -1,0 +1,14 @@
+{
+  "name": "cpipe",
+  "version-string": "0.1.0-alpha",
+  "builtin-baseline": "81e3c888ef717a026eb57bb2f3cb0dbd30246271",
+  "dependencies": [
+    "catch2",
+    "cli11",
+    "nlohmann-json",
+    "json-schema-validator",
+    "spdlog",
+    "taskflow",
+    "tl-expected"
+  ]
+}

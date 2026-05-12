@@ -1,0 +1,108 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "test/**", "ci/**", "docs/**", "chore/**"]
+  pull_request:
+    branches: [main]
+
+env:
+  VCPKG_ROOT: /usr/local/share/vcpkg
+  VCPKG_BINARY_SOURCES: "clear;x-gha,readwrite"
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: ccache-${{ runner.os }}-
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ccache clang-18 clang-format-18 clang-tidy-18 ninja-build pre-commit
+      - name: Configure
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: cmake --preset linux-debug
+      - name: pre-commit
+        run: pre-commit run --all-files
+      - name: clang-tidy
+        run: |
+          find include src tests -name '*.cpp' -o -name '*.hpp' |
+            xargs clang-tidy-18 -p build/linux-debug
+
+  build-debug:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build
+      - name: Build Debug
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          cmake --preset linux-debug
+          cmake --build --preset linux-debug -j2
+
+  build-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build
+      - name: Build Release
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          cmake --preset linux-release-clang
+          cmake --build --preset linux-release-clang -j2
+
+  test:
+    runs-on: ubuntu-24.04
+    needs: build-debug
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/vcpkg
+            ${{ github.workspace }}/vcpkg_installed
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+          restore-keys: vcpkg-${{ runner.os }}-
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build
+      - name: Test Debug
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: |
+          cmake --preset linux-debug
+          cmake --build --preset linux-debug -j2
+          ctest --preset ci

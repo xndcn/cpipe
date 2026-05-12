@@ -1,0 +1,19 @@
+# Build outputs
+/build/
+/out/
+
+# CMake and dependency state
+CMakeUserPresets.json
+vcpkg_installed/
+
+# Editor and tool caches
+.cache/
+.ccache/
+.ninja_deps
+.ninja_log
+
+# Runtime scratch
+*.log
+*.tmp
+*.bin.tmp
+/tests/fixtures/passthrough.bin

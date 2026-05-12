@@ -1,0 +1,30 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.1.json",
+  "version": "0.1",
+  "id": "passthrough-smoke",
+  "input_layout": {
+    "kind": "Image2D",
+    "format": "R8G8B8A8_UNORM",
+    "dims": [
+      64,
+      64
+    ]
+  },
+  "nodes": [
+    {
+      "id": "copy",
+      "type": "com.cpipe.builtin.passthrough",
+      "params": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "$input",
+      "to": "copy"
+    },
+    {
+      "from": "copy",
+      "to": "$output"
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) in progress. APIs unstable; no usable release yet. First runnable build expected at `v0.2`.
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) is the first runnable foundation build. APIs unstable; real DNG → HEIF processing starts in Phase 1 (`v0.2`).
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -50,13 +50,34 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-We're in **Phase 0** (`v0.1`). See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+We're completing **Phase 0** (`v0.1`): the Linux skeleton builds, tests, and runs a one-node passthrough pipeline. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+
+## Build
+
+Prerequisites: CMake 3.28+, Ninja, vcpkg with `VCPKG_ROOT` set, and `pre-commit`.
+
+```bash
+pre-commit install
+cmake --preset linux-debug
+cmake --build --preset linux-debug -j
+ctest --preset ci
+
+cmake --preset linux-release-clang
+cmake --build --preset linux-release-clang -j
+ctest --preset linux-release-clang
+
+./build/linux-release-clang/src/cpipe/cli/cpipe run \
+    tests/fixtures/passthrough.bin \
+    -p tests/fixtures/passthrough.json \
+    -o /tmp/cpipe_p0_out.bin
+cmp /tmp/cpipe_p0_out.bin tests/fixtures/passthrough.bin
+```
 
 ## Roadmap
 
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
-| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | in progress |
+| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | implementation in review |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | planned     |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |

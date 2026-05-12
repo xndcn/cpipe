@@ -431,7 +431,20 @@ Reiterated here so contributors don't accidentally expand v1.0:
 
 ---
 
-## 16. See Also
+## 16. Phase Status
+
+| Tag    | Phase | Status                   | Evidence |
+|--------|-------|--------------------------|----------|
+| `v0.1` | P0    | implementation in review | Local Debug + Release builds and passthrough tests pass; CI / 24-hour green / tag remain the release gate. |
+| `v0.2` | P1    | planned                  | Starts after `v0.1` is tagged. |
+| `v0.3` | P2    | planned                  | Starts after `v0.2` is tagged. |
+| `v0.4` | P3    | planned                  | Starts after `v0.3` is tagged. |
+| `v0.5` | P4    | planned                  | Starts after `v0.4` is tagged. |
+| `v1.0` | P5    | planned                  | Starts after `v0.5` is tagged. |
+
+---
+
+## 17. See Also
 
 - [`architecture.md`](architecture.md) — system assembly: targets, threading, lifecycle.
 - [`tech.md`](tech.md) — every library + version pin + license verdict.
