@@ -1,4 +1,4 @@
-add_library(cpipe-core STATIC CoreStub.cpp)
+add_library(cpipe-core STATIC BufferLayout.cpp CpuBuffer.cpp)
 add_library(cpipe::core ALIAS cpipe-core)
 
 target_include_directories(

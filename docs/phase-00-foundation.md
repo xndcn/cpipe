@@ -111,6 +111,7 @@ cpipe/
 │       │   ├── BufferLayout.hpp
 │       │   ├── BufferUsage.hpp
 │       │   ├── IBuffer.hpp
+│       │   ├── CpuBuffer.hpp
 │       │   └── Status.hpp
 │       └── sdk/
 │           ├── cpipe_node.h         # PD-16
@@ -206,24 +207,26 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the core data types from [`buffer.md` §3–§5](buffer.md#3-pixelformat): `PixelFormat`, `BufferLayout`, `BufferKind`, `BufferUsage`, `IBuffer` interface, status codes, and a working `CpuBuffer` backed by `posix_memalign`.
 
 **Acceptance criteria:**
-- [ ] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
-- [ ] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
-- [ ] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
-- [ ] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
+- [x] `PixelFormat` enum holds all 15 non-`UNDEFINED` v1 entries from `buffer.md §3`.
+- [x] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
+- [x] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
+- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
 
 **Verification:**
-- [ ] `ctest -R test_pixel_format` green.
-- [ ] `ctest -R test_buffer_layout` green.
-- [ ] `ctest -R test_cpu_buffer` green.
-- [ ] `ctest -R test_status` green.
+- [x] `ctest -R test_pixel_format` green.
+- [x] `ctest -R test_buffer_layout` green.
+- [x] `ctest -R test_buffer_usage` green.
+- [x] `ctest -R test_cpu_buffer` green.
+- [x] `ctest -R test_status` green.
 
 **Dependencies:** T1.
 
 **Files likely touched:**
-- `include/cpipe/core/{PixelFormat,BufferLayout,BufferUsage,IBuffer,Status}.hpp`
+- `include/cpipe/core/{PixelFormat,BufferLayout,BufferUsage,IBuffer,CpuBuffer,Status}.hpp`
 - `src/cpipe/core/{BufferLayout,CpuBuffer}.cpp`
 - `tests/unit/test_pixel_format.cpp`
 - `tests/unit/test_buffer_layout.cpp`
+- `tests/unit/test_buffer_usage.cpp`
 - `tests/unit/test_cpu_buffer.cpp`
 - `tests/unit/test_status.cpp`
 
@@ -394,6 +397,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 - **Pipeline JSON schema scope**: `schemas/pipeline-v0.1.json` validates `{$schema, version, id, nodes[{id,type,params}], edges[{from,to}]}` and rejects unknown fields. JSON Schema 2020-12 dialect; consumed by both the host (`nlohmann/json-schema-validator`) and (in P3) the Editor (`Ajv`).
 - **Compiler options helper**: `cmake/CompilerOptions.cmake` defines a `cpipe_target_warning_flags(<target>)` function. Every target in the project calls it; this localises the warning policy and avoids per-CMakeLists.txt drift.
 - **T1 target shape clarification**: T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is a header-only CMake target, not a static archive. The T1 build therefore emits four static archives (`cpipe-core`, `cpipe-runtime`, `cpipe-builtin-nodes`, `cpipe-server`), one `cpipe-sdk` interface target, and the `cpipe` CLI binary.
+- **T2 PixelFormat count clarification**: [`buffer.md` §3](buffer.md#3-pixelformat) defines `UNDEFINED` plus 15 concrete v1 entries, including `BLOB`. T2 therefore tests the 15 non-`UNDEFINED` entries, not the stale "14 v1 entries" wording in the original task text.
 
 ---
 
@@ -401,7 +405,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 
 | # | Test                                  | Layer       | Asserts                                                                                                             |
 |---|---------------------------------------|-------------|---------------------------------------------------------------------------------------------------------------------|
-| 1 | `test_pixel_format`                   | unit        | each of the 14 `PixelFormat` values has correct bytes-per-pixel and `to_string()`                                   |
+| 1 | `test_pixel_format`                   | unit        | each of the 15 non-`UNDEFINED` `PixelFormat` values has correct bit/byte metadata and `to_string()`                 |
 | 2 | `test_buffer_layout`                  | unit        | `size_bytes()` matches hand-computed value for `Image2D` / `Volume3D` / `TensorND` / `Blob`                         |
 | 3 | `test_buffer_usage`                   | unit        | flag combinations bitwise behave as expected                                                                        |
 | 4 | `test_status`                         | unit        | every `cpipe_status_t` has a `to_string()` and round-trips                                                          |
