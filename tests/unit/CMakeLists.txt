@@ -27,3 +27,18 @@ add_halide_library(
 
 cpipe_add_unit_test(test_halide_adapter test_halide_adapter.cpp)
 target_link_libraries(test_halide_adapter PRIVATE cpipe-runtime test_passthrough_copy)
+
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+
+cpipe_add_unit_test(test_passthrough_node test_passthrough_node.cpp)
+target_compile_definitions(
+    test_passthrough_node
+    PRIVATE CPIPE_NODE_SCHEMA_SOURCE="${PROJECT_SOURCE_DIR}/schemas/node-v0.1.json"
+            CPIPE_PASSTHROUGH_MANIFEST_SOURCE="${PROJECT_SOURCE_DIR}/src/cpipe/nodes/passthrough.json")
+target_link_libraries(
+    test_passthrough_node
+    PRIVATE cpipe-runtime
+            "$<LINK_LIBRARY:WHOLE_ARCHIVE,cpipe-builtin-nodes>"
+            nlohmann_json::nlohmann_json
+            nlohmann_json_schema_validator::validator)

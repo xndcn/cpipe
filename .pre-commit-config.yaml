@@ -13,3 +13,9 @@ repos:
         entry: clang-format -i
         language: system
         files: '\.(c|cc|cpp|cxx|h|hpp)$'
+      - id: node-manifest-schema
+        name: node manifest schema
+        entry: bash -c 'npx --yes ajv-cli@5.0.0 validate --spec=draft2020 -s schemas/node-v0.1.json -d "src/cpipe/nodes/*.json"'
+        language: system
+        files: '^(schemas/node-v0\.1\.json|src/cpipe/nodes/.*\.json)$'
+        pass_filenames: false

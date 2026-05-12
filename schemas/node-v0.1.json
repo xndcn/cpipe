@@ -1,0 +1,284 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/node/v0.1.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "$schema",
+    "id",
+    "version",
+    "label",
+    "category",
+    "doc",
+    "ports",
+    "params",
+    "compute",
+    "color",
+    "test"
+  ],
+  "properties": {
+    "$schema": {
+      "const": "https://schemas.cpipe.dev/node/v0.1.json"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^com\\.cpipe\\.[a-z0-9]+(\\.[a-z0-9][a-z0-9-]*)+$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "label": {
+      "type": "string",
+      "minLength": 1
+    },
+    "category": {
+      "type": "string",
+      "minLength": 1
+    },
+    "doc": {
+      "type": "string",
+      "minLength": 1
+    },
+    "ports": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/port"
+      }
+    },
+    "params": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/param"
+      }
+    },
+    "compute": {
+      "$ref": "#/$defs/compute"
+    },
+    "color": {
+      "$ref": "#/$defs/color"
+    },
+    "test": {
+      "$ref": "#/$defs/test"
+    }
+  },
+  "$defs": {
+    "port": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "kind",
+        "caps",
+        "cardinality"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "kind": {
+          "enum": [
+            "in",
+            "out"
+          ]
+        },
+        "caps": {
+          "$ref": "#/$defs/caps"
+        },
+        "cardinality": {
+          "enum": [
+            "single",
+            "array"
+          ]
+        }
+      }
+    },
+    "caps": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "buffer_kind",
+        "channels",
+        "precision"
+      ],
+      "properties": {
+        "buffer_kind": {
+          "enum": [
+            "Image2D",
+            "Volume3D",
+            "TensorND",
+            "Blob"
+          ]
+        },
+        "channels": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "raw",
+              "rgb",
+              "rgba",
+              "linear-rgb",
+              "luma",
+              "blob"
+            ]
+          }
+        },
+        "precision": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "enum": [
+              "u8",
+              "i8",
+              "u16",
+              "fp16",
+              "fp32"
+            ]
+          }
+        },
+        "pixel_format": {
+          "enum": [
+            "R16_UINT",
+            "R10_PACKED",
+            "R8G8B8A8_UNORM",
+            "R8G8B8_UNORM",
+            "R10G10B10A2_UNORM",
+            "R16G16B16A16_SFLOAT",
+            "R16G16B16_SFLOAT",
+            "R32G32B32A32_SFLOAT",
+            "R32G32B32_SFLOAT",
+            "R32_SFLOAT",
+            "F16",
+            "F32",
+            "I8",
+            "U8",
+            "BLOB"
+          ]
+        }
+      }
+    },
+    "param": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "name",
+        "type"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "type": {
+          "enum": [
+            "float",
+            "int",
+            "bool",
+            "enum",
+            "curve",
+            "color"
+          ]
+        }
+      }
+    },
+    "compute": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "device",
+        "engine",
+        "halide_aot",
+        "in_pixel_bytes",
+        "out_pixel_bytes",
+        "scratch_pixel_bytes"
+      ],
+      "properties": {
+        "device": {
+          "enum": [
+            "CPU"
+          ]
+        },
+        "engine": {
+          "enum": [
+            "Halide"
+          ]
+        },
+        "halide_aot": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "in_pixel_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "out_pixel_bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "scratch_pixel_bytes": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "color": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "input_role",
+        "output_role",
+        "respects_chromaticity"
+      ],
+      "properties": {
+        "input_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "output_role": {
+          "type": "string",
+          "minLength": 1
+        },
+        "respects_chromaticity": {
+          "type": "boolean"
+        }
+      }
+    },
+    "test": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "golden_pairs"
+      ],
+      "properties": {
+        "golden_pairs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "in",
+              "out"
+            ],
+            "properties": {
+              "in": {
+                "type": "string",
+                "minLength": 1
+              },
+              "out": {
+                "type": "string",
+                "minLength": 1
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

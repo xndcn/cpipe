@@ -305,14 +305,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the Halide generator `passthrough_copy` (CPU target only — Vulkan target reserved for P1), wire `add_halide_library()` to compile it into a static archive, write `nodes/passthrough.cpp` (the C++ `Passthrough` class), `nodes/passthrough.json` (manifest), and the `EmbedJson.cmake` step that turns the JSON into a `.cpp` literal per [`plugin-sdk.md` §7.2](plugin-sdk.md#72-embedding-in-the-binary). Register via `CPIPE_REGISTER_NODE`.
 
 **Acceptance criteria:**
-- [ ] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
-- [ ] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
-- [ ] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
-- [ ] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
+- [x] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
+- [x] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
+- [x] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
+- [x] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_node` green.
-- [ ] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
+- [x] `ctest -R test_passthrough_node` green.
+- [x] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
 
 **Dependencies:** T4.
 
