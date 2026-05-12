@@ -52,6 +52,28 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 We're in **Phase 0** (`v0.1`). See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
+## Build From Source
+
+Requirements for Phase 0:
+
+- CMake 3.28+
+- Ninja
+- A C++20 compiler
+- vcpkg in manifest mode, with `VCPKG_ROOT` pointing at the checkout
+- Python `pre-commit`
+
+```bash
+pre-commit install
+cmake --preset linux-debug
+cmake --build --preset linux-debug -j
+ctest --preset ci --output-on-failure
+pre-commit run --all-files
+```
+
+The first configure may take several minutes while vcpkg builds the Phase 0
+dependency set. Halide is fetched separately by the CMake helper when the
+passthrough node lands.
+
 ## Roadmap
 
 | Tag    | Phase | Theme                                                       | Status      |

@@ -1,0 +1,175 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
+      VCPKG_ROOT: "${{ github.workspace }}/.vcpkg"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build ccache python3-pip
+          python3 -m pip install --user pre-commit
+          sudo update-alternatives --install /usr/bin/clang-format clang-format /usr/bin/clang-format-18 100
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+      - name: pre-commit
+        run: pre-commit run --all-files
+      - name: Configure compile database
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: >
+          cmake --preset linux-debug
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build compile database objects
+        run: cmake --build --preset linux-debug -j
+      - name: clang-tidy
+        run: |
+          git ls-files ':(glob)include/**/*.[ch]' ':(glob)include/**/*.[ch]pp' \
+            ':(glob)src/**/*.cpp' ':(glob)tests/**/*.cpp' |
+            xargs -r clang-tidy-18 -p build/linux-debug
+
+  build-debug:
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
+      VCPKG_ROOT: "${{ github.workspace }}/.vcpkg"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+      - name: Configure
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: >
+          cmake --preset linux-debug
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build
+        run: cmake --build --preset linux-debug -j
+
+  build-release:
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
+      VCPKG_ROOT: "${{ github.workspace }}/.vcpkg"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+      - name: Configure
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: >
+          cmake --preset linux-release-clang
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build
+        run: cmake --build --preset linux-release-clang -j
+
+  test:
+    runs-on: ubuntu-24.04
+    env:
+      VCPKG_BINARY_SOURCES: "clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite"
+      VCPKG_ROOT: "${{ github.workspace }}/.vcpkg"
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore vcpkg cache
+        uses: actions/cache@v4
+        with:
+          path: .vcpkg-cache
+          key: vcpkg-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}
+      - name: Restore ccache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ccache
+          key: ccache-${{ runner.os }}-${{ github.sha }}
+          restore-keys: |
+            ccache-${{ runner.os }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh"
+      - name: Configure
+        env:
+          CC: clang-18
+          CXX: clang++-18
+        run: >
+          cmake --preset linux-debug
+          -DCMAKE_C_COMPILER_LAUNCHER=ccache
+          -DCMAKE_CXX_COMPILER_LAUNCHER=ccache
+      - name: Build
+        run: cmake --build --preset linux-debug -j
+      - name: Test
+        run: ctest --preset ci

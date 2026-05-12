@@ -1,0 +1,13 @@
+/build/
+/.cache/
+/.vscode/
+/.idea/
+/.DS_Store
+*.swp
+*.swo
+*.user
+*.tmp
+*.log
+/models/
+/bench/results/
+/CMakeUserPresets.json
