@@ -79,6 +79,9 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
 | PD-29 | Registry bootstrap before built-in descriptors   | T3 declares the Linux ELF `__start_cpipe_registry` / `__stop_cpipe_registry` symbols as weak so `cpipe-runtime` links before T5 adds the first built-in node descriptor. `load_builtin_nodes()` treats a missing range as empty.        |
+| PD-30 | Halide FetchContent artifact                     | T4 consumes the official Halide v21.0.0 Linux x86_64 binary archive via `FetchContent` with a SHA-256 pin. Building Halide from source and cross-platform archive selection are deferred until a non-Linux P0 target exists.            |
+| PD-31 | P0 opaque buffer handle representation           | Runtime-owned `cpipe_buffer_t*` values are opaque casts of `cpipe::compute::IBuffer*` in P0. External `.so` plugin handles, sandbox handles, and cross-process buffer identity remain out of v1 scope.                                  |
+| PD-32 | TaskFlow worker-count floor                      | The process executor uses `std::thread::hardware_concurrency() - 1` on normal hosts, floored to one worker when the value is unknown or one so the Halide custom `do_par_for` hook always has an executor.                              |
 
 ---
 
@@ -269,10 +272,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint A — after T1–T3
 
-- [ ] All three tasks merged; `main` is green.
-- [ ] Repo compiles end-to-end on the CI matrix.
-- [ ] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
-- [ ] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
+- [x] All three tasks merged; `main` is green.
+- [x] Repo compiles end-to-end on the CI matrix.
+- [x] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
+- [x] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
 
 ---
 
@@ -281,14 +284,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the minimum `cpipe-runtime` needed to dispatch one node: a TaskFlow `Executor` (sized to `std::thread::hardware_concurrency() - 1` per [`architecture.md` §4](architecture.md#4-process-and-thread-model)), a `Scheduler` that walks the topo order serially (PD-20), a `ComputeContext` whose `submit_halide` host-side adapts `cpipe_buffer_t*` → `halide_buffer_t*` per [`plugin-sdk.md` §9.1](plugin-sdk.md#91-halide-aot), and an `InferenceContext` returning `CPIPE_UNSUPPORTED`.
 
 **Acceptance criteria:**
-- [ ] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
-- [ ] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
-- [ ] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
-- [ ] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
+- [x] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
+- [x] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
+- [x] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_scheduler_topo` green.
-- [ ] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
+- [x] `ctest -R test_scheduler_topo` green.
+- [x] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
 
 **Dependencies:** T3.
 
@@ -402,7 +405,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 - **Compiler options helper**: `cmake/CompilerOptions.cmake` defines a `cpipe_target_warning_flags(<target>)` function. Every target in the project calls it; this localises the warning policy and avoids per-CMakeLists.txt drift.
 - **T1 target shape clarification**: T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is a header-only CMake target, not a static archive. The T1 build therefore emits four static archives (`cpipe-core`, `cpipe-runtime`, `cpipe-builtin-nodes`, `cpipe-server`), one `cpipe-sdk` interface target, and the `cpipe` CLI binary.
 - **T2 PixelFormat count clarification**: [`buffer.md` §3](buffer.md#3-pixelformat) defines `UNDEFINED` plus 15 concrete v1 entries, including `BLOB`. T2 therefore tests the 15 non-`UNDEFINED` entries, not the stale "14 v1 entries" wording in the original task text.
-- **T3 host suite staging**: `runtime::make_default_host()` exposes buffer / compute / param / inference suite pointers in T3 so SDK dispatch can negotiate the ABI. Buffer and compute methods intentionally return `CPIPE_UNSUPPORTED`, param lookups return `CPIPE_NEED_PARAM`, and inference returns `CPIPE_UNSUPPORTED`; T4–T6 replace only the pieces needed for passthrough execution.
+- **T3 host suite staging**: `runtime::make_default_host()` exposes buffer / compute / param / inference suite pointers in T3 so SDK dispatch can negotiate the ABI. Buffer and compute methods intentionally return `CPIPE_UNSUPPORTED`, param lookups return `CPIPE_NEED_PARAM`, and inference returns `CPIPE_UNSUPPORTED`; T4 replaces buffer locking, buffer metadata, Halide submission, and inference unsupported behavior with the runtime-backed suites needed for passthrough execution.
 
 ---
 
@@ -433,7 +436,7 @@ Per PD-28 plus the slip-absorption posture from [`roadmap.md` §9](roadmap.md#9-
 
 | #     | Risk                                                                                                                                       | Impact | Likelihood | Mitigation                                                                                                                                                                |
 |-------|--------------------------------------------------------------------------------------------------------------------------------------------|--------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| P0-R1 | Halide v21 FetchContent first build is slow (~150 MB source + LLVM dependencies; estimated 5–15 min cold).                                  | Medium | Confirmed  | vcpkg binary cache + ccache (PD-13) absorb subsequent runs. README documents the first-build expectation. CI cold-build budget: ≤ 20 min.                                  |
+| P0-R1 | Halide v21 FetchContent first build downloads a large official binary archive (~183 MB for Linux x86_64).                                  | Medium | Confirmed  | The binary archive avoids a source/LLVM build in CI. `FetchContent` is SHA-pinned (PD-30); a workflow cache can be added if the download becomes the CI bottleneck.             |
 | P0-R2 | TaskFlow v4.0.0 header-only uses C++20 `atomic::wait` / `atomic::notify_*`; older libstdc++ / libc++ may lack `_Atomic_wait` primitives.    | Medium | Medium     | CMake checks for `__cpp_lib_atomic_wait >= 201907L`; if absent, fail fast with a clear error pointing at compiler upgrade.                                                  |
 | P0-R3 | `.clang-tidy` initial run produces dozens of warnings against `nlohmann/json` / `spdlog` headers; PD-22 turns 20+ checks on simultaneously. | Low    | High       | `.clang-tidy` config restricts checks to first-party sources via `HeaderFilterRegex: cpipe/`. CI lint job exits non-zero only on first-party findings.                       |
 

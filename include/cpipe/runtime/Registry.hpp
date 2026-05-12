@@ -5,6 +5,7 @@
 
 #include <cpipe/sdk/cpipe_node.h>
 
+#include <cpipe/runtime/InferenceContext.hpp>
 #include <cstddef>
 #include <string_view>
 #include <vector>
@@ -25,6 +26,5 @@ private:
 };
 
 [[nodiscard]] auto make_default_host() noexcept -> cpipe_host_t;
-[[nodiscard]] auto inference_suite_v1() noexcept -> const cpipe_inference_suite_v1&;
 
 }  // namespace cpipe::runtime

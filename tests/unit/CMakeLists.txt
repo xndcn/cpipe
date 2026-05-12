@@ -22,3 +22,27 @@ add_executable(test_abi_c_compile test_abi_c_compile.c)
 target_include_directories(test_abi_c_compile PRIVATE ${PROJECT_SOURCE_DIR}/include)
 cpipe_configure_target(test_abi_c_compile)
 add_test(NAME test_abi_c_compile COMMAND test_abi_c_compile)
+
+add_executable(test_scheduler_topo test_scheduler_topo.cpp)
+target_link_libraries(test_scheduler_topo PRIVATE Catch2::Catch2WithMain cpipe-runtime)
+cpipe_configure_target(test_scheduler_topo)
+add_test(NAME test_scheduler_topo COMMAND test_scheduler_topo)
+
+add_executable(test_halide_adapter_generator test_halide_adapter_generator.cpp)
+target_link_libraries(test_halide_adapter_generator PRIVATE Halide::Generator)
+cpipe_configure_target(test_halide_adapter_generator)
+
+add_halide_library(
+    test_halide_passthrough
+    FROM test_halide_adapter_generator
+    GENERATOR test_passthrough_copy
+    TARGETS x86-64-linux
+    USE_RUNTIME cpipe-halide-runtime
+)
+
+add_executable(test_halide_adapter test_halide_adapter.cpp)
+target_link_libraries(
+    test_halide_adapter PRIVATE Catch2::Catch2WithMain cpipe-runtime test_halide_passthrough
+)
+cpipe_configure_target(test_halide_adapter)
+add_test(NAME test_halide_adapter COMMAND test_halide_adapter)

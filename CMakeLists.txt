@@ -25,6 +25,7 @@ option(CPIPE_ENABLE_ASAN_UBSAN "Enable AddressSanitizer and UndefinedBehaviorSan
 option(CPIPE_ENABLE_HALIDE_VULKAN "Enable Halide Vulkan AOT targets" OFF)
 
 include(CTest)
+cpipe_provide_halide()
 
 add_subdirectory(src/cpipe/core)
 add_subdirectory(src/cpipe/sdk)

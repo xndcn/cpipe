@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <cpipe/runtime/ComputeContext.hpp>
+#include <cpipe/runtime/InferenceContext.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/sdk/section.hpp>
 #include <cstdint>
@@ -19,52 +21,6 @@ namespace cpipe::runtime {
 namespace {
 
 // NOLINTBEGIN(readability-named-parameter,bugprone-easily-swappable-parameters)
-
-auto unsupported_get_dims(const cpipe_buffer_t*, std::uint8_t*, std::uint32_t*) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_get_int_metadata(const cpipe_buffer_t*, int*) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_get_stride(const cpipe_buffer_t*, std::uint64_t*) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_get_color_role(const cpipe_buffer_t*, const char**) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_lock_cpu(cpipe_buffer_t*, int, void**) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_buffer_mutation(cpipe_buffer_t*) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_submit_halide(cpipe_compute_t*, const char*, const cpipe_buffer_t* const*,
-                               std::size_t, cpipe_buffer_t* const*, std::size_t) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_submit_slang(cpipe_compute_t*, const char*, const char*,
-                              const cpipe_buffer_t* const*, std::size_t, cpipe_buffer_t* const*,
-                              std::size_t, const void*, std::size_t) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto unsupported_request_scratch(cpipe_compute_t*, std::uint64_t, int, cpipe_buffer_t**) -> int {
-    return CPIPE_UNSUPPORTED;
-}
-
-auto ignore_marker(cpipe_compute_t*, const char*) -> void {}
-
-auto unsupported_submit_inference(cpipe_inference_t*, const char*, const cpipe_buffer_t* const*,
-                                  std::size_t, cpipe_buffer_t* const*, std::size_t) -> int {
-    return CPIPE_UNSUPPORTED;
-}
 
 auto missing_double(const cpipe_props_t*, const char*, double*) -> int {
     return CPIPE_NEED_PARAM;
@@ -91,16 +47,6 @@ auto missing_color(const cpipe_props_t*, const char*, float*) -> int {
     return CPIPE_NEED_PARAM;
 }
 
-const cpipe_buffer_suite_v1 kBufferSuite{
-    &unsupported_get_dims,        &unsupported_get_int_metadata, &unsupported_get_int_metadata,
-    &unsupported_get_stride,      &unsupported_get_color_role,   &unsupported_lock_cpu,
-    &unsupported_buffer_mutation, &unsupported_buffer_mutation};
-
-const cpipe_compute_suite_v1 kComputeSuite{&unsupported_submit_halide, &unsupported_submit_slang,
-                                           &unsupported_request_scratch, &ignore_marker};
-
-const cpipe_inference_suite_v1 kInferenceSuite{&unsupported_submit_inference};
-
 const cpipe_param_suite_v1 kParamSuite{&missing_double, &missing_int,   &missing_bool,
                                        &missing_enum,   &missing_curve, &missing_color};
 
@@ -109,16 +55,16 @@ auto get_suite(cpipe_host_t*, const char* suite_name, int version) -> const void
         return nullptr;
     }
     if (std::strcmp(suite_name, "buffer") == 0) {
-        return &kBufferSuite;
+        return &buffer_suite_v1();
     }
     if (std::strcmp(suite_name, "compute") == 0) {
-        return &kComputeSuite;
+        return &compute_suite_v1();
     }
     if (std::strcmp(suite_name, "param") == 0) {
         return &kParamSuite;
     }
     if (std::strcmp(suite_name, "inference") == 0) {
-        return &kInferenceSuite;
+        return &inference_suite_v1();
     }
     return nullptr;
 }
@@ -187,10 +133,6 @@ auto Registry::size() const noexcept -> std::size_t {
 auto make_default_host() noexcept -> cpipe_host_t {
     return cpipe_host_t{CPIPE_ABI_MAJOR, CPIPE_ABI_MINOR, &get_suite,
                         &log_message,    &allocate,       &deallocate};
-}
-
-auto inference_suite_v1() noexcept -> const cpipe_inference_suite_v1& {
-    return kInferenceSuite;
 }
 
 }  // namespace cpipe::runtime
