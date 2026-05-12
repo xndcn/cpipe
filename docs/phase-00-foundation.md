@@ -80,6 +80,8 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
 | PD-29 | vcpkg JSON Schema validator port name            | The dependency remains `nlohmann/json-schema-validator` per [`tech.md` §8](tech.md#8-layer-7--plugin--manifest), but the current vcpkg registry port name is `json-schema-validator`; `vcpkg.json` uses that port name.               |
 | PD-30 | T1 skeleton target outputs                       | T1 keeps `cpipe-sdk` as the header-only target from [`architecture.md` §3](architecture.md#3-native-module-decomposition). The empty static libraries are `cpipe-core`, `cpipe-runtime`, `cpipe-builtin-nodes`, and `cpipe-server`; `cpipe-cli` is the empty executable. |
+| PD-31 | PixelFormat count wording                        | T2 implements the full [`buffer.md` §3](buffer.md#3-pixelformat) enum: `UNDEFINED` plus 15 concrete non-undefined formats. The "14 v1 entries" wording in T2 is treated as stale task text.                                           |
+| PD-32 | Initial clang-tidy baseline suppressions         | The broad PD-22 rule set suppresses low-level allocator/C ABI noise (`posix_memalign/free`, dynamic layout indexing, short coordinate names, easily-swappable coordinates) and Catch2 macro complexity in `.clang-tidy`; first-party code still builds with PD-8 warnings as errors and clang-tidy remains required in CI. |
 
 ---
 
@@ -208,16 +210,16 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the core data types from [`buffer.md` §3–§5](buffer.md#3-pixelformat): `PixelFormat`, `BufferLayout`, `BufferKind`, `BufferUsage`, `IBuffer` interface, status codes, and a working `CpuBuffer` backed by `posix_memalign`.
 
 **Acceptance criteria:**
-- [ ] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
-- [ ] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
-- [ ] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
-- [ ] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
+- [x] `PixelFormat` enum holds all entries from `buffer.md §3`.
+- [x] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
+- [x] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
+- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
 
 **Verification:**
-- [ ] `ctest -R test_pixel_format` green.
-- [ ] `ctest -R test_buffer_layout` green.
-- [ ] `ctest -R test_cpu_buffer` green.
-- [ ] `ctest -R test_status` green.
+- [x] `ctest -R test_pixel_format` green.
+- [x] `ctest -R test_buffer_layout` green.
+- [x] `ctest -R test_cpu_buffer` green.
+- [x] `ctest -R test_status` green.
 
 **Dependencies:** T1.
 
