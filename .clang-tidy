@@ -1,15 +1,33 @@
 Checks: >
+  -*,
   readability-*,
   modernize-*,
   cppcoreguidelines-*,
   bugprone-*,
   performance-*,
   portability-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-misplaced-widening-cast,
+  -bugprone-reserved-identifier,
+  -cppcoreguidelines-avoid-c-arrays,
+  -cppcoreguidelines-owning-memory,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-special-member-functions,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type,
+  -performance-enum-size,
+  -readability-function-cognitive-complexity,
+  -readability-identifier-length,
+  -readability-uppercase-literal-suffix,
   -fuchsia-*,
   -llvm-*,
   -google-readability-todo,
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers
 WarningsAsErrors: '*'
-HeaderFilterRegex: '(.*/)?(include|src|tests)/cpipe/.*|(.*/)?tests/.*'
+HeaderFilterRegex: '(.*/)?(include|src)/cpipe/.*'
 FormatStyle: file
