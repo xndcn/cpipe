@@ -187,11 +187,11 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
 - [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
 - [x] `pre-commit run --all-files` passes.
-- [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
+- [x] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
 - [ ] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
-- [ ] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
+- [x] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
 
 **Dependencies:** None.
 
@@ -393,7 +393,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### What Slipped
 
-- No P0 scope item is intentionally slipped. The release gates still pending are external workflow gates: GitHub Actions success on the pushed branch / PR, `main` green for at least 24 hours, and the `v0.1` tag + GitHub release notes.
+- No P0 scope item is intentionally slipped. The release gates still pending are external workflow gates: `main` green for at least 24 hours, default-branch license detection after `LICENSE` reaches `main`, and the `v0.1` tag + GitHub release notes.
 
 ---
 

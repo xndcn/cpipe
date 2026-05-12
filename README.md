@@ -50,7 +50,7 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-We're completing **Phase 0** (`v0.1`): the Linux skeleton builds, tests, and runs a one-node passthrough pipeline. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+We're completing **Phase 0** (`v0.1`): the Linux skeleton builds, tests, runs a one-node passthrough pipeline, and has green PR CI. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
 ## Build
 

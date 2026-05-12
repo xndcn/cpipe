@@ -435,7 +435,7 @@ Reiterated here so contributors don't accidentally expand v1.0:
 
 | Tag    | Phase | Status                   | Evidence |
 |--------|-------|--------------------------|----------|
-| `v0.1` | P0    | implementation in review | Local Debug + Release builds and passthrough tests pass; CI / 24-hour green / tag remain the release gate. |
+| `v0.1` | P0    | implementation in review | Local Debug + Release builds and passthrough tests pass; PR CI is green; `main` 24-hour green / tag remain the release gate. |
 | `v0.2` | P1    | planned                  | Starts after `v0.1` is tagged. |
 | `v0.3` | P2    | planned                  | Starts after `v0.2` is tagged. |
 | `v0.4` | P3    | planned                  | Starts after `v0.3` is tagged. |
