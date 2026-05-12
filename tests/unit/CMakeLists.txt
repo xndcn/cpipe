@@ -1,4 +1,5 @@
 find_package(Catch2 CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 function(cpipe_add_unit_test target)
     add_executable(${target} ${ARGN})
@@ -46,3 +47,21 @@ target_link_libraries(
 )
 cpipe_configure_target(test_halide_adapter)
 add_test(NAME test_halide_adapter COMMAND test_halide_adapter)
+
+add_executable(test_passthrough_node test_passthrough_node.cpp)
+target_link_libraries(
+    test_passthrough_node
+    PRIVATE
+        Catch2::Catch2WithMain
+        cpipe-runtime
+        "$<LINK_LIBRARY:WHOLE_ARCHIVE,cpipe-builtin-nodes>"
+        nlohmann_json::nlohmann_json
+        passthrough_copy
+)
+target_compile_definitions(
+    test_passthrough_node
+    PRIVATE
+        CPIPE_PASSTHROUGH_MANIFEST_PATH="${PROJECT_SOURCE_DIR}/src/cpipe/nodes/passthrough.json"
+)
+cpipe_configure_target(test_passthrough_node)
+add_test(NAME test_passthrough_node COMMAND test_passthrough_node)

@@ -44,5 +44,6 @@ function(cpipe_provide_halide)
 endfunction()
 
 function(cpipe_add_halide_library target)
-    message(FATAL_ERROR "cpipe_add_halide_library is wired in T5 when the passthrough generator lands")
+    cpipe_provide_halide()
+    add_halide_library(${target} ${ARGN})
 endfunction()

@@ -11,3 +11,12 @@ repos:
     hooks:
       - id: clang-format
         types_or: [c++, c]
+  - repo: local
+    hooks:
+      - id: ajv-node-manifests
+        name: ajv node manifests
+        language: node
+        additional_dependencies:
+          - ajv-cli@5.0.0
+        entry: ajv validate --spec=draft2020 -s schemas/node-v0.1.json -d
+        files: ^src/cpipe/nodes/.*\.json$

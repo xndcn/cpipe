@@ -82,6 +82,8 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-30 | Halide FetchContent artifact                     | T4 consumes the official Halide v21.0.0 Linux x86_64 binary archive via `FetchContent` with a SHA-256 pin. Building Halide from source and cross-platform archive selection are deferred until a non-Linux P0 target exists.            |
 | PD-31 | P0 opaque buffer handle representation           | Runtime-owned `cpipe_buffer_t*` values are opaque casts of `cpipe::compute::IBuffer*` in P0. External `.so` plugin handles, sandbox handles, and cross-process buffer identity remain out of v1 scope.                                  |
 | PD-32 | TaskFlow worker-count floor                      | The process executor uses `std::thread::hardware_concurrency() - 1` on normal hosts, floored to one worker when the value is unknown or one so the Halide custom `do_par_for` hook always has an executor.                              |
+| PD-33 | P0 Halide CPU target string                      | P0's CPU-only Halide AOT generators use explicit `x86-64-linux` targets instead of `host` so generated objects do not capture runner-specific CPU features and fail with `SIGILL` on a different CI runner. Vulkan / Hexagon remain P1+. |
+| PD-34 | Built-in node static-link retention              | Executables and tests that need linker-section built-in node descriptors link `cpipe-builtin-nodes` with CMake's `WHOLE_ARCHIVE` link feature so registration-only translation units are not discarded by the static linker.              |
 
 ---
 
@@ -311,14 +313,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the Halide generator `passthrough_copy` (CPU target only — Vulkan target reserved for P1), wire `add_halide_library()` to compile it into a static archive, write `nodes/passthrough.cpp` (the C++ `Passthrough` class), `nodes/passthrough.json` (manifest), and the `EmbedJson.cmake` step that turns the JSON into a `.cpp` literal per [`plugin-sdk.md` §7.2](plugin-sdk.md#72-embedding-in-the-binary). Register via `CPIPE_REGISTER_NODE`.
 
 **Acceptance criteria:**
-- [ ] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
-- [ ] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
-- [ ] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
-- [ ] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
+- [x] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
+- [x] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
+- [x] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
+- [x] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_node` green.
-- [ ] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
+- [x] `ctest -R test_passthrough_node` green.
+- [x] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
 
 **Dependencies:** T4.
 
@@ -398,7 +400,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 These are P0 implementation specifics that do not warrant a new locked decision but are worth pinning so T1–T7 stay coherent.
 
 - **Linker-section three-platform compatibility (PD-15, [`plugin-sdk.md` §5.3](plugin-sdk.md#53-three-platform-compatibility))**: P0 only ships the Linux ELF variant (`__attribute__((section("cpipe_registry")))` + `__start_/__stop_cpipe_registry`). The `section.hpp` header guards the macOS Mach-O and Windows COFF branches behind `#ifdef`s but does not compile them in P0. v1.1 turns on macOS; Windows is not v1 ([RD-12-cross-ref Q12 resolved no](roadmap.md#1-decision-quick-reference)).
-- **Halide AOT generator stub**: `passthrough_copy_generator.cpp` is a one-class Halide generator that reads one `Buffer<uint8_t>` and writes a copy. The generator is built at configure time by `add_halide_library()`; the runtime mmaps the resulting `.o`. P0 uses CPU target only; Vulkan target is enabled by `cmake -DCPIPE_ENABLE_HALIDE_VULKAN=ON` in P1.
+- **Halide AOT generator stub**: `passthrough_copy_generator.cpp` is a one-class Halide generator that reads one `Buffer<uint8_t>` and writes a copy. The generator is built by `add_halide_library()` and statically linked into the consumer executable. P0 uses explicit `x86-64-linux` CPU targets only; Vulkan target wiring starts in P1.
 - **`halide_buffer_t` adapter**: `runtime/HalideBufferAdapter.cpp` constructs a `halide_buffer_t` from a `CpuBuffer` (host pointer + dims + strides + element type). The adapter is host-only and is **not** exposed to plugins (PD-15 / B5 / P14).
 - **`ComputeContext::submit_halide` resolution**: P0 maintains a string-keyed `std::unordered_map<std::string, halide_filter_entry_t*>` populated at startup with each Halide AOT symbol the runtime knows about. P1 expands this with device variants and a precision planner.
 - **Pipeline JSON schema scope**: `schemas/pipeline-v0.1.json` validates `{$schema, version, id, nodes[{id,type,params}], edges[{from,to}]}` and rejects unknown fields. JSON Schema 2020-12 dialect; consumed by both the host (`nlohmann/json-schema-validator`) and (in P3) the Editor (`Ajv`).
@@ -422,7 +424,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 | 7 | `test_pipeline_load`                  | unit        | valid pipeline loads; invalid (unknown type, dangling edge, missing port) rejected with clear error                 |
 | 8 | `test_scheduler_topo`                 | unit        | topological order honoured; cycle rejected at load                                                                  |
 | 9 | `test_halide_adapter`                 | unit        | `CpuBuffer` → `halide_buffer_t` adapter produces correct dims/strides; output matches reference                     |
-| 10 | `test_passthrough_node`              | unit        | `Passthrough::process()` produces byte-identical output for a 16×16 gradient                                        |
+| 10 | `test_passthrough_node`              | unit        | passthrough descriptor / embedded manifest are registered; `Passthrough::process()` produces byte-identical output for a 16×16 gradient |
 | 11 | `test_abi_c_compile` (`.c` TU)       | unit        | `cpipe_node.h` compiles cleanly as C99 (no C++-only constructs)                                                     |
 | 12 | `test_passthrough_end_to_end`        | integration | registry → load → scheduler → submit_halide → output; ASAN+UBSAN clean; bytes match                                 |
 
