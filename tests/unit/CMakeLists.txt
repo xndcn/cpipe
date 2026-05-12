@@ -12,3 +12,18 @@ cpipe_add_unit_test(test_registry test_registry.cpp test_cpipe_node_c_abi.c)
 target_link_libraries(test_registry PRIVATE cpipe-runtime cpipe-sdk test_registry_node)
 set_property(TARGET test_registry PROPERTY C_STANDARD 99)
 set_property(TARGET test_registry PROPERTY C_STANDARD_REQUIRED ON)
+
+cpipe_add_unit_test(test_scheduler_topo test_scheduler_topo.cpp)
+target_link_libraries(test_scheduler_topo PRIVATE cpipe-runtime)
+
+add_halide_generator(test_passthrough_copy_generator SOURCES test_passthrough_copy_generator.cpp)
+add_halide_library(
+    test_passthrough_copy
+    FROM test_passthrough_copy_generator
+    GENERATOR passthrough_copy
+    FUNCTION_NAME passthrough_copy
+    USE_RUNTIME cpipe-halide-runtime
+    TARGETS host)
+
+cpipe_add_unit_test(test_halide_adapter test_halide_adapter.cpp)
+target_link_libraries(test_halide_adapter PRIVATE cpipe-runtime test_passthrough_copy)

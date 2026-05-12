@@ -266,10 +266,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint A — after T1–T3
 
-- [ ] All three tasks merged; `main` is green.
-- [ ] Repo compiles end-to-end on the CI matrix.
-- [ ] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
-- [ ] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
+- [x] All three tasks merged; `main` is green.
+- [x] Repo compiles end-to-end on the CI matrix.
+- [x] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
+- [x] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
 
 ---
 
@@ -278,14 +278,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the minimum `cpipe-runtime` needed to dispatch one node: a TaskFlow `Executor` (sized to `std::thread::hardware_concurrency() - 1` per [`architecture.md` §4](architecture.md#4-process-and-thread-model)), a `Scheduler` that walks the topo order serially (PD-20), a `ComputeContext` whose `submit_halide` host-side adapts `cpipe_buffer_t*` → `halide_buffer_t*` per [`plugin-sdk.md` §9.1](plugin-sdk.md#91-halide-aot), and an `InferenceContext` returning `CPIPE_UNSUPPORTED`.
 
 **Acceptance criteria:**
-- [ ] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
-- [ ] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
-- [ ] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
-- [ ] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
+- [x] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
+- [x] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
+- [x] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_scheduler_topo` green.
-- [ ] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
+- [x] `ctest -R test_scheduler_topo` green.
+- [x] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
 
 **Dependencies:** T3.
 
