@@ -83,6 +83,21 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 
 The 17 numbered chapters under [`docs/research/`](docs/research/) carry the evidence behind each recommendation.
 
+## Developer Bootstrap
+
+Phase 0 uses CMake presets, vcpkg manifest mode, and Python `pre-commit`:
+
+```bash
+export VCPKG_ROOT="${VCPKG_ROOT:-$HOME/vcpkg}"
+pre-commit install
+cmake --preset linux-debug
+cmake --build --preset linux-debug
+ctest --preset ci
+pre-commit run --all-files
+```
+
+The first configure can take longer while vcpkg builds the pinned dependency set.
+
 ## License
 
 cpipe is licensed under the Apache License, Version 2.0. See [`LICENSE`](LICENSE).

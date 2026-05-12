@@ -179,14 +179,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Initialize the public GitHub repo, write the top-level CMake / vcpkg / preset files, drop in tooling configs, scaffold the six empty targets, and stand up GitHub Actions.
 
 **Acceptance criteria:**
-- [ ] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
-- [ ] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
-- [ ] `pre-commit run --all-files` passes.
-- [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
+- [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
+- [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces the six P0 CMake targets (four empty static libs, the header-only SDK target, and one empty CLI binary).
+- [x] `pre-commit run --all-files` passes.
+- [x] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
-- [ ] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
-- [ ] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
+- [x] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
+- [x] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
 
 **Dependencies:** None.
 
@@ -393,6 +393,7 @@ These are P0 implementation specifics that do not warrant a new locked decision 
 - **`ComputeContext::submit_halide` resolution**: P0 maintains a string-keyed `std::unordered_map<std::string, halide_filter_entry_t*>` populated at startup with each Halide AOT symbol the runtime knows about. P1 expands this with device variants and a precision planner.
 - **Pipeline JSON schema scope**: `schemas/pipeline-v0.1.json` validates `{$schema, version, id, nodes[{id,type,params}], edges[{from,to}]}` and rejects unknown fields. JSON Schema 2020-12 dialect; consumed by both the host (`nlohmann/json-schema-validator`) and (in P3) the Editor (`Ajv`).
 - **Compiler options helper**: `cmake/CompilerOptions.cmake` defines a `cpipe_target_warning_flags(<target>)` function. Every target in the project calls it; this localises the warning policy and avoids per-CMakeLists.txt drift.
+- **T1 target shape clarification**: T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is a header-only CMake target, not a static archive. The T1 build therefore emits four static archives (`cpipe-core`, `cpipe-runtime`, `cpipe-builtin-nodes`, `cpipe-server`), one `cpipe-sdk` interface target, and the `cpipe` CLI binary.
 
 ---
 

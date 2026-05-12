@@ -1,0 +1,14 @@
+/build/
+/.cache/
+/.vscode/
+/.idea/
+/.ninja_*
+/CMakeUserPresets.json
+compile_commands.json
+*.o
+*.a
+*.so
+*.dylib
+*.dll
+*.exe
+*.out
