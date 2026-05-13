@@ -1,0 +1,47 @@
+ocio_profile_version: 2
+name: cpipe-v0.1
+description: Minimal cpipe Phase 1 Rec.2020 scene-linear to sRGB SDR config.
+search_path:
+environment: {}
+family_separator: /
+
+roles:
+  raw_camera: cpipe_raw_camera
+  scene_linear: cpipe_scene_linear_rec2020
+  scene_linear_rec2020: cpipe_scene_linear_rec2020
+  output_srgb: cpipe_output_srgb
+  default: cpipe_output_srgb
+  data: cpipe_raw_camera
+
+file_rules:
+  - !<Rule> {name: ColorSpaceNamePathSearch}
+  - !<Rule> {name: Default, colorspace: default}
+
+colorspaces:
+  - !<ColorSpace>
+    name: cpipe_raw_camera
+    family: cpipe
+    isdata: false
+    encoding: scene-linear
+
+  - !<ColorSpace>
+    name: cpipe_scene_linear_rec2020
+    family: cpipe
+    isdata: false
+    encoding: scene-linear
+
+  - !<ColorSpace>
+    name: cpipe_output_srgb
+    family: cpipe
+    isdata: false
+    encoding: sdr-video
+    from_scene_reference: !<GroupTransform>
+      children:
+        - !<MatrixTransform> {matrix: [1.6604910, -0.5876411, -0.0728499, 0, -0.1245505, 1.1328999, -0.0083494, 0, -0.0181508, -0.1005789, 1.1187297, 0, 0, 0, 0, 1]}
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055, direction: inverse}
+        - !<RangeTransform> {min_in_value: 0, max_in_value: 1, min_out_value: 0, max_out_value: 1}
+    to_scene_reference: !<GroupTransform>
+      children:
+        - !<RangeTransform> {min_in_value: 0, max_in_value: 1, min_out_value: 0, max_out_value: 1}
+        - !<ExponentWithLinearTransform> {gamma: 2.4, offset: 0.055}
+        - !<MatrixTransform> {matrix: [0.6274040, 0.3292820, 0.0433136, 0, 0.0690970, 0.9195400, 0.0113612, 0, 0.0163916, 0.0880132, 0.8955950, 0, 0, 0, 0, 1]}

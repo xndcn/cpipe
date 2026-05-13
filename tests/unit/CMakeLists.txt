@@ -110,6 +110,22 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_output_heif_sdr test_output_heif_sdr.cpp)
+add_dependencies(test_output_heif_sdr cpipe)
+target_compile_definitions(
+    test_output_heif_sdr
+    PRIVATE
+        CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>"
+)
+target_link_libraries(
+    test_output_heif_sdr
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_pipeline_load test_pipeline_load.cpp)
 target_compile_definitions(test_pipeline_load PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(test_pipeline_load PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)

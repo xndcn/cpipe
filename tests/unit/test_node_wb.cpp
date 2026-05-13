@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include "color_node_fixture.hpp"
-
 #include <catch2/catch_approx.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <nlohmann/json.hpp>
 #include <string>
+
+#include "color_node_fixture.hpp"
 
 void cpipe_link_builtin_wb_dual_illuminant();
 
@@ -29,18 +29,18 @@ TEST_CASE("wb.dual_illuminant applies inverse AsShotNeutral gains") {
     metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic"};
     metadata->capture.as_shot_neutral = {0.5F, 1.0F, 0.25F};
 
-    auto input = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(2, 1),
-        cpipe::tests::BufferUsage::Input | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+    auto input = std::make_shared<cpipe::tests::CpuBuffer>(cpipe::tests::rgba16_layout(2, 1),
+                                                           cpipe::tests::BufferUsage::Input |
+                                                               cpipe::tests::BufferUsage::CpuRead |
+                                                               cpipe::tests::BufferUsage::CpuWrite);
     input->set_metadata(metadata);
-    cpipe::tests::write_rgba16(*input, {{{0.125F, 0.25F, 0.0625F, 0.5F},
-                                         {0.25F, 0.5F, 0.125F, 1.0F}}});
+    cpipe::tests::write_rgba16(*input,
+                               {{{0.125F, 0.25F, 0.0625F, 0.5F}, {0.25F, 0.5F, 0.125F, 1.0F}}});
 
     auto output = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(2, 1),
-        cpipe::tests::BufferUsage::Output | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+        cpipe::tests::rgba16_layout(2, 1), cpipe::tests::BufferUsage::Output |
+                                               cpipe::tests::BufferUsage::CpuRead |
+                                               cpipe::tests::BufferUsage::CpuWrite);
 
     REQUIRE(cpipe::tests::process_single_input_node(*desc, input, output) == CPIPE_OK);
 

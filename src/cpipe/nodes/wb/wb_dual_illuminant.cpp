@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include "../detail/Float16.hpp"
-
+#include <cmath>
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-#include <cmath>
 #include <cstdint>
 #include <span>
+
+#include "../detail/Float16.hpp"
 
 namespace cpipe::nodes {
 namespace {
@@ -70,8 +70,7 @@ public:
         }
         for (const auto neutral : capture->as_shot_neutral) {
             if (!std::isfinite(neutral) || neutral <= 0.0F) {
-                return tl::unexpected(
-                    sdk::Error{CPIPE_NEED_METADATA, "wb invalid AsShotNeutral"});
+                return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "wb invalid AsShotNeutral"});
             }
         }
 
@@ -91,15 +90,12 @@ public:
             static_cast<std::size_t>((*dims)[0]) * static_cast<std::size_t>((*dims)[1]);
         for (std::size_t i = 0; i < pixel_count; ++i) {
             const auto base = i * 4U;
-            out[base + 0U] =
-                detail::float_to_half(detail::half_to_float(in[base + 0U]) /
-                                      capture->as_shot_neutral[0]);
-            out[base + 1U] =
-                detail::float_to_half(detail::half_to_float(in[base + 1U]) /
-                                      capture->as_shot_neutral[1]);
-            out[base + 2U] =
-                detail::float_to_half(detail::half_to_float(in[base + 2U]) /
-                                      capture->as_shot_neutral[2]);
+            out[base + 0U] = detail::float_to_half(detail::half_to_float(in[base + 0U]) /
+                                                   capture->as_shot_neutral[0]);
+            out[base + 1U] = detail::float_to_half(detail::half_to_float(in[base + 1U]) /
+                                                   capture->as_shot_neutral[1]);
+            out[base + 2U] = detail::float_to_half(detail::half_to_float(in[base + 2U]) /
+                                                   capture->as_shot_neutral[2]);
             out[base + 3U] = in[base + 3U];
         }
 

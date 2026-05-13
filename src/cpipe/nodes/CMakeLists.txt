@@ -120,6 +120,18 @@ add_custom_command(
             "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(output_heif_sdr_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/output_heif_sdr_manifest.cpp")
+add_custom_command(
+    OUTPUT "${output_heif_sdr_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/output/heif_sdr.json"
+        -DOUTPUT_CPP="${output_heif_sdr_manifest_cpp}"
+        -DSYMBOL_NAME=OUTPUT_HEIF_SDR_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS output/heif_sdr.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 add_library(
     cpipe-builtin-nodes
     STATIC
@@ -130,6 +142,7 @@ add_library(
         demosaic/demosaic_bilinear.cpp
         wb/wb_dual_illuminant.cpp
         colormatrix/colormatrix_dng_to_working.cpp
+        output/heif_sdr.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"
         "${linearize_dng_lut_manifest_cpp}"
@@ -137,14 +150,22 @@ add_library(
         "${demosaic_bilinear_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
+        "${output_heif_sdr_manifest_cpp}"
 )
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
 
 cpipe_target_warning_flags(cpipe-builtin-nodes)
 
+target_compile_definitions(
+    cpipe-builtin-nodes
+    PRIVATE
+        CPIPE_DEFAULT_OCIO_CONFIG="${PROJECT_SOURCE_DIR}/share/cpipe/ocio/v0.1/config.ocio"
+)
+
 target_link_libraries(
     cpipe-builtin-nodes
     PUBLIC
+        cpipe::color
         cpipe::sdk
         cpipe::runtime
         passthrough_copy

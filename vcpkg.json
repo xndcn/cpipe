@@ -15,7 +15,10 @@
     "lcms",
     {
       "name": "libheif",
-      "default-features": false
+      "default-features": false,
+      "features": [
+        "kvazaar"
+      ]
     },
     "libde265",
     "vulkan-memory-allocator",

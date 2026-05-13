@@ -22,6 +22,7 @@ set(CMAKE_C_EXTENSIONS OFF)
 
 add_subdirectory(src/cpipe/core)
 add_subdirectory(src/cpipe/sdk)
+add_subdirectory(src/cpipe/color)
 add_subdirectory(src/cpipe/runtime)
 add_subdirectory(src/cpipe/nodes)
 add_subdirectory(src/cpipe/server)

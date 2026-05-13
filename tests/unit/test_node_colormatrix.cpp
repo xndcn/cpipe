@@ -1,18 +1,18 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include "color_node_fixture.hpp"
-
+#include <array>
 #include <catch2/catch_approx.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-#include <array>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
 #include <string>
+
+#include "color_node_fixture.hpp"
 
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_demosaic_bilinear();
@@ -49,12 +49,12 @@ constexpr char kRec2020ProducerManifest[] = R"({
 })";
 
 constexpr std::array<float, 9> kD50ToD65{
-    0.9555766F, -0.0230393F, 0.0631636F, -0.0282895F, 1.0099416F,
+    0.9555766F, -0.0230393F, 0.0631636F,  -0.0282895F, 1.0099416F,
     0.0210077F, 0.0122982F,  -0.0204830F, 1.3299098F,
 };
 
 constexpr std::array<float, 9> kXyzD65ToRec2020{
-    1.7166512F,  -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
+    1.7166512F, -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
     0.0157685F, 0.0176399F,  -0.0427706F, 0.9421031F,
 };
 
@@ -118,26 +118,25 @@ TEST_CASE("colormatrix.dng_to_working maps camera RGB to linear Rec.2020 D65") {
     REQUIRE(manifest.at("color").at("output_role") == "scene_linear_rec2020");
 
     auto calibration = std::make_shared<cpipe::compute::CalibrationBlock>();
-    calibration->color_matrix1 = cpipe::tests::Matrix3{{2.0F, 0.0F, 0.0F, 0.0F, 4.0F, 0.0F,
-                                                        0.0F, 0.0F, 0.5F}};
+    calibration->color_matrix1 =
+        cpipe::tests::Matrix3{{2.0F, 0.0F, 0.0F, 0.0F, 4.0F, 0.0F, 0.0F, 0.0F, 0.5F}};
 
     auto metadata = std::make_shared<cpipe::tests::BufferMetadata>();
     metadata->calibration = calibration;
     metadata->cs_role = "raw_camera";
-    metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic",
-                               "white_balance"};
+    metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic", "white_balance"};
 
-    auto input = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(1, 1),
-        cpipe::tests::BufferUsage::Input | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+    auto input = std::make_shared<cpipe::tests::CpuBuffer>(cpipe::tests::rgba16_layout(1, 1),
+                                                           cpipe::tests::BufferUsage::Input |
+                                                               cpipe::tests::BufferUsage::CpuRead |
+                                                               cpipe::tests::BufferUsage::CpuWrite);
     input->set_metadata(metadata);
     cpipe::tests::write_rgba16(*input, {{{0.5F, 0.25F, 0.125F, 0.75F}}});
 
     auto output = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(1, 1),
-        cpipe::tests::BufferUsage::Output | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+        cpipe::tests::rgba16_layout(1, 1), cpipe::tests::BufferUsage::Output |
+                                               cpipe::tests::BufferUsage::CpuRead |
+                                               cpipe::tests::BufferUsage::CpuWrite);
 
     REQUIRE(cpipe::tests::process_single_input_node(*desc, input, output) == CPIPE_OK);
 
@@ -165,23 +164,23 @@ TEST_CASE("colormatrix.dng_to_working rejects non raw_camera inputs at process t
     REQUIRE(desc != nullptr);
 
     auto calibration = std::make_shared<cpipe::compute::CalibrationBlock>();
-    calibration->color_matrix1 = cpipe::tests::Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F,
-                                                        0.0F, 0.0F, 1.0F}};
+    calibration->color_matrix1 =
+        cpipe::tests::Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
     auto metadata = std::make_shared<cpipe::tests::BufferMetadata>();
     metadata->calibration = calibration;
     metadata->cs_role = "scene_linear_rec2020";
     metadata->applied_steps = {"white_balance"};
 
-    auto input = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(1, 1),
-        cpipe::tests::BufferUsage::Input | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+    auto input = std::make_shared<cpipe::tests::CpuBuffer>(cpipe::tests::rgba16_layout(1, 1),
+                                                           cpipe::tests::BufferUsage::Input |
+                                                               cpipe::tests::BufferUsage::CpuRead |
+                                                               cpipe::tests::BufferUsage::CpuWrite);
     input->set_metadata(metadata);
     cpipe::tests::write_rgba16(*input, {{{1.0F, 1.0F, 1.0F, 1.0F}}});
     auto output = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(1, 1),
-        cpipe::tests::BufferUsage::Output | cpipe::tests::BufferUsage::CpuRead |
-            cpipe::tests::BufferUsage::CpuWrite);
+        cpipe::tests::rgba16_layout(1, 1), cpipe::tests::BufferUsage::Output |
+                                               cpipe::tests::BufferUsage::CpuRead |
+                                               cpipe::tests::BufferUsage::CpuWrite);
 
     REQUIRE(cpipe::tests::process_single_input_node(*desc, input, output) == CPIPE_NEED_METADATA);
 }

@@ -9,6 +9,7 @@
 #include <string>
 
 void cpipe_link_builtin_passthrough();
+void cpipe_link_builtin_output_heif_sdr();
 
 int main(int argc, char** argv) {
     CLI::App app{"cpipe"};
@@ -27,6 +28,7 @@ int main(int argc, char** argv) {
 
     if (*run) {
         cpipe_link_builtin_passthrough();
+        cpipe_link_builtin_output_heif_sdr();
 
         cpipe::runtime::Registry registry;
         registry.load_builtin_nodes();

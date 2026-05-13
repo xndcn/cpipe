@@ -3,6 +3,9 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/BufferMetadata.hpp>
 #include <cpipe/core/BufferUsage.hpp>
@@ -11,8 +14,6 @@
 #include <cpipe/runtime/BufferHandle.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
-#include <cpipe/sdk/cpipe_node.h>
-#include <array>
 #include <cstdint>
 #include <cstring>
 #include <memory>
@@ -102,9 +103,9 @@ inline cpipe_status_t process_single_input_node(const cpipe_plugin_desc_t& desc,
         .out_metadata = out_metadata,
     };
 
-    const auto status = static_cast<cpipe_status_t>(desc.main_entry(
-        CPIPE_ACTION_PROCESS, host_context.host(), reinterpret_cast<cpipe_node_t*>(instance),
-        nullptr, &process, nullptr));
+    const auto status = static_cast<cpipe_status_t>(
+        desc.main_entry(CPIPE_ACTION_PROCESS, host_context.host(),
+                        reinterpret_cast<cpipe_node_t*>(instance), nullptr, &process, nullptr));
     output->set_metadata(cpipe::runtime::freeze_metadata_builder(builder.get()));
     REQUIRE(desc.main_entry(CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance,
                             nullptr) == CPIPE_OK);

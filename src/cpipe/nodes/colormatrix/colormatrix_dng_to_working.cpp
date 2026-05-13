@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include "../detail/Float16.hpp"
-
+#include <array>
+#include <cmath>
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-#include <array>
-#include <cmath>
 #include <cstdint>
 #include <span>
+
+#include "../detail/Float16.hpp"
 
 namespace cpipe::nodes {
 namespace {
 
 constexpr std::array<float, 9> kD50ToD65{
-    0.9555766F, -0.0230393F, 0.0631636F, -0.0282895F, 1.0099416F,
+    0.9555766F, -0.0230393F, 0.0631636F,  -0.0282895F, 1.0099416F,
     0.0210077F, 0.0122982F,  -0.0204830F, 1.3299098F,
 };
 
 constexpr std::array<float, 9> kXyzD65ToRec2020{
-    1.7166512F,  -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
+    1.7166512F, -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
     0.0157685F, 0.0176399F,  -0.0427706F, 0.9421031F,
 };
 
@@ -33,8 +33,7 @@ sdk::Result<std::vector<std::uint32_t>> checked_rgba16_image(const sdk::Buffer& 
     }
     if (*input_format != static_cast<int>(compute::PixelFormat::R16G16B16A16_SFLOAT) ||
         *output_format != static_cast<int>(compute::PixelFormat::R16G16B16A16_SFLOAT)) {
-        return tl::unexpected(
-            sdk::Error{CPIPE_BAD_PRECISION, "colormatrix format mismatch"});
+        return tl::unexpected(sdk::Error{CPIPE_BAD_PRECISION, "colormatrix format mismatch"});
     }
 
     const auto dims = input.dims();
@@ -68,22 +67,17 @@ std::array<float, 3> mul3(const std::array<float, 9>& matrix, const std::array<f
 }
 
 std::optional<std::array<float, 9>> inverse3(const std::array<float, 9>& m) {
-    const auto det = m[0] * (m[4] * m[8] - m[5] * m[7]) -
-                     m[1] * (m[3] * m[8] - m[5] * m[6]) +
+    const auto det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) +
                      m[2] * (m[3] * m[7] - m[4] * m[6]);
     if (!std::isfinite(det) || std::abs(det) < 1.0e-8F) {
         return std::nullopt;
     }
     const auto inv_det = 1.0F / det;
     return std::array<float, 9>{
-        (m[4] * m[8] - m[5] * m[7]) * inv_det,
-        (m[2] * m[7] - m[1] * m[8]) * inv_det,
-        (m[1] * m[5] - m[2] * m[4]) * inv_det,
-        (m[5] * m[6] - m[3] * m[8]) * inv_det,
-        (m[0] * m[8] - m[2] * m[6]) * inv_det,
-        (m[2] * m[3] - m[0] * m[5]) * inv_det,
-        (m[3] * m[7] - m[4] * m[6]) * inv_det,
-        (m[1] * m[6] - m[0] * m[7]) * inv_det,
+        (m[4] * m[8] - m[5] * m[7]) * inv_det, (m[2] * m[7] - m[1] * m[8]) * inv_det,
+        (m[1] * m[5] - m[2] * m[4]) * inv_det, (m[5] * m[6] - m[3] * m[8]) * inv_det,
+        (m[0] * m[8] - m[2] * m[6]) * inv_det, (m[2] * m[3] - m[0] * m[5]) * inv_det,
+        (m[3] * m[7] - m[4] * m[6]) * inv_det, (m[1] * m[6] - m[0] * m[7]) * inv_det,
         (m[0] * m[4] - m[1] * m[3]) * inv_det,
     };
 }
@@ -113,8 +107,7 @@ public:
 
         const auto* metadata = inputs[0]->metadata();
         if (metadata == nullptr) {
-            return tl::unexpected(
-                sdk::Error{CPIPE_NEED_METADATA, "colormatrix missing metadata"});
+            return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "colormatrix missing metadata"});
         }
         if (metadata->cs_role() != "raw_camera" || !metadata->has_step("white_balance")) {
             return tl::unexpected(
@@ -176,7 +169,6 @@ public:
 
 extern const char COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON[];
 
-CPIPE_REGISTER_NODE(cpipe::nodes::ColormatrixDngToWorking,
-                    COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON)
+CPIPE_REGISTER_NODE(cpipe::nodes::ColormatrixDngToWorking, COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON)
 
 void cpipe_link_builtin_colormatrix_dng_to_working() {}

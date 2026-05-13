@@ -65,7 +65,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-3  | Git LFS bootstrap                       | P1 turns on Git LFS for `*.exr` and `*.dng`. `.gitattributes` adds the two filters; CI uses `actions/checkout@v4` with `lfs: true`. P2+ extends to `*.heif` / `*.icc` / `*.cube` lazily. |
 | PD-4  | 24-h release bake                       | Continued waiver per P0-PD-37: `v0.2` ships when latest `main` CI is green on the release-candidate commit, plus pushed tag and GitHub Release. |
 | PD-5  | New dependencies                        | `libraw`, `opencolorio`, `lcms`, `libheif`, `libde265`, `vulkan-memory-allocator`, `vulkan-headers`, `vulkan-loader`, `openimageio`, `tracy` from vcpkg. `kvazaar` via `vcpkg/overlay-ports/kvazaar/` (vcpkg lacks the port). Halide stays on FetchContent (carries P0-PD-31). |
-| PD-6  | LGPL link discipline                    | `libheif` and `libde265` linked dynamically to honor the LGPL static-link clause and [`tech.md` §15](tech.md#15-license-posture-cliff-notes). The vcpkg manifest selects `libheif[hevc-decoder=libde265,hevc-encoder=kvazaar]`; CI verifies `ldd` does not list `libx265`. |
+| PD-6  | LGPL link discipline                    | `libheif` and `libde265` linked dynamically to honor the LGPL static-link clause and [`tech.md` §15](tech.md#15-license-posture-cliff-notes). The vcpkg manifest selects `libheif` with `default-features: false` plus the T9 `kvazaar` overlay feature; CI verifies `ldd` does not list `libx265`. |
 | PD-7  | Halide Vulkan target                    | `cmake/HalideHelpers.cmake` enables both `x86-64-linux` (CPU) and `host-vulkan` codegen. P1 nodes default to CPU; only `demosaic.bilinear` registers an additional Vulkan AOT variant. |
 | PD-8  | PSNR computation                        | `OIIO::ImageBufAlgo::compare()` from OpenImageIO 2.5+. Test binaries link OIIO; `cpipe-runtime` does not. |
 | PD-9  | Tracy spans                             | Three spans on the runtime hot path: `Pipeline::run`, `Scheduler::dispatch_node`, `ComputeContext::submit_halide`. `CPIPE_ENABLE_TRACY` defaults `OFF`; spans compile away when off. |
@@ -121,6 +121,8 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-59 | T7 RGGB CFA gate                         | The T7 Halide `demosaic_bilinear` signature remains `(R32 Bayer input, FP16 RGBA output)` to fit the current `submit_halide` ABI. Because CFA pattern scalars cannot yet be passed into Halide AOT, this slice accepts RGGB (`0,1,1,2`) and returns `CPIPE_UNSUPPORTED` for other 2×2 Bayer patterns. Four-pattern support requires either separate AOT variants or a compute-suite parameter extension. |
 | PD-60 | T8 CPU metadata-node implementation      | `wb.dual_illuminant` and `colormatrix.dng_to_working` are implemented as CPU plugin loops for the T8 slice because the current `cpipe_compute_suite_v1::submit_halide` adapter accepts only image input/output buffers and cannot pass `AsShotNeutral` gains or `ColorMatrix1` into an AOT Halide signature. The manifests say `engine: Host`; a later compute-suite parameter-buffer extension can move the same math into AOT Halide without changing node IDs. |
 | PD-61 | Manifest color-role load validation      | `Pipeline::load` now compares producer `color.output_role` to consumer `color.input_role` on every edge, with `any` as the wildcard. Role mismatches fail with `CPIPE_NEED_METADATA`, closing the P1 manifest-enforced working-space gate for `colormatrix.dng_to_working`. |
+| PD-62 | T9 libheif/kvazaar overlay               | P1 carries overlay ports for `libheif` and `libde265` so both LGPL libraries build dynamically under the default `x64-linux` triplet. The overlay adds `libheif[kvazaar]`, maps it to `WITH_KVAZAAR=ON`, forces `WITH_X265=OFF`, and keeps kvazaar linked dynamically through the existing BSD-3 overlay port. |
+| PD-63 | T9 sink path bridge                      | `output.heif_sdr` uses a required string `path` param for the T9 node-test slice because `cpipe_process_ctx` has no host-provided sink path field yet. This is a documented exception to PD-24 until T10 wires the CLI `-o` path through the runtime sink path contract. |
 
 ---
 
@@ -483,13 +485,15 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Implement `com.cpipe.output.heif_sdr`: input `R16G16B16A16_SFLOAT` (Rec.2020 D65) → OCIO `ColorSpaceTransform` → 8-bit sRGB → libheif + kvazaar (preset=medium, 8-bit Main, 4:2:0). Embed sRGB v4 ICC (lcms2) and CICP NCLX `(1, 13, 1)`. Author the bundled `share/cpipe/ocio/v0.1/config.ocio`.
 
 **Acceptance criteria:**
-- [ ] Smoke test produces `out.heif`; `heif-info out.heif` confirms 8-bit Main + sRGB ICC + CICP=(1,13,1).
-- [ ] CI re-decode test (libde265 → EXR via `cpipe::color::HeifReader` test helper) opens the file with no error.
-- [ ] Verifies in Debug that the linkage closure does not include `libx265` (`ldd $cpipe-cli | grep -v x265`).
-- [ ] OCIO `scene_linear_rec2020` ↔ `output_srgb` round-trip on a synthetic gradient is identity within 1 LSB.
+- [x] Smoke test produces `out.heif`; `heif-info out.heif` confirms 8-bit Main + sRGB ICC + CICP=(1,13,1).
+- [x] CI re-decode test (libde265 → EXR via `cpipe::color::HeifReader` test helper) opens the file with no error.
+- [x] Verifies in Debug that the linkage closure does not include `libx265` (`ldd $cpipe-cli | grep -v x265`).
+- [x] OCIO `scene_linear_rec2020` ↔ `output_srgb` round-trip on a synthetic gradient is identity within 1 LSB.
 
 **Verification:**
-- [ ] `ctest -R test_output_heif_sdr` green.
+- [x] `ctest -R test_output_heif_sdr` green.
+
+**Status note.** T9 landed the synthetic unit-test slice. `test_output_heif_sdr` validates the bundled OCIO config round-trip, writes a 64×64 Rec.2020 FP16 gradient through `com.cpipe.output.heif_sdr`, re-opens it with libheif/libde265 via `cpipe::color::HeifReader`, checks ICC + NCLX `(1,13,1)`, and asserts the Debug CLI `ldd` output contains no `x265`. A local `heif-info -d` build from the libheif source tree also showed HEVC `general_profile_idc: 1`, `prof`, `nclx`, and `bits_per_channel: 8,8,8`.
 
 **Dependencies:** T8.
 
@@ -684,7 +688,7 @@ P1 vcpkg additions (PD-5, PD-6):
     {
       "name": "libheif",
       "default-features": false,
-      "features": ["hevc-decoder", "hevc-encoder"]
+      "features": ["kvazaar"]
     },
     "libde265",
     "kvazaar",
