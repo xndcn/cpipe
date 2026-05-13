@@ -190,11 +190,11 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
 - [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces the Phase 0 target skeleton (`cpipe-sdk` is header-only per [`architecture.md` §3](architecture.md#3-native-module-decomposition)).
 - [x] `pre-commit run --all-files` passes.
-- [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
+- [x] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
-- [ ] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
-- [ ] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
+- [x] `gh repo view xndcn/cpipe --json visibility,description,licenseInfo` returns `PUBLIC` + `Apache-2.0`.
+- [x] CI `lint` + `build-debug` + `build-release` jobs all show green badges on the workflow run.
 
 **Dependencies:** None.
 
@@ -270,10 +270,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint A — after T1–T3
 
-- [ ] All three tasks merged; `main` is green.
-- [ ] Repo compiles end-to-end on the CI matrix.
-- [ ] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
-- [ ] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
+- [x] All three tasks merged; `main` is green.
+- [x] Repo compiles end-to-end on the CI matrix.
+- [x] ABI header reachable from anywhere; one registered descriptor visible in the registry walk.
+- [x] Review: any unexpected library pulled into the dependency closure? Any P0 risk surfaced?
 
 ---
 
@@ -368,7 +368,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - [ ] Tag `v0.1` created and pushed.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
+- [x] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
 - [ ] `git tag --list 'v0.1'` returns `v0.1`.
 - [ ] GitHub Releases page shows `v0.1` with auto-generated release notes.
 
@@ -386,7 +386,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 - [ ] DoD verification commands in §10 all pass.
 - [ ] CI matrix has been green for ≥ 24 hours.
-- [ ] No regressions on the 8–12 unit tests or the 1 integration test.
+- [x] No regressions on the 8–12 unit tests or the 1 integration test.
 - [ ] `v0.1` tag is live.
 
 ---
@@ -433,7 +433,7 @@ Per PD-28 plus the slip-absorption posture from [`roadmap.md` §9](roadmap.md#9-
 |-------|--------------------------------------------------------------------------------------------------------------------------------------------|--------|------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | P0-R1 | Halide v21 FetchContent first build is slow (~150 MB source + LLVM dependencies; estimated 5–15 min cold).                                  | Medium | Confirmed  | vcpkg binary cache + ccache (PD-13) absorb subsequent runs. README documents the first-build expectation. CI cold-build budget: ≤ 20 min.                                  |
 | P0-R2 | TaskFlow v4.0.0 header-only uses C++20 `atomic::wait` / `atomic::notify_*`; older libstdc++ / libc++ may lack `_Atomic_wait` primitives.    | Medium | Medium     | CMake checks for `__cpp_lib_atomic_wait >= 201907L`; if absent, fail fast with a clear error pointing at compiler upgrade.                                                  |
-| P0-R3 | `.clang-tidy` initial run produces dozens of warnings against `nlohmann/json` / `spdlog` headers; PD-22 turns 20+ checks on simultaneously. | Low    | High       | `.clang-tidy` config restricts checks to first-party sources via `HeaderFilterRegex: cpipe/`. CI lint job exits non-zero only on first-party findings.                       |
+| P0-R3 | `.clang-tidy` initial run produces dozens of warnings against `nlohmann/json` / `spdlog` headers; PD-22 turns 20+ checks on simultaneously. | Low    | High       | `.clang-tidy` runs production `.cpp` translation units only, filters headers to `include/cpipe` and `src/cpipe`, and baseline-suppresses C ABI / style-only checks per PD-34. |
 
 The roadmap's overall risk register ([Research 00 §7](research/00-summary.md#7-risk-register)) is unchanged by P0; P0 simply does not exercise R1–R15 directly. R12 (TaskFlow + Vulkan integration) is first exercised in P1 when device-plane buffers appear.
 

@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) in progress. APIs unstable; no usable release yet. First runnable build expected at `v0.2`.
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) is on `main` and pending release bake/tag. APIs unstable; no usable release yet.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -50,8 +50,9 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-We're in **Phase 0** (`v0.1`). The repository skeleton and native build targets are
-being brought up task-by-task. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+**Phase 0** (`v0.1`) has landed on `main`: the skeleton builds, tests, and runs the
+passthrough pipeline. The `v0.1` tag is pending the documented CI bake. See
+[`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
 ## Build From Source
 
@@ -80,7 +81,7 @@ cmake --build --preset linux-release-clang -j
 
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
-| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | in progress |
+| `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | main green; tag pending |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | planned     |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
