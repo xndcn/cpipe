@@ -9,15 +9,19 @@
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MemoryPlanner.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
+#include <cpipe/runtime/ParamHandle.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/PrecisionPlanner.hpp>
+#include <cpipe/runtime/Trace.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
 #include <iterator>
+#include <memory>
 #include <nlohmann/json-schema.hpp>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <queue>
 #include <string_view>
 #include <unordered_map>
@@ -25,6 +29,7 @@
 #include <vector>
 
 extern "C" int passthrough_copy(halide_buffer_t* input, halide_buffer_t* output);
+extern "C" int demosaic_bilinear(halide_buffer_t* input, halide_buffer_t* output);
 
 extern const char PIPELINE_SCHEMA_JSON[];
 
@@ -72,6 +77,67 @@ BufferLayout layout_from_json(const nlohmann::json& input) {
     layout.dims[0] = input.value("width", 0U);
     layout.dims[1] = input.value("height", 0U);
     return layout;
+}
+
+std::optional<PixelFormat> manifest_pixel_format(const nlohmann::json& port) {
+    const auto caps = port.find("caps");
+    if (caps == port.end()) {
+        return std::nullopt;
+    }
+    const auto channels = caps->value("channels", std::vector<std::string>{});
+    const auto precision = caps->value("precision", std::vector<std::string>{});
+    if (channels == std::vector<std::string>{"r"} && precision == std::vector<std::string>{"u16"}) {
+        return PixelFormat::R16_UINT;
+    }
+    if (channels == std::vector<std::string>{"r"} && precision == std::vector<std::string>{"f32"}) {
+        return PixelFormat::R32_SFLOAT;
+    }
+    if (channels == std::vector<std::string>{"rgba"} &&
+        precision == std::vector<std::string>{"f16"}) {
+        return PixelFormat::R16G16B16A16_SFLOAT;
+    }
+    if (channels == std::vector<std::string>{"rgba"} &&
+        precision == std::vector<std::string>{"u8"}) {
+        return PixelFormat::R8G8B8A8_UNORM;
+    }
+    return std::nullopt;
+}
+
+std::optional<BufferLayout> output_layout_for_node(const cpipe_plugin_desc_t* desc,
+                                                   const BufferLayout& input, std::string* error) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        set_error(error, "missing node manifest");
+        return std::nullopt;
+    }
+
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    for (const auto& port : manifest.value("ports", nlohmann::json::array())) {
+        if (port.value("kind", "") != "out") {
+            continue;
+        }
+        auto format = manifest_pixel_format(port);
+        if (!format) {
+            set_error(error, "unsupported output port format");
+            return std::nullopt;
+        }
+        BufferLayout layout = input;
+        layout.format = *format;
+        return layout;
+    }
+    return std::nullopt;
+}
+
+bool node_has_output(const cpipe_plugin_desc_t* desc) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        return false;
+    }
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    for (const auto& port : manifest.value("ports", nlohmann::json::array())) {
+        if (port.value("kind", "") == "out") {
+            return true;
+        }
+    }
+    return false;
 }
 
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
@@ -178,7 +244,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
             return CPIPE_BAD_INDEX;
         }
         node_index.emplace(id, nodes.size());
-        nodes.push_back(NodeInstance{.id = id, .descriptor = desc});
+        nodes.push_back(NodeInstance{.id = id, .descriptor = desc, .params = node.at("params")});
         node_descriptors.push_back(desc);
     }
 
@@ -277,6 +343,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     out->layout_ = primary_layout;
     out->nodes_ = std::move(sorted);
     out->sources_.clear();
+    out->registry_ = &registry;
     out->memory_peak_bytes_ = memory_plan.peak_bytes;
     return CPIPE_OK;
 }
@@ -288,25 +355,173 @@ cpipe_status_t Pipeline::set_source(std::string port_name, std::string plugin_id
     if (found == inputs_.end()) {
         return CPIPE_BAD_INDEX;
     }
-    sources_[std::move(port_name)] =
-        SourceBinding{.plugin_id = std::move(plugin_id), .params = std::move(params)};
+    const auto* desc = registry_ == nullptr ? nullptr : registry_->find(plugin_id);
+    if (desc == nullptr) {
+        return CPIPE_BAD_INDEX;
+    }
+    sources_[std::move(port_name)] = SourceBinding{
+        .plugin_id = std::move(plugin_id), .descriptor = desc, .params = std::move(params)};
     return CPIPE_OK;
 }
 
 cpipe_status_t Pipeline::run(std::string* error) const {
+    return run_bound(std::nullopt, error);
+}
+
+cpipe_status_t Pipeline::run_to_file(const std::filesystem::path& output,
+                                     std::string* error) const {
+    return run_bound(output, error);
+}
+
+cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
+                                   std::string* error) const {
+    CPIPE_TRACE_SCOPE("Pipeline::run");
+
     for (const auto& input : inputs_) {
         if (sources_.find(input.name) == sources_.end()) {
             set_error(error, "source not bound for input port: " + input.name);
             return CPIPE_FAILED;
         }
     }
-    set_error(error, "source plugin execution is not implemented until P1 T5");
-    return CPIPE_UNSUPPORTED;
+    if (inputs_.size() != 1) {
+        set_error(error, "only one pipeline input is supported in P1");
+        return CPIPE_UNSUPPORTED;
+    }
+
+    const auto source = sources_.find(inputs_.front().name);
+    if (source == sources_.end() || source->second.descriptor == nullptr) {
+        set_error(error, "source plugin is not bound");
+        return CPIPE_FAILED;
+    }
+
+    ComputeContext compute;
+    compute.register_halide_filter("passthrough_copy", &passthrough_copy);
+    compute.register_halide_filter("demosaic_bilinear", &demosaic_bilinear);
+    HostContext host_context;
+
+    auto source_params = make_param_handle(source->second.params);
+    auto source_output = std::make_shared<CpuBuffer>(
+        inputs_.front().layout, BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    auto source_output_handle = make_buffer_handle(source_output);
+    cpipe_buffer_t* source_outputs[] = {source_output_handle.get()};
+    cpipe_process_ctx source_process{
+        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
+        .inference = nullptr,
+        .inputs = nullptr,
+        .n_in = 0,
+        .outputs = source_outputs,
+        .n_out = 1,
+        .out_metadata = nullptr,
+    };
+
+    void* source_instance = nullptr;
+    auto status = static_cast<cpipe_status_t>(
+        source->second.descriptor->main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr,
+                                              source_params.get(), nullptr, &source_instance));
+    if (status != CPIPE_OK) {
+        set_error(error, "source create failed: " + source->second.plugin_id);
+        return status;
+    }
+    status = static_cast<cpipe_status_t>(source->second.descriptor->main_entry(
+        CPIPE_ACTION_PROCESS, host_context.host(), reinterpret_cast<cpipe_node_t*>(source_instance),
+        source_params.get(), &source_process, nullptr));
+    const auto source_destroy = static_cast<cpipe_status_t>(source->second.descriptor->main_entry(
+        CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, source_instance, nullptr));
+    if (status != CPIPE_OK) {
+        set_error(error, "source process failed: " + source->second.plugin_id);
+        return status;
+    }
+    if (source_destroy != CPIPE_OK) {
+        set_error(error, "source destroy failed: " + source->second.plugin_id);
+        return source_destroy;
+    }
+
+    auto current = buffer_from_handle(source_output_handle.get());
+    if (current == nullptr) {
+        set_error(error, "source produced no buffer");
+        return CPIPE_FAILED;
+    }
+
+    for (const auto& node : nodes_) {
+        auto params_json = node.params;
+        const bool has_output = node_has_output(node.descriptor);
+        if (!has_output && output) {
+            params_json["path"] = output->string();
+        }
+        auto params = make_param_handle(params_json);
+
+        void* instance = nullptr;
+        status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
+            CPIPE_ACTION_CREATE, host_context.host(), nullptr, params.get(), nullptr, &instance));
+        if (status != CPIPE_OK) {
+            set_error(error, "node create failed: " + node.id);
+            return status;
+        }
+
+        auto input_handle = make_buffer_handle(current);
+        const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
+        std::shared_ptr<IBuffer> next;
+        std::unique_ptr<cpipe_buffer_t> output_handle;
+        std::unique_ptr<cpipe_metadata_builder_t> output_metadata_builder;
+        cpipe_buffer_t* process_outputs[] = {nullptr};
+        cpipe_metadata_builder_t* process_out_metadata[] = {nullptr};
+        std::size_t output_count = 0;
+        if (has_output) {
+            const auto output_layout =
+                output_layout_for_node(node.descriptor, current->layout(), error);
+            if (!output_layout) {
+                return CPIPE_FAILED;
+            }
+            next = std::make_shared<CpuBuffer>(
+                *output_layout, BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+            output_handle = make_buffer_handle(next);
+            std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
+                current->metadata()};
+            output_metadata_builder =
+                make_metadata_builder_handle(current->metadata(), std::move(input_metadata));
+            process_outputs[0] = output_handle.get();
+            process_out_metadata[0] = output_metadata_builder.get();
+            output_count = 1;
+        }
+
+        cpipe_process_ctx process{
+            .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
+            .inference = nullptr,
+            .inputs = process_inputs,
+            .n_in = 1,
+            .outputs = has_output ? process_outputs : nullptr,
+            .n_out = output_count,
+            .out_metadata = has_output ? process_out_metadata : nullptr,
+        };
+        status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
+            CPIPE_ACTION_PROCESS, host_context.host(), reinterpret_cast<cpipe_node_t*>(instance),
+            params.get(), &process, nullptr));
+        if (has_output) {
+            next->set_metadata(freeze_metadata_builder(output_metadata_builder.get()));
+        }
+
+        const auto destroy_status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
+            CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance, nullptr));
+        if (status != CPIPE_OK) {
+            set_error(error, "node process failed: " + node.id);
+            return status;
+        }
+        if (destroy_status != CPIPE_OK) {
+            set_error(error, "node destroy failed: " + node.id);
+            return destroy_status;
+        }
+        if (has_output) {
+            current = std::move(next);
+        }
+    }
+    return CPIPE_OK;
 }
 
 cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
                                   const std::filesystem::path& output_path,
                                   std::string* error) const {
+    CPIPE_TRACE_SCOPE("Pipeline::run");
+
     std::ifstream input_file{input_path, std::ios::binary};
     if (!input_file) {
         set_error(error, "failed to open input file");

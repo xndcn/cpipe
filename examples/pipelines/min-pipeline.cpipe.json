@@ -1,0 +1,66 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "version": "0.2",
+  "id": "min-dng-to-heif",
+  "inputs": [
+    {
+      "port": "raw",
+      "kind": "Image2D",
+      "format": "R16_UINT"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "lin",
+      "type": "com.cpipe.linearize.dng_lut",
+      "params": {}
+    },
+    {
+      "id": "bl",
+      "type": "com.cpipe.blacklevel.dng_levels",
+      "params": {}
+    },
+    {
+      "id": "dem",
+      "type": "com.cpipe.demosaic.bilinear",
+      "params": {}
+    },
+    {
+      "id": "wb",
+      "type": "com.cpipe.wb.dual_illuminant",
+      "params": {}
+    },
+    {
+      "id": "cm",
+      "type": "com.cpipe.colormatrix.dng_to_working",
+      "params": {}
+    },
+    {
+      "id": "out",
+      "type": "com.cpipe.output.heif_sdr",
+      "params": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "lin.bayer",
+      "to": "bl.bayer"
+    },
+    {
+      "from": "bl.bayer",
+      "to": "dem.bayer"
+    },
+    {
+      "from": "dem.rgba",
+      "to": "wb.rgb"
+    },
+    {
+      "from": "wb.rgb",
+      "to": "cm.rgb"
+    },
+    {
+      "from": "cm.rgb",
+      "to": "out.rgb"
+    }
+  ]
+}

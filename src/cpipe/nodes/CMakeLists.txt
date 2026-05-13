@@ -135,6 +135,7 @@ add_custom_command(
 add_library(
     cpipe-builtin-nodes
     STATIC
+        builtin_link.cpp
         passthrough.cpp
         dng_input/dng_input.cpp
         linearize/linearize_dng_lut.cpp

@@ -123,6 +123,10 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-61 | Manifest color-role load validation      | `Pipeline::load` now compares producer `color.output_role` to consumer `color.input_role` on every edge, with `any` as the wildcard. Role mismatches fail with `CPIPE_NEED_METADATA`, closing the P1 manifest-enforced working-space gate for `colormatrix.dng_to_working`. |
 | PD-62 | T9 libheif/kvazaar overlay               | P1 carries overlay ports for `libheif` and `libde265` so both LGPL libraries build dynamically under the default `x64-linux` triplet. The overlay adds `libheif[kvazaar]`, maps it to `WITH_KVAZAAR=ON`, forces `WITH_X265=OFF`, and keeps kvazaar linked dynamically through the existing BSD-3 overlay port. |
 | PD-63 | T9 sink path bridge                      | `output.heif_sdr` uses a required string `path` param for the T9 node-test slice because `cpipe_process_ctx` has no host-provided sink path field yet. This is a documented exception to PD-24 until T10 wires the CLI `-o` path through the runtime sink path contract. |
+| PD-64 | T10 runtime sink path contract           | `Pipeline::run_to_file(out)` is the P1 sink-path contract. The CLI binds DNG input with `Pipeline::set_source("raw", "com.cpipe.builtin.dng_input", {"path": input})`, then `run_to_file()` injects `out` into sink node params as `path`. The ABI-level `cpipe_process_ctx` remains unchanged in P1. |
+| PD-65 | T10 min-pipeline runner scope            | The T10 CLI runner supports the P1 min pipeline as a single source-bound, linear topological chain with one buffer flowing through each node and a terminal sink. The existing `Scheduler` diamond test remains the P1 concurrency proof; general multi-edge buffer routing is deferred until a fixture-backed DAG requires it. |
+| PD-66 | T10 fixture-blocked release gates        | `tests/corpus/pixel8pro.dng`, `tests/golden/`, system `heif-info`, CI-on-main, `v0.2`, and GitHub Release evidence are absent in this checkout. T10 may land the synthetic CLI/API smoke, but the real Pixel fixture, PSNR, Tracy-capture, tag, and release boxes stay unchecked until those artifacts exist. |
+| PD-67 | Overlay patch pre-commit exclusion       | `vcpkg/overlay-ports/**/*.patch` and `*.diff` are excluded from whitespace and EOF rewriting hooks because valid unified diffs require leading-space blank context lines. Without the exclusion, `pre-commit run --all-files` corrupts overlay patches and vcpkg cannot apply them. |
 
 ---
 
@@ -532,6 +536,8 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Verification:**
 - [ ] DoD §11 commands all green.
 
+**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. A local `/tmp/heif-info -d` build from libheif also confirmed `general_profile_idc: 1`, `prof`, `nclx`, and `bits_per_channel: 8,8,8` on the synthetic CLI output. The real Pixel 8 Pro fixture, PSNR reference, Tracy capture, tag, and GitHub Release gates remain blocked per PD-66.
+
 **Dependencies:** T9.
 
 **Files likely touched:**
@@ -585,7 +591,7 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 | 25  | `test_node_colormatrix`                    | unit        | 3×3 chain produces Rec.2020 D65 from camera-native input |
 | 26  | `test_output_heif_sdr`                     | unit        | HEIF written; ICC + CICP present; libde265 re-decode succeeds; no libx265 in linkage |
 | 27  | `test_diamond_dag_parallel`                | integration | TaskFlow shows ≥ 2 nodes concurrent on a diamond DAG |
-| 28  | `test_min_pipeline_dng_to_heif`            | integration | end-to-end smoke; PSNR ≥ 37 dB |
+| 28  | `test_min_pipeline_dng_to_heif`            | integration | synthetic DNG → HEIF CLI/API smoke; real Pixel PSNR gate pending |
 
 | Label | Tests                  | Purpose |
 |-------|------------------------|---------|

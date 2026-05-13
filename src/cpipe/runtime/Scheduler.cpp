@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <atomic>
 #include <cpipe/runtime/Scheduler.hpp>
+#include <cpipe/runtime/Trace.hpp>
 #include <thread>
 #include <vector>
 
@@ -62,6 +63,7 @@ cpipe_status_t Scheduler::run(std::span<const ScheduledNode> nodes) {
     if (!has_dependencies) {
         for (const auto& node : nodes) {
             (void)node.id;
+            CPIPE_TRACE_SCOPE("Scheduler::dispatch_node");
             const auto status = node.process();
             if (status != CPIPE_OK) {
                 return status;
@@ -80,6 +82,7 @@ cpipe_status_t Scheduler::run(std::span<const ScheduledNode> nodes) {
             if (first_status.load() != CPIPE_OK) {
                 return;
             }
+            CPIPE_TRACE_SCOPE("Scheduler::dispatch_node");
             const auto status = node.process();
             int expected = CPIPE_OK;
             if (status != CPIPE_OK) {

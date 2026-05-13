@@ -53,9 +53,9 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 **Phase 0** (`v0.1`) is released: the skeleton builds, tests, and runs the
 passthrough pipeline. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
-**Phase 1** (`v0.2` — Walking Skeleton) is in progress: a real Bayer DNG
-through five ISP stages (linearize → blacklevel → demosaic → wb → colormatrix)
-to an SDR HEIF, with one Halide Vulkan AOT path on demosaic. See
+**Phase 1** (`v0.2` — Walking Skeleton) is in progress: the synthetic
+DNG → five-stage ISP → SDR HEIF CLI smoke is in place; the real Pixel 8 Pro
+fixture, golden PSNR gate, release tag, and GitHub Release remain pending. See
 [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md).
 
 ## Build From Source
@@ -86,7 +86,7 @@ cmake --build --preset linux-release-clang -j
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
-| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | in progress |
+| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | in progress; fixture/golden pending |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |

@@ -3,6 +3,7 @@
 
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HalideBufferAdapter.hpp>
+#include <cpipe/runtime/Trace.hpp>
 #include <vector>
 
 namespace cpipe::runtime {
@@ -14,6 +15,8 @@ void ComputeContext::register_halide_filter(std::string aot_id, HalideFilterEntr
 cpipe_status_t ComputeContext::submit_halide(
     std::string_view aot_id, std::span<const std::shared_ptr<compute::IBuffer>> inputs,
     std::span<const std::shared_ptr<compute::IBuffer>> outputs) {
+    CPIPE_TRACE_SCOPE("ComputeContext::submit_halide");
+
     const auto found = halide_filters_.find(std::string{aot_id});
     if (found == halide_filters_.end() || found->second == nullptr) {
         return CPIPE_UNSUPPORTED;

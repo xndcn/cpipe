@@ -109,7 +109,7 @@ Each subsequent section follows the same template:
 
 ## 4. Phase 1 — Walking Skeleton (tag `v0.2`)
 
-**Status.** In progress; tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
+**Status.** In progress; synthetic DNG → SDR HEIF CLI smoke is implemented, but the real Pixel 8 Pro fixture, golden PSNR gate, `v0.2` tag, and GitHub Release remain pending. Tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
 
 **Objective.** A real DNG (Bayer, no Quad Bayer yet) becomes an SDR HEIF through 5 stages of the canonical ISP pipeline on Linux, end-to-end on a developer laptop.
 

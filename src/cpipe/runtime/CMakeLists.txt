@@ -6,6 +6,9 @@ find_package(libraw CONFIG REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
 find_package(VulkanLoader CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+if(CPIPE_ENABLE_TRACY)
+    find_package(Tracy CONFIG REQUIRED)
+endif()
 include(HalideHelpers)
 cpipe_ensure_halide()
 
@@ -49,6 +52,12 @@ add_library(cpipe::runtime ALIAS cpipe-runtime)
 
 cpipe_target_warning_flags(cpipe-runtime)
 
+target_compile_definitions(
+    cpipe-runtime
+    PRIVATE
+        CPIPE_ENABLE_TRACY=$<BOOL:${CPIPE_ENABLE_TRACY}>
+)
+
 target_link_libraries(
     cpipe-runtime
     PUBLIC
@@ -64,3 +73,7 @@ target_link_libraries(
         Vulkan::Loader
         spdlog::spdlog
 )
+
+if(CPIPE_ENABLE_TRACY)
+    target_link_libraries(cpipe-runtime PRIVATE Tracy::TracyClient)
+endif()
