@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
@@ -25,6 +26,10 @@ void cpipe_link_builtin_dng_input();
 void cpipe_link_builtin_passthrough();
 
 namespace {
+
+std::filesystem::path source_path() {
+    return std::filesystem::path{CPIPE_SOURCE_DIR};
+}
 
 cpipe::compute::BufferLayout raw_layout(std::uint32_t width, std::uint32_t height) {
     cpipe::compute::BufferLayout layout{};
@@ -85,6 +90,44 @@ TEST_CASE("DngReader decodes a synthetic Bayer DNG into an R16 buffer with metad
     REQUIRE(metadata->xmp_blob != nullptr);
     REQUIRE(metadata->icc_blob != nullptr);
     REQUIRE(metadata->ext_blobs.contains("com.cpipe.dng.opcode_list_3_bytes"));
+}
+
+TEST_CASE("DngReader decodes the cropped Pixel 8 Pro corpus DNG") {
+    const auto path = source_path() / "tests" / "corpus" / "pixel8pro.dng";
+    REQUIRE(std::filesystem::exists(path));
+
+    const auto read = cpipe::ingest::dng::DngReader::read(path);
+    INFO(read.message);
+    REQUIRE(read.status == CPIPE_OK);
+    REQUIRE(read.buffer != nullptr);
+    REQUIRE(read.buffer->layout().kind == cpipe::compute::BufferKind::Image2D);
+    REQUIRE(read.buffer->layout().format == cpipe::compute::PixelFormat::R16_UINT);
+    REQUIRE(read.buffer->layout().dims[0] == 1920);
+    REQUIRE(read.buffer->layout().dims[1] == 1080);
+
+    const auto metadata = read.buffer->metadata();
+    REQUIRE(metadata != nullptr);
+    REQUIRE(metadata->cs_role == "raw_camera");
+    REQUIRE(metadata->applied_steps.empty());
+    REQUIRE(metadata->calibration != nullptr);
+    REQUIRE(metadata->calibration->cfa.has_value());
+    REQUIRE(metadata->calibration->cfa->pattern == std::array<std::uint8_t, 4>{0, 1, 1, 2});
+    REQUIRE(metadata->calibration->linearization_table.has_value());
+    REQUIRE(metadata->calibration->linearization_table->values.size() == 16369);
+    REQUIRE(metadata->calibration->black_level[0] > 1024.0F);
+    REQUIRE(metadata->calibration->white_level == 16368);
+    REQUIRE(metadata->calibration->color_matrix1.has_value());
+    REQUIRE(metadata->calibration->forward_matrix2.has_value());
+    REQUIRE(metadata->capture.camera_id == "Google");
+    REQUIRE(metadata->capture.physical_camera_id == "Pixel 8 Pro");
+    REQUIRE(metadata->capture.iso == 21);
+    REQUIRE(metadata->capture.exposure_time_ns > 11'000'000);
+    REQUIRE(metadata->capture.as_shot_neutral[0] > 0.0F);
+    REQUIRE(metadata->capture.as_shot_neutral[1] > 0.0F);
+    REQUIRE(metadata->capture.as_shot_neutral[2] > 0.0F);
+    REQUIRE(metadata->active_area.has_value());
+    REQUIRE(metadata->active_area->width == 1920);
+    REQUIRE(metadata->active_area->height == 1080);
 }
 
 TEST_CASE("DngReader rejects non-Bayer DNG input") {

@@ -31,6 +31,7 @@ target_link_libraries(test_metadata_suite PRIVATE cpipe::runtime cpipe::sdk cpip
 cpipe_add_unit_test(test_opcode_list_parser test_opcode_list_parser.cpp)
 target_link_libraries(test_opcode_list_parser PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_dng_reader test_dng_reader.cpp)
+target_compile_definitions(test_dng_reader PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(
     test_dng_reader
     PRIVATE

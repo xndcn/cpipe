@@ -125,8 +125,9 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-63 | T9 sink path bridge                      | `output.heif_sdr` uses a required string `path` param for the T9 node-test slice because `cpipe_process_ctx` has no host-provided sink path field yet. This is a documented exception to PD-24 until T10 wires the CLI `-o` path through the runtime sink path contract. |
 | PD-64 | T10 runtime sink path contract           | `Pipeline::run_to_file(out)` is the P1 sink-path contract. The CLI binds DNG input with `Pipeline::set_source("raw", "com.cpipe.builtin.dng_input", {"path": input})`, then `run_to_file()` injects `out` into sink node params as `path`. The ABI-level `cpipe_process_ctx` remains unchanged in P1. |
 | PD-65 | T10 min-pipeline runner scope            | The T10 CLI runner supports the P1 min pipeline as a single source-bound, linear topological chain with one buffer flowing through each node and a terminal sink. The existing `Scheduler` diamond test remains the P1 concurrency proof; general multi-edge buffer routing is deferred until a fixture-backed DAG requires it. |
-| PD-66 | T10 fixture-blocked release gates        | `tests/corpus/pixel8pro.dng`, `tests/golden/`, system `heif-info`, CI-on-main, `v0.2`, and GitHub Release evidence are absent in this checkout. T10 may land the synthetic CLI/API smoke, but the real Pixel fixture, PSNR, Tracy-capture, tag, and release boxes stay unchecked until those artifacts exist. |
+| PD-66 | T10 fixture-blocked release gates        | At the T10 synthetic-smoke commit, `tests/corpus/pixel8pro.dng`, `tests/golden/`, system `heif-info`, CI-on-main, `v0.2`, and GitHub Release evidence were absent. PD-68 closes the Pixel fixture / real CLI-smoke part; golden PSNR, Tracy-capture, tag, and release boxes stay unchecked until those artifacts exist. |
 | PD-67 | Overlay patch pre-commit exclusion       | `vcpkg/overlay-ports/**/*.patch` and `*.diff` are excluded from whitespace and EOF rewriting hooks because valid unified diffs require leading-space blank context lines. Without the exclusion, `pre-commit run --all-files` corrupts overlay patches and vcpkg cannot apply them. |
+| PD-68 | Pixel 8 Pro fixture provenance           | `tests/corpus/pixel8pro.dng` is a 1920x1080 crop from the raw.pixls.us Pixel 8 Pro CC0 sample dated 2025-04-28. Source SHA-256 is `45420c595401547cca950ae58d552bc82b32d31ce1d58c082df33004016197f5`; derived fixture SHA-256 is `67a966d399b36cbefd9148641e5b154c47af386ac0738f260139b77e1b79a286`; crop is x=8, y=8 from the 8160x6144 2x2 Bayer raw image. The source lacks `LinearizationTable` and `AsShotNeutral`, so the fixture stores an identity LUT and LibRaw `pre_mul`-derived neutral to keep the locked P1 five-node chain executable. Provenance lives in `tests/corpus/pixel8pro.source.md`. |
 
 ---
 
@@ -383,9 +384,17 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 - [ ] Quad Bayer 4×4 DNG fed to DngReader returns `CPIPE_FAILED`; Foveon DNG also rejected.
 
 **Verification:**
-- [ ] `ctest -R test_dng_reader` green.
-- [ ] `ctest -R test_opcode_list_parser` green.
-- [ ] `cpipe run` over the smoke fixture (with later T6–T9 in place) reads metadata and writes a debug log.
+- [x] `ctest -R test_dng_reader` green.
+- [x] `ctest -R test_opcode_list_parser` green.
+- [x] `cpipe run` over the smoke fixture (with later T6–T9 in place) reads metadata and writes a debug log.
+
+**Status note.** The fixture provenance slice added `tests/corpus/pixel8pro.dng`
+via Git LFS, `tests/corpus/pixel8pro.source.md`, a fixture-backed
+`test_dng_reader` case, and a fixture-backed `test_min_pipeline_dng_to_heif`
+CLI decode check. The broad T5 metadata / OpcodeList acceptance boxes remain
+unchecked because the cropped fixture intentionally carries only the P1-required
+calibration needed to run the walking skeleton; per-node golden and PSNR
+reference work remains separate.
 
 **Dependencies:** T1, T3.
 
@@ -527,7 +536,7 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Wire Tracy spans (PD-9). Land `examples/pipelines/min-pipeline.cpipe.json`. Update CLI to detect `*.dng` and bind via `Pipeline::set_source`. Author the integration smoke `tests/integration/test_min_pipeline_dng_to_heif.cpp` (re-decode + PSNR ≥ 37 dB). Update `roadmap.md` and `README.md`. Tag `v0.2`.
 
 **Acceptance criteria:**
-- [ ] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` exits 0; `heif-info` valid.
+- [x] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` exits 0; `heif-info` valid.
 - [ ] `ctest -R test_min_pipeline_dng_to_heif` PSNR ≥ 37 dB.
 - [ ] Tracy capture (`-DCPIPE_ENABLE_TRACY=ON` build) shows the three spans on a smoke run.
 - [ ] `roadmap.md §4` P1 row updated to "shipped"; `README.md` "Current Status" mirrors it; `phase-01-walking-skeleton.md §12` "What Shipped / What Slipped" filled in.
@@ -536,7 +545,7 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Verification:**
 - [ ] DoD §11 commands all green.
 
-**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. A local `/tmp/heif-info -d` build from libheif also confirmed `general_profile_idc: 1`, `prof`, `nclx`, and `bits_per_channel: 8,8,8` on the synthetic CLI output. The real Pixel 8 Pro fixture, PSNR reference, Tracy capture, tag, and GitHub Release gates remain blocked per PD-66.
+**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. PD-68 added the real Pixel 8 Pro fixture path to the same integration test; local `/tmp/heif-info -d /tmp/cpipe_pixel8pro_fixture.heif` confirmed `general_profile_idc: 1`, `prof`, `nclx`, CICP `(1,13,1)`, and `bits_per_channel: 8,8,8` for `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/cpipe_pixel8pro_fixture.heif`. PSNR reference, Tracy capture, tag, and GitHub Release gates remain blocked per PD-66.
 
 **Dependencies:** T9.
 
@@ -591,7 +600,7 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 | 25  | `test_node_colormatrix`                    | unit        | 3×3 chain produces Rec.2020 D65 from camera-native input |
 | 26  | `test_output_heif_sdr`                     | unit        | HEIF written; ICC + CICP present; libde265 re-decode succeeds; no libx265 in linkage |
 | 27  | `test_diamond_dag_parallel`                | integration | TaskFlow shows ≥ 2 nodes concurrent on a diamond DAG |
-| 28  | `test_min_pipeline_dng_to_heif`            | integration | synthetic DNG → HEIF CLI/API smoke; real Pixel PSNR gate pending |
+| 28  | `test_min_pipeline_dng_to_heif`            | integration | synthetic DNG → HEIF CLI/API smoke; Pixel 8 Pro DNG → HEIF CLI decode smoke; real Pixel PSNR gate pending |
 
 | Label | Tests                  | Purpose |
 |-------|------------------------|---------|
