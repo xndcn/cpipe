@@ -12,7 +12,6 @@
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
-
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -44,11 +43,10 @@ public:
     static constexpr const char* ID = "com.cpipe.test.metadata_echo";
     static constexpr const char* VERSION = "1.0.0";
 
-    cpipe::sdk::Result<void> process(cpipe::sdk::ComputeContext&, cpipe::sdk::InferenceContext*,
-                                     const cpipe::sdk::ParamView&,
-                                     std::span<const cpipe::sdk::Buffer*> inputs,
-                                     std::span<cpipe::sdk::Buffer*> outputs,
-                                     std::span<cpipe::sdk::MetadataBuilder*> out_metadata) override {
+    cpipe::sdk::Result<void> process(
+        cpipe::sdk::ComputeContext&, cpipe::sdk::InferenceContext*, const cpipe::sdk::ParamView&,
+        std::span<const cpipe::sdk::Buffer*> inputs, std::span<cpipe::sdk::Buffer*> outputs,
+        std::span<cpipe::sdk::MetadataBuilder*> out_metadata) override {
         (void)outputs;
         if (inputs.empty() || out_metadata.empty()) {
             return tl::unexpected(
@@ -124,10 +122,10 @@ std::filesystem::path write_bad_metadata_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_bad_metadata_steps.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.1.json",
-  "version":"0.1",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "version":"0.2",
   "id":"bad-metadata-steps",
-  "input":{"kind":"Image2D","format":"R8G8B8A8_UNORM","width":4,"height":4},
+  "inputs":[{"port":"raw","kind":"Image2D","format":"R8G8B8A8_UNORM","width":4,"height":4}],
   "nodes":[
     {"id":"producer","type":"com.cpipe.test.metadata_producer","params":{}},
     {"id":"consumer","type":"com.cpipe.test.metadata_consumer","params":{}}

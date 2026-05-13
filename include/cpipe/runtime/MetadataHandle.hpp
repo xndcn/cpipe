@@ -3,11 +3,11 @@
 
 #pragma once
 
+#include <cpipe/sdk/cpipe_node.h>
+
 #include <cpipe/core/BufferMetadata.hpp>
 #include <cpipe/core/IBuffer.hpp>
 #include <cpipe/core/MetadataBuilder.hpp>
-#include <cpipe/sdk/cpipe_node.h>
-
 #include <memory>
 #include <vector>
 

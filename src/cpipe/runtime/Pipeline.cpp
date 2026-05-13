@@ -7,8 +7,10 @@
 #include <cpipe/runtime/BufferHandle.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
+#include <cpipe/runtime/MemoryPlanner.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
+#include <cpipe/runtime/PrecisionPlanner.hpp>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -64,15 +66,20 @@ Endpoint split_endpoint(const std::string& endpoint) {
 BufferLayout layout_from_json(const nlohmann::json& input) {
     BufferLayout layout{};
     layout.kind = BufferKind::Image2D;
-    layout.format = PixelFormat::R8G8B8A8_UNORM;
+    const auto format = input.at("format").get<std::string>();
+    layout.format = format == "R16_UINT" ? PixelFormat::R16_UINT : PixelFormat::R8G8B8A8_UNORM;
     layout.ndim = 2;
-    layout.dims[0] = input.at("width").get<std::uint32_t>();
-    layout.dims[1] = input.at("height").get<std::uint32_t>();
+    layout.dims[0] = input.value("width", 0U);
+    layout.dims[1] = input.value("height", 0U);
     return layout;
 }
 
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
     try {
+        if (document.value("version", "") != "0.2") {
+            set_error(error, "schema version mismatch: expected pipeline version 0.2");
+            return CPIPE_FAILED;
+        }
         nlohmann::json_schema::json_validator validator;
         validator.set_root_schema(nlohmann::json::parse(PIPELINE_SCHEMA_JSON));
         validator.validate(document);
@@ -139,9 +146,11 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     }
 
     std::vector<NodeInstance> nodes;
+    std::vector<const cpipe_plugin_desc_t*> node_descriptors;
     std::unordered_map<std::string, std::size_t> node_index;
     const auto& json_nodes = document.at("nodes");
     nodes.reserve(json_nodes.size());
+    node_descriptors.reserve(json_nodes.size());
     for (const auto& node : json_nodes) {
         const auto id = node.at("id").get<std::string>();
         const auto type = node.at("type").get<std::string>();
@@ -152,11 +161,13 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         }
         node_index.emplace(id, nodes.size());
         nodes.push_back(NodeInstance{.id = id, .descriptor = desc});
+        node_descriptors.push_back(desc);
     }
 
     std::vector<std::vector<std::size_t>> adjacency(nodes.size());
     std::vector<std::size_t> indegree(nodes.size(), 0);
     std::vector<GraphEdge> graph_edges;
+    std::vector<PrecisionEdge> precision_edges;
     for (const auto& edge : document.at("edges")) {
         const auto from_endpoint = split_endpoint(edge.at("from").get<std::string>());
         const auto to_endpoint = split_endpoint(edge.at("to").get<std::string>());
@@ -172,6 +183,10 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
                                         .to = to->second,
                                         .from_port = from_endpoint.port,
                                         .to_port = to_endpoint.port});
+        precision_edges.push_back(PrecisionEdge{.from = nodes[from->second].descriptor,
+                                                .from_port = from_endpoint.port,
+                                                .to = nodes[to->second].descriptor,
+                                                .to_port = to_endpoint.port});
     }
 
     std::queue<std::size_t> ready;
@@ -214,9 +229,53 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         }
     }
 
-    out->layout_ = layout_from_json(document.at("input"));
+    if (const auto status = PrecisionPlanner::validate(precision_edges, error);
+        status != CPIPE_OK) {
+        return status;
+    }
+
+    std::vector<InputPort> inputs;
+    inputs.reserve(document.at("inputs").size());
+    for (const auto& input_json : document.at("inputs")) {
+        inputs.push_back(InputPort{.name = input_json.at("port").get<std::string>(),
+                                   .layout = layout_from_json(input_json)});
+    }
+    const auto primary_layout = inputs.empty() ? BufferLayout{} : inputs.front().layout;
+    const auto memory_plan = MemoryPlanner::plan(primary_layout, node_descriptors);
+    if (memory_plan.peak_bytes > out->device_memory_cap_bytes_) {
+        set_error(error, "memory peak exceeds device cap");
+        return CPIPE_OOM;
+    }
+
+    out->inputs_ = std::move(inputs);
+    out->layout_ = primary_layout;
     out->nodes_ = std::move(sorted);
+    out->sources_.clear();
+    out->memory_peak_bytes_ = memory_plan.peak_bytes;
     return CPIPE_OK;
+}
+
+cpipe_status_t Pipeline::set_source(std::string port_name, std::string plugin_id,
+                                    nlohmann::json params) {
+    const auto found = std::find_if(inputs_.begin(), inputs_.end(),
+                                    [&](const auto& input) { return input.name == port_name; });
+    if (found == inputs_.end()) {
+        return CPIPE_BAD_INDEX;
+    }
+    sources_[std::move(port_name)] =
+        SourceBinding{.plugin_id = std::move(plugin_id), .params = std::move(params)};
+    return CPIPE_OK;
+}
+
+cpipe_status_t Pipeline::run(std::string* error) const {
+    for (const auto& input : inputs_) {
+        if (sources_.find(input.name) == sources_.end()) {
+            set_error(error, "source not bound for input port: " + input.name);
+            return CPIPE_FAILED;
+        }
+    }
+    set_error(error, "source plugin execution is not implemented until P1 T5");
+    return CPIPE_UNSUPPORTED;
 }
 
 cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
@@ -309,12 +368,20 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
     return CPIPE_OK;
 }
 
+void Pipeline::set_device_memory_cap(std::uint64_t bytes) noexcept {
+    device_memory_cap_bytes_ = bytes;
+}
+
 std::size_t Pipeline::node_count() const noexcept {
     return nodes_.size();
 }
 
 const compute::BufferLayout& Pipeline::layout() const noexcept {
     return layout_;
+}
+
+std::uint64_t Pipeline::memory_peak_bytes() const noexcept {
+    return memory_peak_bytes_;
 }
 
 }  // namespace cpipe::runtime

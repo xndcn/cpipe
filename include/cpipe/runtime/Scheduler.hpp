@@ -10,12 +10,14 @@
 #include <span>
 #include <string_view>
 #include <taskflow/taskflow.hpp>
+#include <vector>
 
 namespace cpipe::runtime {
 
 struct ScheduledNode {
     std::string_view id;
     std::function<cpipe_status_t()> process;
+    std::vector<std::size_t> dependencies;
 };
 
 class Scheduler {

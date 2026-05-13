@@ -2,7 +2,6 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <cpipe/runtime/MetadataHandle.hpp>
-
 #include <utility>
 
 namespace cpipe::runtime {

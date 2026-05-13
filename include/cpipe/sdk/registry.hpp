@@ -16,10 +16,9 @@
 
 #define CPIPE_REGISTER_NODE_IMPL(klass, manifest_json_literal, counter)                            \
     namespace {                                                                                    \
-    extern "C" int CPIPE_DETAIL_CONCAT(cpipe_node_main_entry_,                                     \
-                                       counter)(const char* action, cpipe_host_t* host,            \
-                                                cpipe_node_t* node, cpipe_props_t* params,         \
-                                                void* in_ctx, void* out_ctx) {                     \
+    int CPIPE_DETAIL_CONCAT(cpipe_node_main_entry_,                                                \
+                            counter)(const char* action, cpipe_host_t* host, cpipe_node_t* node,   \
+                                     cpipe_props_t* params, void* in_ctx, void* out_ctx) {         \
         return ::cpipe::sdk::detail::dispatch<klass>(action, host, node, params, in_ctx, out_ctx); \
     }                                                                                              \
     CPIPE_SECTION_PUT const cpipe_plugin_desc_t CPIPE_DETAIL_CONCAT(cpipe_registry_desc_,          \

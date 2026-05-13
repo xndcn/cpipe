@@ -13,11 +13,11 @@ add_custom_command(
     OUTPUT "${pipeline_schema_cpp}"
     COMMAND
         "${CMAKE_COMMAND}"
-        -DINPUT_JSON="${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.1.json"
+        -DINPUT_JSON="${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.2.json"
         -DOUTPUT_CPP="${pipeline_schema_cpp}"
         -DSYMBOL_NAME=PIPELINE_SCHEMA_JSON
         -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
-    DEPENDS "${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.1.json" "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS "${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.2.json" "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
 add_library(
@@ -28,8 +28,10 @@ add_library(
         HalideBufferAdapter.cpp
         HostContext.cpp
         InferenceContext.cpp
+        MemoryPlanner.cpp
         MetadataHandle.cpp
         Pipeline.cpp
+        PrecisionPlanner.cpp
         "${pipeline_schema_cpp}"
         Registry.cpp
         Scheduler.cpp

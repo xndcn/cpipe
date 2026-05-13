@@ -37,19 +37,22 @@ TEST_CASE("Scheduler dispatches already-topologically-sorted nodes serially") {
              [&order] {
                  order.emplace_back("input");
                  return CPIPE_OK;
-             }},
+             },
+         .dependencies = {}},
         {.id = "passthrough",
          .process =
              [&order] {
                  order.emplace_back("passthrough");
                  return CPIPE_OK;
-             }},
+             },
+         .dependencies = {}},
         {.id = "output",
          .process =
              [&order] {
                  order.emplace_back("output");
                  return CPIPE_OK;
-             }},
+             },
+         .dependencies = {}},
     };
 
     REQUIRE(scheduler.run(nodes) == CPIPE_OK);
@@ -76,19 +79,22 @@ TEST_CASE("Scheduler stops at the first failing node") {
              [&order] {
                  order.emplace_back("first");
                  return CPIPE_OK;
-             }},
+             },
+         .dependencies = {}},
         {.id = "bad",
          .process =
              [&order] {
                  order.emplace_back("bad");
                  return CPIPE_FAILED;
-             }},
+             },
+         .dependencies = {}},
         {.id = "after_bad",
          .process =
              [&order] {
                  order.emplace_back("after_bad");
                  return CPIPE_OK;
-             }},
+             },
+         .dependencies = {}},
     };
 
     REQUIRE(scheduler.run(nodes) == CPIPE_FAILED);

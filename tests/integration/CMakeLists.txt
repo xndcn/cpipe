@@ -17,3 +17,13 @@ target_link_libraries(
         cpipe::builtin_nodes
 )
 add_test(NAME test_passthrough_end_to_end COMMAND test_passthrough_end_to_end)
+
+add_executable(test_diamond_dag_parallel test_diamond_dag_parallel.cpp)
+cpipe_target_warning_flags(test_diamond_dag_parallel)
+target_link_libraries(
+    test_diamond_dag_parallel
+    PRIVATE
+        Catch2::Catch2WithMain
+        cpipe::runtime
+)
+add_test(NAME test_diamond_dag_parallel COMMAND test_diamond_dag_parallel)

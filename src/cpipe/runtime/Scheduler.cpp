@@ -7,6 +7,7 @@
 #include <atomic>
 #include <cpipe/runtime/Scheduler.hpp>
 #include <thread>
+#include <vector>
 
 extern "C" {
 #pragma weak halide_set_custom_do_par_for
@@ -56,14 +57,48 @@ Scheduler::Scheduler(std::size_t worker_count) : executor_(worker_count) {
 }
 
 cpipe_status_t Scheduler::run(std::span<const ScheduledNode> nodes) {
+    const bool has_dependencies = std::any_of(
+        nodes.begin(), nodes.end(), [](const auto& node) { return !node.dependencies.empty(); });
+    if (!has_dependencies) {
+        for (const auto& node : nodes) {
+            (void)node.id;
+            const auto status = node.process();
+            if (status != CPIPE_OK) {
+                return status;
+            }
+        }
+        return CPIPE_OK;
+    }
+
+    tf::Taskflow taskflow;
+    std::vector<tf::Task> tasks;
+    tasks.reserve(nodes.size());
+    std::atomic<int> first_status{CPIPE_OK};
+
     for (const auto& node : nodes) {
-        (void)node.id;
-        const auto status = node.process();
-        if (status != CPIPE_OK) {
-            return status;
+        tasks.push_back(taskflow.emplace([&node, &first_status] {
+            if (first_status.load() != CPIPE_OK) {
+                return;
+            }
+            const auto status = node.process();
+            int expected = CPIPE_OK;
+            if (status != CPIPE_OK) {
+                first_status.compare_exchange_strong(expected, status);
+            }
+        }));
+    }
+
+    for (std::size_t i = 0; i < nodes.size(); ++i) {
+        for (const auto dependency : nodes[i].dependencies) {
+            if (dependency >= tasks.size()) {
+                return CPIPE_BAD_INDEX;
+            }
+            tasks[dependency].precede(tasks[i]);
         }
     }
-    return CPIPE_OK;
+
+    executor_.run(taskflow).wait();
+    return static_cast<cpipe_status_t>(first_status.load());
 }
 
 tf::Executor& Scheduler::executor() noexcept {

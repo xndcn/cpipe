@@ -63,8 +63,8 @@ TEST_CASE("Passthrough pipeline runs end-to-end") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough.json"), registry, &pipeline,
-                                           &error) == CPIPE_OK);
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.2.json"), registry,
+                                           &pipeline, &error) == CPIPE_OK);
     REQUIRE(pipeline.run_file(input_path, output_path, &error) == CPIPE_OK);
 
     REQUIRE(read_file(output_path) == read_file(input_path));

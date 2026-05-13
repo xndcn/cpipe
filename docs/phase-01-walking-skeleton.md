@@ -113,7 +113,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-51 | Halide `host-vulkan` CMake spelling     | `cpipe_add_halide_library()` accepts phase-doc shorthand `host-vulkan` and normalizes it to `${Halide_HOST_TARGET}-vulkan` before calling Halide v21's helper, because Halide multi-target validation requires every target entry to share the same explicit triple spelling. |
 | PD-52 | Vulkan unit-test LSan policy            | `test_vulkan_device_plane` runs with `ASAN_OPTIONS=detect_leaks=0` because NVIDIA / Mesa Vulkan loader paths retain process-lifetime allocations that LeakSanitizer reports after all cpipe-owned Vulkan/VMA handles are destroyed. AddressSanitizer and UBSan remain enabled for the test. |
 | PD-53 | Validation-layer manual check fallback  | When `vkconfig` / distro validation-layer packages are not installed, the manual T2 Debug check may use a local Vulkan SDK / vcpkg validation-layer install with `VK_ADD_LAYER_PATH` + `LD_LIBRARY_PATH` to confirm `VK_LAYER_KHRONOS_validation` loads. This does not add validation layers to the project manifest. |
-| PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. `Registry::load_builtin_nodes()` also skips null descriptor slots defensively. |
+| PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. Generated `main_entry` helpers use internal linkage, and `Registry::load_builtin_nodes()` skips null descriptor slots defensively. |
 
 ---
 
@@ -324,15 +324,15 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Rebuild `Pipeline` / `Scheduler` from the P0 serial dispatcher into a true TaskFlow-driven graph. Implement linear-lifetime `MemoryPlanner` (peak vs cap pre-check + VMA allocations). Implement `PrecisionPlanner` (validate-and-abort intersection). Add `Pipeline::set_source(port, plugin_id, params)`. Migrate to `pipeline-v0.2.json` (PD-31). Add a diamond-shaped test DAG to validate parallel dispatch.
 
 **Acceptance criteria:**
-- [ ] `Pipeline::load` accepts pipeline-v0.2.json; rejects pipeline-v0.1.json with a clear "schema version mismatch" message.
-- [ ] `Pipeline::set_source` binds a plugin to an input port; missing source aborts `run` with a structured error.
-- [ ] Memory planner reports peak; setting `Pipeline::set_device_memory_cap(<small>)` causes `Pipeline::load` to fail with `CPIPE_OOM` if peak exceeds.
-- [ ] Precision planner catches a mismatched-precision pipeline at load with `CPIPE_BAD_PRECISION`.
-- [ ] Diamond DAG test (1-source fanout to 2 parallel mid-nodes, fanin to 1 sink) runs the two interior nodes concurrently when `N >= 2` worker threads.
+- [x] `Pipeline::load` accepts pipeline-v0.2.json; rejects pipeline-v0.1.json with a clear "schema version mismatch" message.
+- [x] `Pipeline::set_source` binds a plugin to an input port; missing source aborts `run` with a structured error.
+- [x] Memory planner reports peak; setting `Pipeline::set_device_memory_cap(<small>)` causes `Pipeline::load` to fail with `CPIPE_OOM` if peak exceeds.
+- [x] Precision planner catches a mismatched-precision pipeline at load with `CPIPE_BAD_PRECISION`.
+- [x] Diamond DAG test (1-source fanout to 2 parallel mid-nodes, fanin to 1 sink) runs the two interior nodes concurrently when `N >= 2` worker threads.
 
 **Verification:**
-- [ ] `ctest -R test_pipeline_load` green.
-- [ ] `ctest -R test_diamond_dag_parallel` shows ≥ 2-thread concurrency in a Tracy capture (manual once; assertion in test based on overlap).
+- [x] `ctest -R test_pipeline_load` green.
+- [x] `ctest -R test_diamond_dag_parallel` shows ≥ 2-thread concurrency by assertion based on overlapping middle-node execution windows.
 
 **Dependencies:** T2, T3.
 
