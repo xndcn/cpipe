@@ -13,7 +13,14 @@ CpuBuffer::CpuBuffer(BufferLayout layout, BufferUsage usage, std::string color_r
     : layout_(layout),
       usage_(usage),
       color_role_(std::move(color_role)),
+      metadata_(std::make_shared<BufferMetadata>()),
       size_bytes_(layout_.size_bytes()) {
+    if (!color_role_.empty()) {
+        auto metadata = std::make_shared<BufferMetadata>();
+        metadata->cs_role = color_role_;
+        metadata_ = std::move(metadata);
+    }
+
     if (size_bytes_ == 0) {
         return;
     }
@@ -39,6 +46,14 @@ std::uint64_t CpuBuffer::size_bytes() const noexcept {
 
 std::string_view CpuBuffer::color_role() const noexcept {
     return color_role_;
+}
+
+std::shared_ptr<const BufferMetadata> CpuBuffer::metadata() const noexcept {
+    return metadata_;
+}
+
+void CpuBuffer::set_metadata(std::shared_ptr<const BufferMetadata> metadata) {
+    metadata_ = std::move(metadata);
 }
 
 void* CpuBuffer::lock_cpu(CpuAccess access) {

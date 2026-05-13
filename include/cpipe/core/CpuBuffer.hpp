@@ -25,6 +25,8 @@ public:
     [[nodiscard]] const BufferLayout& layout() const noexcept override;
     [[nodiscard]] std::uint64_t size_bytes() const noexcept override;
     [[nodiscard]] std::string_view color_role() const noexcept override;
+    [[nodiscard]] std::shared_ptr<const BufferMetadata> metadata() const noexcept override;
+    void set_metadata(std::shared_ptr<const BufferMetadata> metadata) override;
     [[nodiscard]] BufferUsage usage() const noexcept {
         return usage_;
     }
@@ -39,6 +41,7 @@ private:
     BufferLayout layout_{};
     BufferUsage usage_{BufferUsage::None};
     std::string color_role_;
+    std::shared_ptr<const BufferMetadata> metadata_;
     void* data_{nullptr};
     std::uint64_t size_bytes_{0};
     bool locked_{false};

@@ -7,7 +7,9 @@
 
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -24,9 +26,131 @@ struct Error {
 template <class T>
 using Result = tl::expected<T, Error>;
 
+struct Rect2u {
+    std::uint32_t x{0};
+    std::uint32_t y{0};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+};
+
+class BufferMetadata {
+public:
+    BufferMetadata(const cpipe_metadata_t* impl, const cpipe_metadata_suite_v1* suite)
+        : impl_(impl), suite_(suite) {}
+
+    [[nodiscard]] std::string_view cs_role() const noexcept {
+        if (suite_ == nullptr || suite_->get_cs_role == nullptr || impl_ == nullptr) {
+            return {};
+        }
+        const char* out = nullptr;
+        if (suite_->get_cs_role(impl_, &out) != CPIPE_OK || out == nullptr) {
+            return {};
+        }
+        return out;
+    }
+
+    [[nodiscard]] std::optional<Rect2u> active_area() const noexcept {
+        if (suite_ == nullptr || suite_->get_active_area == nullptr || impl_ == nullptr) {
+            return std::nullopt;
+        }
+        Rect2u rect{};
+        if (suite_->get_active_area(impl_, &rect.x, &rect.y, &rect.width, &rect.height) !=
+            CPIPE_OK) {
+            return std::nullopt;
+        }
+        if (rect.width == 0 || rect.height == 0) {
+            return std::nullopt;
+        }
+        return rect;
+    }
+
+    [[nodiscard]] bool has_step(std::string_view step) const noexcept {
+        if (suite_ == nullptr || suite_->has_applied_step == nullptr || impl_ == nullptr) {
+            return false;
+        }
+        const std::string step_string{step};
+        int out = 0;
+        return suite_->has_applied_step(impl_, step_string.c_str(), &out) == CPIPE_OK && out != 0;
+    }
+
+    [[nodiscard]] std::vector<std::string_view> applied_steps() const {
+        if (suite_ == nullptr || suite_->list_applied_steps == nullptr || impl_ == nullptr) {
+            return {};
+        }
+        std::size_t total = 0;
+        if (suite_->list_applied_steps(impl_, 0, &total, nullptr) != CPIPE_OK || total == 0) {
+            return {};
+        }
+        std::vector<const char*> raw(total);
+        if (suite_->list_applied_steps(impl_, raw.size(), &total, raw.data()) != CPIPE_OK) {
+            return {};
+        }
+        std::vector<std::string_view> result;
+        result.reserve(total);
+        for (const auto* step : raw) {
+            if (step != nullptr) {
+                result.emplace_back(step);
+            }
+        }
+        return result;
+    }
+
+private:
+    const cpipe_metadata_t* impl_{nullptr};
+    const cpipe_metadata_suite_v1* suite_{nullptr};
+};
+
+class MetadataBuilder {
+public:
+    MetadataBuilder(cpipe_metadata_builder_t* impl, const cpipe_metadata_builder_suite_v1* suite)
+        : impl_(impl), suite_(suite) {}
+
+    Result<void> set_cs_role(std::string_view role) {
+        if (suite_ == nullptr || suite_->set_cs_role == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const std::string value{role};
+        const auto status = static_cast<cpipe_status_t>(suite_->set_cs_role(impl_, value.c_str()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "set_cs_role failed"});
+        }
+        return {};
+    }
+
+    Result<void> add_applied_step(std::string_view step) {
+        if (suite_ == nullptr || suite_->add_applied_step == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const std::string value{step};
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->add_applied_step(impl_, value.c_str()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "add_applied_step failed"});
+        }
+        return {};
+    }
+
+    Result<void> clear_cfa() {
+        if (suite_ == nullptr || suite_->clear_cfa == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const auto status = static_cast<cpipe_status_t>(suite_->clear_cfa(impl_));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "clear_cfa failed"});
+        }
+        return {};
+    }
+
+private:
+    cpipe_metadata_builder_t* impl_{nullptr};
+    const cpipe_metadata_builder_suite_v1* suite_{nullptr};
+};
+
 class Buffer {
 public:
-    Buffer(cpipe_buffer_t* impl, const cpipe_buffer_suite_v1* suite) : impl_(impl), suite_(suite) {}
+    Buffer(cpipe_buffer_t* impl, const cpipe_buffer_suite_v1* suite,
+           const cpipe_metadata_suite_v1* metadata_suite)
+        : impl_(impl), suite_(suite), metadata_suite_(metadata_suite) {}
 
     [[nodiscard]] cpipe_buffer_t* impl() const noexcept {
         return impl_;
@@ -36,9 +160,28 @@ public:
         return suite_;
     }
 
+    [[nodiscard]] const BufferMetadata* metadata() const noexcept {
+        if (suite_ == nullptr || suite_->get_metadata == nullptr || metadata_suite_ == nullptr) {
+            return nullptr;
+        }
+        const cpipe_metadata_t* metadata = nullptr;
+        if (suite_->get_metadata(impl_, &metadata) != CPIPE_OK || metadata == nullptr) {
+            return nullptr;
+        }
+        metadata_cache_.emplace(metadata, metadata_suite_);
+        return &*metadata_cache_;
+    }
+
+    [[nodiscard]] std::string_view cs_role() const noexcept {
+        const auto* view = metadata();
+        return view == nullptr ? std::string_view{} : view->cs_role();
+    }
+
 private:
     cpipe_buffer_t* impl_{nullptr};
     const cpipe_buffer_suite_v1* suite_{nullptr};
+    const cpipe_metadata_suite_v1* metadata_suite_{nullptr};
+    mutable std::optional<BufferMetadata> metadata_cache_;
 };
 
 class ComputeContext {
@@ -125,7 +268,8 @@ public:
         return {};
     }
     virtual Result<void> process(ComputeContext&, InferenceContext*, const ParamView&,
-                                 std::span<const Buffer*> inputs, std::span<Buffer*> outputs) = 0;
+                                 std::span<const Buffer*> inputs, std::span<Buffer*> outputs,
+                                 std::span<MetadataBuilder*> out_metadata) = 0;
 };
 
 namespace detail {
@@ -156,6 +300,10 @@ int dispatch(const char* action, cpipe_host_t* host, cpipe_node_t* node, cpipe_p
             static_cast<const cpipe_inference_suite_v1*>(get_suite(host, "inference"));
         const auto* param_suite =
             static_cast<const cpipe_param_suite_v1*>(get_suite(host, "param"));
+        const auto* metadata_suite =
+            static_cast<const cpipe_metadata_suite_v1*>(get_suite(host, "metadata"));
+        const auto* metadata_builder_suite = static_cast<const cpipe_metadata_builder_suite_v1*>(
+            get_suite(host, "metadata_builder"));
         ParamView param_view{params, param_suite};
 
         if (std::strcmp(action, CPIPE_ACTION_DESCRIBE) == 0) {
@@ -193,7 +341,7 @@ int dispatch(const char* action, cpipe_host_t* host, cpipe_node_t* node, cpipe_p
             inputs.reserve(process->n_in);
             for (std::size_t i = 0; i < process->n_in; ++i) {
                 input_buffers.emplace_back(const_cast<cpipe_buffer_t*>(process->inputs[i]),
-                                           buffer_suite);
+                                           buffer_suite, metadata_suite);
                 inputs.push_back(&input_buffers.back());
             }
 
@@ -202,12 +350,24 @@ int dispatch(const char* action, cpipe_host_t* host, cpipe_node_t* node, cpipe_p
             output_buffers.reserve(process->n_out);
             outputs.reserve(process->n_out);
             for (std::size_t i = 0; i < process->n_out; ++i) {
-                output_buffers.emplace_back(process->outputs[i], buffer_suite);
+                output_buffers.emplace_back(process->outputs[i], buffer_suite, metadata_suite);
                 outputs.push_back(&output_buffers.back());
             }
 
+            std::vector<MetadataBuilder> metadata_builders;
+            std::vector<MetadataBuilder*> out_metadata;
+            metadata_builders.reserve(process->n_out);
+            out_metadata.reserve(process->n_out);
+            if (process->out_metadata != nullptr) {
+                for (std::size_t i = 0; i < process->n_out; ++i) {
+                    metadata_builders.emplace_back(process->out_metadata[i],
+                                                   metadata_builder_suite);
+                    out_metadata.push_back(&metadata_builders.back());
+                }
+            }
+
             return result_to_status(
-                instance->process(compute, &inference, param_view, inputs, outputs));
+                instance->process(compute, &inference, param_view, inputs, outputs, out_metadata));
         }
     } catch (...) {
         if (host != nullptr && host->log != nullptr) {

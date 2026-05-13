@@ -2,14 +2,12 @@
 // Copyright (c) 2026 cpipe contributors
 
 #define VMA_IMPLEMENTATION
-#include <vk_mem_alloc.h>
-
-#include <cpipe/runtime/VulkanDevicePlane.hpp>
-
 #include <spdlog/spdlog.h>
+#include <vk_mem_alloc.h>
 
 #include <algorithm>
 #include <charconv>
+#include <cpipe/runtime/VulkanDevicePlane.hpp>
 #include <cstdlib>
 #include <cstring>
 #include <limits>
@@ -221,7 +219,8 @@ VulkanDevicePlaneCreateResult VulkanDevicePlane::create() {
         const int requested_index = requested_device_index();
         if (requested_index >= 0) {
             const auto requested = static_cast<std::uint32_t>(requested_index);
-            if (requested >= physical_devices.size() || !is_eligible_device(physical_devices[requested])) {
+            if (requested >= physical_devices.size() ||
+                !is_eligible_device(physical_devices[requested])) {
                 vkDestroyInstance(instance, nullptr);
                 return unsupported("requested Vulkan device is unavailable or ineligible");
             }
@@ -237,7 +236,8 @@ VulkanDevicePlaneCreateResult VulkanDevicePlane::create() {
 
         if (selected_physical_device == VK_NULL_HANDLE) {
             vkDestroyInstance(instance, nullptr);
-            return unsupported("no Vulkan 1.3 graphics+compute device with timeline semaphore found");
+            return unsupported(
+                "no Vulkan 1.3 graphics+compute device with timeline semaphore found");
         }
 
         VkPhysicalDeviceProperties properties{};
@@ -275,13 +275,15 @@ VulkanDevicePlaneCreateResult VulkanDevicePlane::create() {
         check_vk(vmaCreateAllocator(&allocator_info, &allocator), "vmaCreateAllocator");
 
         const auto memory_budget = device_local_budget(selected_physical_device);
-        auto plane = std::shared_ptr<VulkanDevicePlane>{new VulkanDevicePlane{
-            instance, selected_physical_device, device, allocator, queue, queue_selection.family_index,
-            properties.apiVersion, memory_budget, validation_requested, validation_enabled}};
-        spdlog::info("event=vulkan_device_create status={} device=\"{}\" api={}.{}.{} memory_bytes={}",
-                     cpipe::compute::to_string(StatusCode::Ok), properties.deviceName,
-                     VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion),
-                     VK_VERSION_PATCH(properties.apiVersion), memory_budget);
+        auto plane = std::shared_ptr<VulkanDevicePlane>{
+            new VulkanDevicePlane{instance, selected_physical_device, device, allocator, queue,
+                                  queue_selection.family_index, properties.apiVersion,
+                                  memory_budget, validation_requested, validation_enabled}};
+        spdlog::info(
+            "event=vulkan_device_create status={} device=\"{}\" api={}.{}.{} memory_bytes={}",
+            cpipe::compute::to_string(StatusCode::Ok), properties.deviceName,
+            VK_VERSION_MAJOR(properties.apiVersion), VK_VERSION_MINOR(properties.apiVersion),
+            VK_VERSION_PATCH(properties.apiVersion), memory_budget);
         return VulkanDevicePlaneCreateResult{StatusCode::Ok, std::move(plane), {}};
     } catch (const std::exception& error) {
         if (allocator != VK_NULL_HANDLE) {
@@ -411,8 +413,9 @@ void VulkanDevicePlane::submit_immediate(const std::function<void(VkCommandBuffe
         std::lock_guard lock{queue_mutex_};
         check_vk(vkQueueSubmit(queue_, 1, &submit_info, fence), "vkQueueSubmit");
     }
-    check_vk(vkWaitForFences(device_, 1, &fence, VK_TRUE, std::numeric_limits<std::uint64_t>::max()),
-             "vkWaitForFences");
+    check_vk(
+        vkWaitForFences(device_, 1, &fence, VK_TRUE, std::numeric_limits<std::uint64_t>::max()),
+        "vkWaitForFences");
 
     vkDestroyFence(device_, fence, nullptr);
     vkFreeCommandBuffers(device_, pool, 1, &command_buffer);

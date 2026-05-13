@@ -3,14 +3,13 @@
 
 #pragma once
 
+#include <vk_mem_alloc.h>
+#include <vulkan/vulkan.h>
+
 #include <cpipe/core/BufferLayout.hpp>
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/IBuffer.hpp>
 #include <cpipe/runtime/VulkanDevicePlane.hpp>
-
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
-
 #include <cstddef>
 #include <cstdint>
 #include <memory>
@@ -33,6 +32,9 @@ public:
     [[nodiscard]] const cpipe::compute::BufferLayout& layout() const noexcept override;
     [[nodiscard]] std::uint64_t size_bytes() const noexcept override;
     [[nodiscard]] std::string_view color_role() const noexcept override;
+    [[nodiscard]] std::shared_ptr<const cpipe::compute::BufferMetadata> metadata()
+        const noexcept override;
+    void set_metadata(std::shared_ptr<const cpipe::compute::BufferMetadata> metadata) override;
     [[nodiscard]] VkImage vk_image() const noexcept;
     [[nodiscard]] VkFormat vk_format() const noexcept;
 
@@ -50,6 +52,7 @@ private:
     cpipe::compute::BufferLayout layout_{};
     cpipe::compute::BufferUsage usage_{cpipe::compute::BufferUsage::None};
     std::string color_role_;
+    std::shared_ptr<const cpipe::compute::BufferMetadata> metadata_;
     VkImage image_{VK_NULL_HANDLE};
     VmaAllocation allocation_{VK_NULL_HANDLE};
     VkFormat format_{VK_FORMAT_UNDEFINED};

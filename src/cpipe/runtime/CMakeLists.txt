@@ -28,6 +28,7 @@ add_library(
         HalideBufferAdapter.cpp
         HostContext.cpp
         InferenceContext.cpp
+        MetadataHandle.cpp
         Pipeline.cpp
         "${pipeline_schema_cpp}"
         Registry.cpp

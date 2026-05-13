@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/VulkanImage.hpp>
-
 #include <cassert>
+#include <cpipe/runtime/VulkanImage.hpp>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -136,14 +135,22 @@ void transition_image(VkCommandBuffer command_buffer, VkImage image, VkImageLayo
 
 }  // namespace
 
-VulkanImage::VulkanImage(std::shared_ptr<VulkanDevicePlane> plane, cpipe::compute::BufferLayout layout,
-                         BufferUsage usage, std::string color_role)
+VulkanImage::VulkanImage(std::shared_ptr<VulkanDevicePlane> plane,
+                         cpipe::compute::BufferLayout layout, BufferUsage usage,
+                         std::string color_role)
     : plane_(std::move(plane)),
       layout_(layout),
       usage_(usage),
       color_role_(std::move(color_role)),
+      metadata_(std::make_shared<cpipe::compute::BufferMetadata>()),
       format_(to_vk_format(layout_.format)),
       size_bytes_(layout_.size_bytes()) {
+    if (!color_role_.empty()) {
+        auto metadata = std::make_shared<cpipe::compute::BufferMetadata>();
+        metadata->cs_role = color_role_;
+        metadata_ = std::move(metadata);
+    }
+
     if (layout_.kind != cpipe::compute::BufferKind::Image2D || layout_.ndim != 2 ||
         format_ == VK_FORMAT_UNDEFINED) {
         throw std::invalid_argument{"unsupported VulkanImage layout"};
@@ -167,8 +174,8 @@ VulkanImage::VulkanImage(std::shared_ptr<VulkanDevicePlane> plane, cpipe::comput
     VmaAllocationCreateInfo allocation_info{};
     allocation_info.usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE;
 
-    check_vk(vmaCreateImage(plane_->allocator(), &image_info, &allocation_info, &image_, &allocation_,
-                            nullptr),
+    check_vk(vmaCreateImage(plane_->allocator(), &image_info, &allocation_info, &image_,
+                            &allocation_, nullptr),
              "vmaCreateImage");
     staging_.resize(static_cast<std::size_t>(size_bytes_));
 }
@@ -189,6 +196,14 @@ std::uint64_t VulkanImage::size_bytes() const noexcept {
 
 std::string_view VulkanImage::color_role() const noexcept {
     return color_role_;
+}
+
+std::shared_ptr<const cpipe::compute::BufferMetadata> VulkanImage::metadata() const noexcept {
+    return metadata_;
+}
+
+void VulkanImage::set_metadata(std::shared_ptr<const cpipe::compute::BufferMetadata> metadata) {
+    metadata_ = std::move(metadata);
 }
 
 VkImage VulkanImage::vk_image() const noexcept {

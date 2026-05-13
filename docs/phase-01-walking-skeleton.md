@@ -113,6 +113,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-51 | Halide `host-vulkan` CMake spelling     | `cpipe_add_halide_library()` accepts phase-doc shorthand `host-vulkan` and normalizes it to `${Halide_HOST_TARGET}-vulkan` before calling Halide v21's helper, because Halide multi-target validation requires every target entry to share the same explicit triple spelling. |
 | PD-52 | Vulkan unit-test LSan policy            | `test_vulkan_device_plane` runs with `ASAN_OPTIONS=detect_leaks=0` because NVIDIA / Mesa Vulkan loader paths retain process-lifetime allocations that LeakSanitizer reports after all cpipe-owned Vulkan/VMA handles are destroyed. AddressSanitizer and UBSan remain enabled for the test. |
 | PD-53 | Validation-layer manual check fallback  | When `vkconfig` / distro validation-layer packages are not installed, the manual T2 Debug check may use a local Vulkan SDK / vcpkg validation-layer install with `VK_ADD_LAYER_PATH` + `LD_LIBRARY_PATH` to confirm `VK_LAYER_KHRONOS_validation` loads. This does not add validation layers to the project manifest. |
+| PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. `Registry::load_builtin_nodes()` also skips null descriptor slots defensively. |
 
 ---
 
@@ -296,14 +297,14 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Bump `CPIPE_ABI_MINOR` to 2. Wire `cpipe_metadata_suite_v1` and `cpipe_metadata_builder_suite_v1` per [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh). Add the matching `cpipe::sdk::BufferMetadata` and `cpipe::sdk::MetadataBuilder` C++ wrappers per [`plugin-sdk.md` §6](plugin-sdk.md#6-c-sdk-cpipesdkhpp). Update the dispatch shim so that `process()` callbacks receive `out_metadata` builders default-initialized from `inputs[0]`.
 
 **Acceptance criteria:**
-- [ ] `host->get_suite("metadata", 1)` returns a non-null vtable; the same call for `"metadata_builder"` does the same.
-- [ ] The P0 passthrough plugin still loads and runs (it never queries the new suites).
-- [ ] A new unit-test plugin reads `inputs[0]->metadata().cs_role()` and writes `out_metadata[0]->add_applied_step("test")`; freezing produces a `BufferMetadata` with `cs_role` carried over and `applied_steps == ["test"]`.
-- [ ] Manifest `requires_steps_applied` / `sets_steps_applied` validation rejects a bad combination at `Pipeline::load`.
+- [x] `host->get_suite("metadata", 1)` returns a non-null vtable; the same call for `"metadata_builder"` does the same.
+- [x] The P0 passthrough plugin still loads and runs (it never queries the new suites).
+- [x] A new unit-test plugin reads `inputs[0]->metadata().cs_role()` and writes `out_metadata[0]->add_applied_step("test")`; freezing produces a `BufferMetadata` with `cs_role` carried over and `applied_steps == ["test"]`.
+- [x] Manifest `requires_steps_applied` / `sets_steps_applied` validation rejects a bad combination at `Pipeline::load`.
 
 **Verification:**
-- [ ] `ctest -R test_metadata_suite` green.
-- [ ] ABI compatibility test confirms the P0 passthrough plugin descriptor still loads.
+- [x] `ctest -R test_metadata_suite` green.
+- [x] ABI compatibility test confirms the P0 passthrough plugin descriptor still loads (`ctest -R "test_(metadata_suite|registry|passthrough_node|pipeline_load)"`).
 
 **Dependencies:** T1.
 

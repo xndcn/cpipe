@@ -93,6 +93,7 @@ TEST_CASE("Passthrough node dispatches Halide AOT copy") {
         .n_in = 1,
         .outputs = outputs,
         .n_out = 1,
+        .out_metadata = nullptr,
     };
 
     REQUIRE(desc->main_entry(CPIPE_ACTION_PROCESS, host_context.host(),

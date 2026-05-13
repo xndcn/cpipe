@@ -35,7 +35,8 @@ private:
 
 class VulkanTimelineSemaphore {
 public:
-    explicit VulkanTimelineSemaphore(const VulkanDevicePlane& plane, std::uint64_t initial_value = 0);
+    explicit VulkanTimelineSemaphore(const VulkanDevicePlane& plane,
+                                     std::uint64_t initial_value = 0);
     VulkanTimelineSemaphore(const VulkanTimelineSemaphore&) = delete;
     VulkanTimelineSemaphore& operator=(const VulkanTimelineSemaphore&) = delete;
     VulkanTimelineSemaphore(VulkanTimelineSemaphore&& other) noexcept;

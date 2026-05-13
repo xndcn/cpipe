@@ -13,7 +13,8 @@ public:
 
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
                               const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
-                              std::span<sdk::Buffer*> outputs) override {
+                              std::span<sdk::Buffer*> outputs,
+                              std::span<sdk::MetadataBuilder*>) override {
         return compute.submit_halide("passthrough_copy", inputs, outputs);
     }
 };

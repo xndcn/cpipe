@@ -6,10 +6,12 @@
 #include <cpipe/sdk/cpipe_node.h>
 
 #include <cpipe/core/IBuffer.hpp>
+#include <cpipe/runtime/MetadataHandle.hpp>
 #include <memory>
 
 struct cpipe_buffer_s {
     std::shared_ptr<cpipe::compute::IBuffer> buffer;
+    cpipe_metadata_t metadata_view;
 };
 
 namespace cpipe::runtime {

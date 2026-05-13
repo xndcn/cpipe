@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <cpipe/core/MetadataBuilder.hpp>
 #include <stdexcept>
 #include <utility>
@@ -35,9 +36,24 @@ void MetadataBuilder::set_calibration(std::shared_ptr<const CalibrationBlock> ca
     metadata_.calibration = std::move(calibration);
 }
 
+void MetadataBuilder::clear_calibration() {
+    ensure_mutable();
+    metadata_.calibration.reset();
+}
+
 void MetadataBuilder::set_capture(CaptureBlock capture) {
     ensure_mutable();
     metadata_.capture = std::move(capture);
+}
+
+void MetadataBuilder::set_as_shot_neutral(std::array<float, 3> as_shot_neutral) {
+    ensure_mutable();
+    metadata_.capture.as_shot_neutral = as_shot_neutral;
+}
+
+void MetadataBuilder::set_orientation(std::uint8_t orientation) {
+    ensure_mutable();
+    metadata_.capture.orientation = orientation;
 }
 
 void MetadataBuilder::set_cs_role(std::string role) {
@@ -63,6 +79,11 @@ void MetadataBuilder::clear_cfa() {
 void MetadataBuilder::add_applied_step(std::string step) {
     ensure_mutable();
     metadata_.applied_steps.push_back(std::move(step));
+}
+
+void MetadataBuilder::remove_applied_step(std::string_view step) {
+    ensure_mutable();
+    std::erase(metadata_.applied_steps, step);
 }
 
 void MetadataBuilder::set_exif_blob(std::shared_ptr<const ByteBlob> blob) {

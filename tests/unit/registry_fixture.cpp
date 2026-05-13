@@ -14,7 +14,8 @@ public:
     cpipe::sdk::Result<void> process(cpipe::sdk::ComputeContext&, cpipe::sdk::InferenceContext*,
                                      const cpipe::sdk::ParamView&,
                                      std::span<const cpipe::sdk::Buffer*>,
-                                     std::span<cpipe::sdk::Buffer*>) override {
+                                     std::span<cpipe::sdk::Buffer*>,
+                                     std::span<cpipe::sdk::MetadataBuilder*>) override {
         return {};
     }
 };

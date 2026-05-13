@@ -2,14 +2,13 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/Status.hpp>
 #include <cpipe/runtime/Sync.hpp>
 #include <cpipe/runtime/VulkanBuffer.hpp>
 #include <cpipe/runtime/VulkanDevicePlane.hpp>
 #include <cpipe/runtime/VulkanImage.hpp>
-
-#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -144,7 +143,8 @@ TEST_CASE("VulkanImage CPU lock uploads and downloads R16 image data") {
     image.unlock_cpu();
     image.flush_cpu_writes();
 
-    const auto* read_ptr = static_cast<const std::uint16_t*>(image.lock_cpu(IBuffer::CpuAccess::Read));
+    const auto* read_ptr =
+        static_cast<const std::uint16_t*>(image.lock_cpu(IBuffer::CpuAccess::Read));
     REQUIRE(std::memcmp(read_ptr, expected.data(), expected.size() * sizeof(std::uint16_t)) == 0);
     image.unlock_cpu();
 }

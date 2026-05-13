@@ -2,9 +2,7 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <cpipe/runtime/Sync.hpp>
-
 #include <cpipe/runtime/VulkanDevicePlane.hpp>
-
 #include <limits>
 #include <stdexcept>
 #include <utility>
@@ -40,7 +38,8 @@ VulkanFence::VulkanFence(const VulkanDevicePlane& plane, bool signaled) : plane_
 }
 
 VulkanFence::VulkanFence(VulkanFence&& other) noexcept
-    : plane_(std::exchange(other.plane_, nullptr)), fence_(std::exchange(other.fence_, VK_NULL_HANDLE)) {}
+    : plane_(std::exchange(other.plane_, nullptr)),
+      fence_(std::exchange(other.fence_, VK_NULL_HANDLE)) {}
 
 VulkanFence& VulkanFence::operator=(VulkanFence&& other) noexcept {
     if (this != &other) {
@@ -60,7 +59,8 @@ VkFence VulkanFence::handle() const noexcept {
 }
 
 bool VulkanFence::wait_host(std::chrono::nanoseconds timeout) const {
-    return vkWaitForFences(plane_->device(), 1, &fence_, VK_TRUE, timeout_ns(timeout)) == VK_SUCCESS;
+    return vkWaitForFences(plane_->device(), 1, &fence_, VK_TRUE, timeout_ns(timeout)) ==
+           VK_SUCCESS;
 }
 
 bool VulkanFence::is_signaled() const {
@@ -97,7 +97,8 @@ VulkanTimelineSemaphore::VulkanTimelineSemaphore(VulkanTimelineSemaphore&& other
     : plane_(std::exchange(other.plane_, nullptr)),
       semaphore_(std::exchange(other.semaphore_, VK_NULL_HANDLE)) {}
 
-VulkanTimelineSemaphore& VulkanTimelineSemaphore::operator=(VulkanTimelineSemaphore&& other) noexcept {
+VulkanTimelineSemaphore& VulkanTimelineSemaphore::operator=(
+    VulkanTimelineSemaphore&& other) noexcept {
     if (this != &other) {
         destroy();
         plane_ = std::exchange(other.plane_, nullptr);
@@ -121,7 +122,8 @@ std::uint64_t VulkanTimelineSemaphore::current_value() const {
     return value;
 }
 
-bool VulkanTimelineSemaphore::wait_value(std::uint64_t value, std::chrono::nanoseconds timeout) const {
+bool VulkanTimelineSemaphore::wait_value(std::uint64_t value,
+                                         std::chrono::nanoseconds timeout) const {
     VkSemaphoreWaitInfo info{};
     info.sType = VK_STRUCTURE_TYPE_SEMAPHORE_WAIT_INFO;
     info.semaphoreCount = 1;

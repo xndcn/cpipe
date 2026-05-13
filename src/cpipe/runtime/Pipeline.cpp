@@ -7,6 +7,7 @@
 #include <cpipe/runtime/BufferHandle.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
+#include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -18,6 +19,8 @@
 #include <queue>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
+#include <vector>
 
 extern "C" int passthrough_copy(halide_buffer_t* input, halide_buffer_t* output);
 
@@ -38,9 +41,24 @@ void set_error(std::string* error, std::string message) {
     }
 }
 
-std::string node_id_from_endpoint(const std::string& endpoint) {
+struct Endpoint {
+    std::string node_id;
+    std::string port;
+};
+
+struct GraphEdge {
+    std::size_t from{0};
+    std::size_t to{0};
+    std::string from_port;
+    std::string to_port;
+};
+
+Endpoint split_endpoint(const std::string& endpoint) {
     const auto dot = endpoint.find('.');
-    return dot == std::string::npos ? endpoint : endpoint.substr(0, dot);
+    if (dot == std::string::npos) {
+        return Endpoint{.node_id = endpoint, .port = {}};
+    }
+    return Endpoint{.node_id = endpoint.substr(0, dot), .port = endpoint.substr(dot + 1)};
 }
 
 BufferLayout layout_from_json(const nlohmann::json& input) {
@@ -63,6 +81,32 @@ cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::str
         return CPIPE_FAILED;
     }
     return CPIPE_OK;
+}
+
+std::vector<std::string> manifest_metadata_steps(const cpipe_plugin_desc_t* desc,
+                                                 std::string_view port_kind,
+                                                 const std::string& port_name,
+                                                 std::string_view field) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        return {};
+    }
+
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    for (const auto& port : manifest.value("ports", nlohmann::json::array())) {
+        if (port.value("kind", "") != port_kind || port.value("name", "") != port_name) {
+            continue;
+        }
+        const auto metadata = port.find("metadata");
+        if (metadata == port.end()) {
+            return {};
+        }
+        return metadata->value(std::string{field}, std::vector<std::string>{});
+    }
+    return {};
+}
+
+bool contains_step(const std::vector<std::string>& steps, const std::string& step) {
+    return std::find(steps.begin(), steps.end(), step) != steps.end();
 }
 
 }  // namespace
@@ -112,17 +156,22 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
 
     std::vector<std::vector<std::size_t>> adjacency(nodes.size());
     std::vector<std::size_t> indegree(nodes.size(), 0);
+    std::vector<GraphEdge> graph_edges;
     for (const auto& edge : document.at("edges")) {
-        const auto from_id = node_id_from_endpoint(edge.at("from").get<std::string>());
-        const auto to_id = node_id_from_endpoint(edge.at("to").get<std::string>());
-        const auto from = node_index.find(from_id);
-        const auto to = node_index.find(to_id);
+        const auto from_endpoint = split_endpoint(edge.at("from").get<std::string>());
+        const auto to_endpoint = split_endpoint(edge.at("to").get<std::string>());
+        const auto from = node_index.find(from_endpoint.node_id);
+        const auto to = node_index.find(to_endpoint.node_id);
         if (from == node_index.end() || to == node_index.end()) {
             set_error(error, "dangling edge in pipeline");
             return CPIPE_BAD_INDEX;
         }
         adjacency[from->second].push_back(to->second);
         ++indegree[to->second];
+        graph_edges.push_back(GraphEdge{.from = from->second,
+                                        .to = to->second,
+                                        .from_port = from_endpoint.port,
+                                        .to_port = to_endpoint.port});
     }
 
     std::queue<std::size_t> ready;
@@ -149,6 +198,20 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     if (sorted.size() != nodes.size()) {
         set_error(error, "cycle in pipeline graph");
         return CPIPE_FAILED;
+    }
+
+    for (const auto& edge : graph_edges) {
+        const auto produced = manifest_metadata_steps(nodes[edge.from].descriptor, "out",
+                                                      edge.from_port, "sets_steps_applied");
+        const auto required = manifest_metadata_steps(nodes[edge.to].descriptor, "in", edge.to_port,
+                                                      "requires_steps_applied");
+        for (const auto& step : required) {
+            if (!contains_step(produced, step)) {
+                set_error(error,
+                          "metadata step required by pipeline edge is not produced: " + step);
+                return CPIPE_NEED_METADATA;
+            }
+        }
     }
 
     out->layout_ = layout_from_json(document.at("input"));
@@ -196,8 +259,13 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
 
         auto input_handle = make_buffer_handle(current);
         auto output_handle = make_buffer_handle(next);
+        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
+            current->metadata()};
+        auto output_metadata_builder =
+            make_metadata_builder_handle(current->metadata(), std::move(input_metadata));
         const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
         cpipe_buffer_t* process_outputs[] = {output_handle.get()};
+        cpipe_metadata_builder_t* process_out_metadata[] = {output_metadata_builder.get()};
         cpipe_process_ctx process{
             .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
             .inference = nullptr,
@@ -205,10 +273,12 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
             .n_in = 1,
             .outputs = process_outputs,
             .n_out = 1,
+            .out_metadata = process_out_metadata,
         };
         status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
             CPIPE_ACTION_PROCESS, host_context.host(), reinterpret_cast<cpipe_node_t*>(instance),
             nullptr, &process, nullptr));
+        next->set_metadata(freeze_metadata_builder(output_metadata_builder.get()));
 
         const auto destroy_status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
             CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance, nullptr));

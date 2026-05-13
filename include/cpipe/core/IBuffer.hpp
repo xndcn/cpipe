@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cpipe/core/BufferLayout.hpp>
+#include <cpipe/core/BufferMetadata.hpp>
 #include <cstdint>
 #include <memory>
 #include <string_view>
@@ -19,6 +20,8 @@ public:
     [[nodiscard]] virtual const BufferLayout& layout() const noexcept = 0;
     [[nodiscard]] virtual std::uint64_t size_bytes() const noexcept = 0;
     [[nodiscard]] virtual std::string_view color_role() const noexcept = 0;
+    [[nodiscard]] virtual std::shared_ptr<const BufferMetadata> metadata() const noexcept = 0;
+    virtual void set_metadata(std::shared_ptr<const BufferMetadata> metadata) = 0;
 
     virtual void* lock_cpu(CpuAccess access) = 0;
     virtual void unlock_cpu() = 0;

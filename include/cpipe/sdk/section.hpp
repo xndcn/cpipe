@@ -4,7 +4,7 @@
 #pragma once
 
 #if defined(__ELF__)
-#define CPIPE_SECTION_PUT __attribute__((used, section("cpipe_registry")))
+#define CPIPE_SECTION_PUT __attribute__((used, section("cpipe_registry"), aligned(1)))
 #else
 #error "cpipe_registry section support is only enabled for Linux ELF in P0"
 #endif

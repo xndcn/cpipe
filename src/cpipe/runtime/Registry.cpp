@@ -17,7 +17,8 @@ void Registry::load_builtin_nodes() {
     }
 
     for (auto* desc = __start_cpipe_registry; desc < __stop_cpipe_registry; ++desc) {
-        if (desc->abi_major != CPIPE_ABI_MAJOR || desc->abi_minor > CPIPE_ABI_MINOR) {
+        if (desc->node_id == nullptr || desc->main_entry == nullptr ||
+            desc->abi_major != CPIPE_ABI_MAJOR || desc->abi_minor > CPIPE_ABI_MINOR) {
             continue;
         }
         descriptors_.push_back(desc);
@@ -26,7 +27,7 @@ void Registry::load_builtin_nodes() {
 
 const cpipe_plugin_desc_t* Registry::find(std::string_view node_id) const noexcept {
     for (const auto* desc : descriptors_) {
-        if (desc != nullptr && desc->node_id == node_id) {
+        if (desc != nullptr && desc->node_id != nullptr && desc->node_id == node_id) {
             return desc;
         }
     }

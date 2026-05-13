@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/VulkanBuffer.hpp>
-
 #include <cassert>
+#include <cpipe/runtime/VulkanBuffer.hpp>
 #include <cstring>
 #include <iostream>
 #include <stdexcept>
@@ -37,7 +36,14 @@ VulkanBuffer::VulkanBuffer(std::shared_ptr<VulkanDevicePlane> plane,
       layout_(layout),
       usage_(usage),
       color_role_(std::move(color_role)),
+      metadata_(std::make_shared<cpipe::compute::BufferMetadata>()),
       size_bytes_(layout_.size_bytes()) {
+    if (!color_role_.empty()) {
+        auto metadata = std::make_shared<cpipe::compute::BufferMetadata>();
+        metadata->cs_role = color_role_;
+        metadata_ = std::move(metadata);
+    }
+
     VkBufferCreateInfo buffer_info{};
     buffer_info.sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO;
     buffer_info.size = size_bytes_;
@@ -75,6 +81,14 @@ std::uint64_t VulkanBuffer::size_bytes() const noexcept {
 
 std::string_view VulkanBuffer::color_role() const noexcept {
     return color_role_;
+}
+
+std::shared_ptr<const cpipe::compute::BufferMetadata> VulkanBuffer::metadata() const noexcept {
+    return metadata_;
+}
+
+void VulkanBuffer::set_metadata(std::shared_ptr<const cpipe::compute::BufferMetadata> metadata) {
+    metadata_ = std::move(metadata);
 }
 
 VkBuffer VulkanBuffer::vk_buffer() const noexcept {

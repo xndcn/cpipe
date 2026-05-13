@@ -8,6 +8,9 @@ namespace cpipe::runtime {
 std::unique_ptr<cpipe_buffer_t> make_buffer_handle(std::shared_ptr<compute::IBuffer> buffer) {
     auto handle = std::make_unique<cpipe_buffer_t>();
     handle->buffer = std::move(buffer);
+    if (handle->buffer) {
+        handle->metadata_view.metadata = handle->buffer->metadata();
+    }
     return handle;
 }
 
