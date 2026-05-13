@@ -1,6 +1,7 @@
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+find_package(OpenImageIO CONFIG REQUIRED)
 include(HalideHelpers)
 
 function(cpipe_add_unit_test target)
@@ -111,6 +112,18 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_golden_isp_nodes test_golden_isp_nodes.cpp)
+target_compile_definitions(test_golden_isp_nodes PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_link_libraries(
+    test_golden_isp_nodes
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+        OpenImageIO::OpenImageIO
+)
+set_tests_properties(test_golden_isp_nodes PROPERTIES LABELS golden)
 cpipe_add_unit_test(test_output_heif_sdr test_output_heif_sdr.cpp)
 add_dependencies(test_output_heif_sdr cpipe)
 target_compile_definitions(

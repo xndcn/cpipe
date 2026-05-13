@@ -109,7 +109,7 @@ Each subsequent section follows the same template:
 
 ## 4. Phase 1 — Walking Skeleton (tag `v0.2`)
 
-**Status.** In progress; synthetic and Pixel 8 Pro DNG → SDR HEIF CLI smokes are implemented, but the golden PSNR gate, `v0.2` tag, and GitHub Release remain pending. Tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
+**Status.** In progress; synthetic and Pixel 8 Pro DNG → SDR HEIF CLI smokes plus self-referenced per-node goldens are implemented, but integration/reference PSNR, the `v0.2` tag, and GitHub Release remain pending. Tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
 
 **Objective.** A real DNG (Bayer, no Quad Bayer yet) becomes an SDR HEIF through 5 stages of the canonical ISP pipeline on Linux, end-to-end on a developer laptop.
 
@@ -122,7 +122,7 @@ Each subsequent section follows the same template:
 - Scheduler: TaskFlow-driven topo dispatch with memory planner (interference-graph coloring) and precision-planner stub.
 - Tracy tracing compiled in behind `CPIPE_ENABLE_TRACY`.
 - Vulkan device plane minimum: Halide Vulkan AOT path for at least one of the 5 nodes; CPU fallback for the rest.
-- `tests/golden/` directory created (Git LFS bootstrapped); golden fixtures for the 5 nodes.
+- `tests/golden/` directory created (Git LFS bootstrapped); self-referenced golden fixtures for the 5 nodes.
 
 **Inputs.** P0 outputs (skeleton, CI, plugin ABI header).
 
@@ -132,7 +132,7 @@ Each subsequent section follows the same template:
 
 1. Process a Pixel 8 Pro Bayer DNG → SDR HEIF; viewer opens the result.
 2. PSNR vs a reference processing (RawTherapee-equivalent output, hand-validated) within 3 dB at the 5-node stage.
-3. Golden image fixtures land for all 5 nodes; `ctest --preset golden` is green.
+3. Golden image fixtures land for all 5 nodes; `ctest -L golden` is green.
 
 **Acceptance gate.** Smoke test in CI: process `tests/corpus/pixel8pro.dng` → `out.heif`, compare against pinned golden, fail if PSNR < 40 dB.
 
