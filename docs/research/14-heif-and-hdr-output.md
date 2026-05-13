@@ -332,6 +332,8 @@ heif_context_add_xmp_metadata(ctx, image_handle, xmp_text, xmp_size);
 heif_image_handle_set_image_rotation(handle, 90);
 ```
 
+**cpipe v1 source of these blobs**: the HEIF encode node reads them off the input buffer's `BufferMetadata` ([`buffer.md §6`](../buffer.md#6-buffermetadata)). Specifically `metadata.exif_blob` / `xmp_blob` / `icc_blob` carry the source bytes (deep-copied by ingest, shared via `shared_ptr<const ByteBlob>` across burst frames); `metadata.mdcv` / `clli` / `ultrahdr` populate the typed mastering / UltraHDR fields; `metadata.capture.orientation` drives `heif_image_handle_set_image_rotation`. Intermediate nodes pass these blobs through unchanged. A node that genuinely needs to rewrite an EXIF stream (e.g. inserting `ProcessedBy: cpipe`) constructs a fresh `ByteBlob` and calls `MetadataBuilder::set_blob`.
+
 ### 3.12 Reference Repositories Inspected
 
 1. **strukturag/libheif** master branch + 1.20.1 release tag — confirmed plugin architecture and CICP boxes write correctly; issue #995 (NCLX bug) fixed in 1.18.x.

@@ -349,6 +349,8 @@ public:
 
 The `compile()` method bridges DNG-side opcode descriptions to scheduler-side node descriptors that the [#03 scheduler](03-heterogeneous-scheduler.md) consumes. Each opcode becomes one or more compute nodes; the `Pipeline` queue is appended to the master DAG at the right insertion points.
 
+**Metadata flow (cpipe v1).** Once `compile()` has materialised opcodes into DAG nodes the parsed `Opcode` records are no longer consulted at runtime. The DngReader nevertheless retains the raw `OpcodeList1/2/3` wire bytes inside the produced `IBuffer`'s `BufferMetadata.ext_blobs` under the keys `com.cpipe.dng.opcode_list_1_bytes` / `_2` / `_3` (see [`buffer.md §6`](../buffer.md#6-buffermetadata)). v1 has no consumer for these blobs, but reserving the bytes lets a v2 DNG re-export node round-trip them without re-encoding. Per-pass progress is recorded by adding `"opcode_list_1"` / `"_2"` / `"_3"` (alongside `"linearization"`, `"black_white_scaling"`, `"demosaic"`, `"white_balance"`, `"color_matrix"`) to the buffer's `applied_steps[]`.
+
 ### 3.10 cpipe-specific Rendering Pipeline (Implied by DNG)
 
 The full canonical order, for cross-reference with [#06 — soft ISP architectures](06-soft-isp-architectures.md):

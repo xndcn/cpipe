@@ -135,7 +135,7 @@ cpipe is a **single-process** runtime. The CLI and the Android service each own 
 Key design rules ([Research 03](research/03-heterogeneous-scheduler.md)):
 
 - **One TaskFlow `Executor` per process**, sized to `std::thread::hardware_concurrency() - 1`. Halide is told to use it via `halide_set_custom_do_par_for` so it never spawns its own competing thread pool.
-- The **device plane** is *not* a separate executor. Vulkan submissions, Hexagon HTP runs, and Metal command buffers are issued from whichever TaskFlow worker is currently running the originating node. Synchronization between devices is via the timeline objects defined in [Buffer §8](buffer.md#8-synchronization-host-only).
+- The **device plane** is *not* a separate executor. Vulkan submissions, Hexagon HTP runs, and Metal command buffers are issued from whichever TaskFlow worker is currently running the originating node. Synchronization between devices is via the timeline objects defined in [Buffer §9](buffer.md#9-synchronization-host-only).
 - The **I/O thread** runs the uWebSockets event loop in its own thread. Heavy work (thumbnail downsample, profile JSON serialize) is enqueued onto the executor so the I/O loop never blocks.
 - A single `Pipeline` instance is **not reentrant** — concurrent runs require separate `Pipeline` objects. The plugin ABI guarantees that a single node instance never sees concurrent `process()` calls ([Plugin SDK §8.5](plugin-sdk.md#85-process)).
 
@@ -182,12 +182,13 @@ A pipeline run goes through five phases. The host owns every step except `proces
 Notes:
 
 1. **Static topology.** Per [D6](research/_toc.md#1-decisions-locked-before-research), the scheduler compiles the DAG *once* at load. Parameters can change between runs; nodes and edges cannot.
-2. **Memory plan.** The scheduler runs the interference-graph coloring algorithm from [Research 03 §5](research/03-heterogeneous-scheduler.md) and pre-allocates intermediates through the `BufferAllocator` ([Buffer §7](buffer.md#7-creation-and-allocation)). If `peak > device cap` the load fails immediately.
+2. **Memory plan.** The scheduler runs the interference-graph coloring algorithm from [Research 03 §5](research/03-heterogeneous-scheduler.md) and pre-allocates intermediates through the `BufferAllocator` ([Buffer §8](buffer.md#8-creation-and-allocation)). If `peak > device cap` the load fails immediately.
 3. **Precision plan.** Each node's manifest declares `precision: ["fp16", "fp32"]` per port. The scheduler inserts the minimum number of `precision_convert` nodes; this is invisible to authors ([Plugin SDK §7](plugin-sdk.md#7-manifest-schema)).
 4. **Device plan.** Manifests declare per-device implementations (`halide_cpu`, `halide_vulkan`, `slang_metal`, `qnn_htp_v75`, …). The scheduler picks one and inserts `Handoff` markers at cross-device boundaries — the only place the "one copy" budget is allowed (e.g. the AHB → HTP memcpy, [Risk R3](research/00-summary.md#7-risk-register)).
 5. **`prepare()`** is where Halide / Slang pipelines are JIT-warmed and inference models are loaded. Optional; default no-op.
-6. **`process()`** is the hot path; it submits `submit_halide` / `submit_slang` / `submit_inference` calls. The scheduler waits on input edge timelines before dispatch and signals output edge timelines after ([Buffer §8](buffer.md#8-synchronization-host-only)).
-7. **Burst** (`cardinality: "array"`) sees `n` `IBuffer*` inputs; the merge node consumes all and produces a single output ([Buffer §10.3](buffer.md#103-pipeline-inputs--outputs)).
+6. **`process()`** is the hot path; it submits `submit_halide` / `submit_slang` / `submit_inference` calls. The scheduler waits on input edge timelines before dispatch and signals output edge timelines after ([Buffer §9](buffer.md#9-synchronization-host-only)).
+7. **Metadata flow.** Every `IBuffer` carries an immutable `shared_ptr<const BufferMetadata>` ([Buffer §6](buffer.md#6-buffermetadata)). Before each `process()`, the host pre-populates a per-output `MetadataBuilder` (default-inherited from input 0); after the node returns, the host freezes builders and attaches them to the outputs. Pipeline input validation enforces `requires_steps_applied` / `requires_fields` declared in [Plugin SDK §7](plugin-sdk.md#7-manifest-schema) — missing fields fail the run with `CPIPE_NEED_METADATA` before any node executes.
+8. **Burst** (`cardinality: "array"`) sees `n` `IBuffer*` inputs; the merge node consumes all and produces a single output ([Buffer §11.3](buffer.md#113-pipeline-inputs--outputs)). Each input frame's metadata travels independently; merge nodes use the `MergePolicy` enum to compose the output's metadata ([Buffer §6.3](buffer.md#63-burst-merge)).
 
 ---
 
@@ -217,7 +218,7 @@ This is the only mobile-specific flow detailed here; everything else is platform
    color management → tone → denoise → encode → file
 ```
 
-Detailed contract in [Research 16](research/16-camera2-raw-and-burst.md) and [Buffer §10.2](buffer.md#102-camera2bufferproducer). The acquire-fence FD-to-VkSemaphore conversion happens *inside* `Camera2BufferProducer` so it never crosses the plugin boundary ([Buffer §8](buffer.md#8-synchronization-host-only)).
+Detailed contract in [Research 16](research/16-camera2-raw-and-burst.md) and [Buffer §11.2](buffer.md#112-camera2bufferproducer). The acquire-fence FD-to-VkSemaphore conversion happens *inside* `Camera2BufferProducer` so it never crosses the plugin boundary ([Buffer §9](buffer.md#9-synchronization-host-only)).
 
 Each frame becomes one independent `.dng` on disk if the user requested raw archival (Q10 resolution: N independent DNGs, not a multi-IFD container).
 
@@ -466,8 +467,8 @@ The full v1.0 phase plan and Definition-of-Done per phase live in [`roadmap.md`]
 
 The architecture intentionally **does not** implement these in v1; reservations are in place so v2 can pick them up without breaking the ABI:
 
-- Tile-based / out-of-core processing ([D2](research/_toc.md#1-decisions-locked-before-research); [Buffer §11](buffer.md#11-sub-view-not-implemented-in-v1)).
-- Streaming / live preview pipeline ([D5](research/_toc.md#1-decisions-locked-before-research); [Buffer §8](buffer.md#8-synchronization-host-only)).
+- Tile-based / out-of-core processing ([D2](research/_toc.md#1-decisions-locked-before-research); [Buffer §12](buffer.md#12-sub-view-not-implemented-in-v1)).
+- Streaming / live preview pipeline ([D5](research/_toc.md#1-decisions-locked-before-research); [Buffer §9](buffer.md#9-synchronization-host-only)).
 - ZSL ring buffer ([D3](research/_toc.md#1-decisions-locked-before-research)).
 - Dynamic DAG topology ([D6](research/_toc.md#1-decisions-locked-before-research)).
 - External `.so` plugin loading ([D4](research/_toc.md#1-decisions-locked-before-research); [Plugin SDK §5.4](plugin-sdk.md#54-v2-external-so-loading)).

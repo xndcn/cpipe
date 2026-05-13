@@ -26,6 +26,10 @@ cpipe nodes are **plugins**: built-in v1 nodes and external v2 `.so` plugins use
 | P14 | Halide AOT–to-`IBuffer` adaptation (the `halide_buffer_t` glue) is the host's job; plugins never see `halide_buffer_t` | `submit_halide("aot_id", ins, outs)` |
 | P15 | The manifest declares static `in_pixels / out_pixels / scratch_pixels` (per-pixel memory cost) so the scheduler can plan | Per research 03 §6 |
 | P16 | v1 limits: same-process only; no tile-based / hot-reload / sandboxing; no marketplace | The architecture does not block v2 |
+| P17 | Metadata is exposed through a fifth suite, `cpipe_metadata_suite_v1`: typed getters for the v1-frozen DNG / Camera2 / HEIF fields plus `get_blob(key)` for vendor / EXIF / XMP / opcode bytes | Mirrors `cpipe::compute::BufferMetadata` defined in [`buffer.md §6`](buffer.md); reverse-DNS keys (`com.cpipe.*` / `vendor.<vendor>.*`) preserve future-proof extension |
+| P18 | Plugins write metadata through a per-output-buffer `cpipe_metadata_builder_t`. Builders are default-initialized from `inputs[0].metadata()`; the host freezes them after `process()` returns | Removes mutability of upstream metadata; honors P9 (`process()` per-instance serialization) |
+| P19 | Manifest declares per-port `requires_metadata` / `requires_steps_applied` / `requires_steps_not_applied` and per-output `clears_metadata` / `sets_steps_applied` / `writes_metadata` | Host validates the DAG at load and aborts `pipeline.run` with `CPIPE_NEED_METADATA` when an upstream node fails to supply a downstream-required field |
+| P20 | Processing-state is an open `applied_steps[]` reverse-DNS string set; `cs_role` is a string. Tensor quantization parameters are typed and apply only to `BufferKind::TensorND` | Authors can extend the step vocabulary (e.g. `vendor.qualcomm.htp_tonemap`) without bumping the suite version |
 
 ---
 
@@ -100,7 +104,8 @@ typedef enum {
     CPIPE_BAD_INDEX      = 5,
     CPIPE_NEED_PARAM     = 6,
     CPIPE_INTERNAL_ERROR = 7,
-    CPIPE_UNSUPPORTED    = 8
+    CPIPE_UNSUPPORTED    = 8,
+    CPIPE_NEED_METADATA  = 9    /* required BufferMetadata field missing */
 } cpipe_status_t;
 
 /* ---------------- Action strings ---------------- */
@@ -116,18 +121,23 @@ typedef struct cpipe_host_s        cpipe_host_t;
 typedef struct cpipe_node_s        cpipe_node_t;       /* per-instance state */
 typedef struct cpipe_props_s       cpipe_props_t;      /* immutable param view */
 typedef struct cpipe_buffer_s      cpipe_buffer_t;     /* IBuffer wrapper */
+typedef struct cpipe_metadata_s    cpipe_metadata_t;   /* BufferMetadata wrapper (read-only) */
+typedef struct cpipe_metadata_builder_s cpipe_metadata_builder_t; /* per-output writer */
 typedef struct cpipe_compute_s     cpipe_compute_t;    /* ComputeContext */
 typedef struct cpipe_inference_s   cpipe_inference_t;  /* InferenceContext */
 
 /* ---------------- Buffer suite v1 ---------------- */
-/* Read-only metadata + CPU access (CPU-device nodes only). */
+/* Read-only shape + CPU access (CPU-device nodes only). Per-buffer
+ * metadata is fetched via cpipe_metadata_suite_v1 below. */
 typedef struct {
     int (*get_dims)        (const cpipe_buffer_t*, uint8_t* ndim,
                             uint32_t out_dims[8]);
     int (*get_format)      (const cpipe_buffer_t*, int* /* PixelFormat enum value */);
     int (*get_kind)        (const cpipe_buffer_t*, int* /* BufferKind enum value */);
     int (*get_stride)      (const cpipe_buffer_t*, uint64_t out_stride[8]);
-    int (*get_color_role)  (const cpipe_buffer_t*, const char** /* OCIO role */);
+
+    /* Returns the immutable metadata view; out is NULL for scratch buffers (B16). */
+    int (*get_metadata)    (const cpipe_buffer_t*, const cpipe_metadata_t** out);
 
     /* CPU access — valid only when the buffer was allocated with CPU_READ/WRITE usage.
      * Blocks until GPU work completes. unlock_cpu must follow. */
@@ -135,6 +145,149 @@ typedef struct {
     int (*unlock_cpu)      (cpipe_buffer_t*);
     int (*flush_cpu_writes)(cpipe_buffer_t*);
 } cpipe_buffer_suite_v1;
+
+/* ---------------- Metadata suite v1 ---------------- */
+/* See buffer.md §6 for the underlying BufferMetadata shape. Typed getters cover
+ * v1-frozen fields; vendor / EXIF / XMP / opcode-bytes flow through key-blob.
+ * The metadata view is read-only; mutation goes through cpipe_metadata_builder_t. */
+
+/* Calibration block (shared across burst frames). */
+typedef struct {
+    int      has_cfa;                  /* 0 = absent (e.g. demosaiced) */
+    uint8_t  cfa_repeat[2];            /* (rows, cols); typically (2,2) or (4,4) */
+    uint8_t  cfa_pattern[16];          /* up to 4x4 */
+    float    black_level[4];
+    uint32_t white_level;
+    int      has_color_matrix1;  float color_matrix1[9];   /* row-major 3x3 */
+    int      has_color_matrix2;  float color_matrix2[9];
+    int      has_forward_matrix1;float forward_matrix1[9];
+    int      has_forward_matrix2;float forward_matrix2[9];
+    uint16_t calibration_illuminant1;
+    uint16_t calibration_illuminant2;
+    /* Noise model: caller passes a max-N buffer; out_n is the actual count. */
+    int    (*get_noise_profile)(const cpipe_metadata_t*,
+                                size_t  max_pairs,
+                                size_t* out_n,
+                                float*  out_a,    /* length max_pairs */
+                                float*  out_b);   /* length max_pairs */
+} cpipe_calibration_view;
+
+/* Per-frame capture block. */
+typedef struct {
+    int64_t  sensor_timestamp_ns;
+    int64_t  exposure_time_ns;
+    int32_t  iso;
+    float    lens_focal_length_mm;
+    float    lens_aperture;
+    float    lens_focus_distance_d;
+    float    as_shot_neutral[3];
+    uint8_t  orientation;              /* EXIF 1..8 */
+    uint32_t burst_index;
+    uint32_t burst_size;
+    /* String fields are copied into caller-provided buffers; truncated if short. */
+    int    (*get_camera_id)         (const cpipe_metadata_t*, char* out, size_t cap);
+    int    (*get_physical_camera_id)(const cpipe_metadata_t*, char* out, size_t cap);
+} cpipe_capture_view;
+
+/* Tensor quantization view. Meaningful for BufferKind::TensorND only. */
+typedef struct {
+    int      scheme;     /* 0 = None, 1 = Symmetric, 2 = Asymmetric */
+    int      has_axis;
+    int8_t   axis;
+    /* Caller passes a max-N buffer; out_n is the actual count (1 = per-tensor). */
+    int    (*get_scales)     (const cpipe_metadata_t*, size_t max, size_t* out_n, float*   out);
+    int    (*get_zero_points)(const cpipe_metadata_t*, size_t max, size_t* out_n, int32_t* out);
+} cpipe_tensor_quant_view;
+
+typedef struct {
+    /* ---- Calibration / capture / quant (typed) ---- */
+    int (*get_calibration)(const cpipe_metadata_t*, cpipe_calibration_view*  out);
+    int (*get_capture)    (const cpipe_metadata_t*, cpipe_capture_view*      out);
+    int (*get_tensor_quant)(const cpipe_metadata_t*, cpipe_tensor_quant_view* out);
+
+    /* ---- Color ---- */
+    /* cs_role is a stable string pointer valid until process() returns.
+     * Examples: "raw_camera", "scene_linear_rec2020", "output_pq2020". */
+    int (*get_cs_role)    (const cpipe_metadata_t*, const char** out);
+
+    /* ---- Active region (after crop / TrimBounds). 0 result if unset. ---- */
+    int (*get_active_area)(const cpipe_metadata_t*,
+                           uint32_t* x, uint32_t* y, uint32_t* w, uint32_t* h);
+
+    /* ---- Processing state (applied_steps[]) ---- */
+    int (*has_applied_step)(const cpipe_metadata_t*, const char* step, int* out_bool);
+    int (*list_applied_steps)(const cpipe_metadata_t*,
+                              size_t       max,
+                              size_t*      out_n,
+                              const char** out_steps  /* pointers valid until process() returns */);
+
+    /* ---- Output sidecar / extension blobs (key-blob extension) ---- */
+    /* Reserved keys (subset; full list in buffer.md §6.1):
+     *   "exif_raw", "xmp_raw", "icc_raw"
+     *   "com.cpipe.dng.opcode_list_1_bytes" / _2 / _3
+     *   "com.cpipe.heif.mdcv" / "com.cpipe.heif.clli" / "com.cpipe.heif.ultrahdr"
+     *   "vendor.<vendor>.<key>"
+     * Pointers are valid until process() returns. */
+    int (*get_blob)       (const cpipe_metadata_t*, const char* key,
+                           const void** out_ptr, size_t* out_size);
+
+    /* Iterate keys for debug / passthrough. Returns CPIPE_OK and writes up to
+     * `max` keys into out_keys; out_total is the underlying count. */
+    int (*list_blob_keys) (const cpipe_metadata_t*,
+                           size_t       max,
+                           size_t*      out_total,
+                           const char** out_keys);
+} cpipe_metadata_suite_v1;
+
+/* ---------------- Metadata builder suite v1 ---------------- */
+/* Each output buffer of process() owns one builder. Default-initialized from
+ * inputs[0].metadata() (or empty if there are no inputs). Plugins issue diff
+ * setters; host calls freeze after process() returns. */
+typedef struct {
+    /* ---- Calibration (shared sub-block) ----
+     * share_calibration_from copies the shared_ptr<const CalibrationBlock>
+     * from the named input buffer (idx into cpipe_process_ctx::inputs).
+     * The sub-block stays shared (no deep copy). */
+    int (*share_calibration_from)(cpipe_metadata_builder_t*, size_t input_idx);
+    int (*clear_calibration)     (cpipe_metadata_builder_t*);
+    /* clear_cfa removes only the CFA descriptor (e.g. demosaic output). */
+    int (*clear_cfa)             (cpipe_metadata_builder_t*);
+
+    /* ---- Capture ---- */
+    int (*set_as_shot_neutral)(cpipe_metadata_builder_t*, const float rgb[3]);
+    int (*set_orientation)    (cpipe_metadata_builder_t*, uint8_t orient);
+    /* (Other capture fields rarely change inside the DAG; use set_blob with
+     *  reverse-DNS key for one-off overrides.) */
+
+    /* ---- Color / state ---- */
+    int (*set_cs_role)        (cpipe_metadata_builder_t*, const char* cs_role);
+    int (*add_applied_step)   (cpipe_metadata_builder_t*, const char* step);
+    int (*remove_applied_step)(cpipe_metadata_builder_t*, const char* step);
+    int (*set_active_area)    (cpipe_metadata_builder_t*,
+                               uint32_t x, uint32_t y, uint32_t w, uint32_t h);
+
+    /* ---- Tensor quant (TensorND outputs only) ---- */
+    int (*set_tensor_quant)   (cpipe_metadata_builder_t*,
+                               int     scheme,         /* 0 / 1 / 2 */
+                               int     has_axis,
+                               int8_t  axis,
+                               const float*   scales,      size_t n_scales,
+                               const int32_t* zero_points, size_t n_zp);
+
+    /* ---- Sidecar / extension blobs ---- */
+    /* set_blob copies bytes into a host-owned ByteBlob; pass size==0 to clear. */
+    int (*set_blob)(cpipe_metadata_builder_t*, const char* key,
+                    const void* ptr, size_t size);
+
+    /* ---- Burst merge (cardinality:"array" inputs only) ---- */
+    /* MergePolicy values:
+     *   0 = Primary         (no-op, default)
+     *   1 = MeanScalars     (avg exposure_time_ns, iso)
+     *   2 = MedianTimestamp (median sensor_timestamp_ns)
+     *   3 = AndState        (intersect applied_steps with input_idx)
+     *   4 = UnionState      (union applied_steps with input_idx) */
+    int (*merge_from)(cpipe_metadata_builder_t*, size_t input_idx, int policy);
+} cpipe_metadata_builder_suite_v1;
 
 /* ---------------- Compute suite v1 ---------------- */
 /* Submit Halide AOT or a slang shader; never raw Vulkan / Metal. */
@@ -192,7 +345,8 @@ struct cpipe_host_s {
     uint32_t abi_minor;
 
     /* Suite negotiation. Returns NULL if (name, version) is not provided.
-     * Names: "buffer", "compute", "param", "inference". */
+     * Names: "buffer", "compute", "param", "inference", "metadata",
+     *        "metadata_builder". */
     const void* (*get_suite)(cpipe_host_t* self,
                              const char* suite_name,
                              int         version);
@@ -216,10 +370,15 @@ struct cpipe_host_s {
  *   process  : in = const cpipe_process_ctx*, out = NULL
  */
 typedef struct {
-    cpipe_compute_t*        compute;
-    cpipe_inference_t*      inference;            /* NULL for non-AI nodes */
-    const cpipe_buffer_t**  inputs;   size_t n_in;
-    cpipe_buffer_t**        outputs;  size_t n_out;
+    cpipe_compute_t*               compute;
+    cpipe_inference_t*             inference;            /* NULL for non-AI nodes */
+    const cpipe_buffer_t**         inputs;   size_t n_in;
+    cpipe_buffer_t**               outputs;  size_t n_out;
+    /* One builder per output buffer. Default-initialized by host from
+     * inputs[0].metadata() (or empty if n_in == 0). Plugins issue diff
+     * setters via cpipe_metadata_builder_suite_v1; host freezes after
+     * process() returns and attaches the result to outputs[i]. */
+    cpipe_metadata_builder_t**     out_metadata; /* size = n_out */
 } cpipe_process_ctx;
 
 /* ---------------- Plugin entry ---------------- */
@@ -372,6 +531,70 @@ struct Error { cpipe_status_t code; std::string message; };
 template <class T>
 using Result = std::expected<T, Error>;
 
+// ---- BufferMetadata (read-only facade over cpipe_metadata_t) ----
+class BufferMetadata {
+public:
+    // Calibration / capture / quant — typed views; copies into local structs.
+    Result<CalibrationView>  calibration() const noexcept;
+    Result<CaptureView>      capture()     const noexcept;
+    Result<TensorQuantView>  tensor_quant() const noexcept;
+
+    // Color / state.
+    std::string_view         cs_role()           const noexcept;
+    std::optional<Rect2u>    active_area()       const noexcept;
+    bool                     has_step(std::string_view step) const noexcept;
+    std::vector<std::string_view> applied_steps() const noexcept;
+
+    // Sidecar / extension blobs (reverse-DNS keys; pointer valid for the
+    // current process() call).
+    std::optional<std::span<const std::byte>>
+                              blob(std::string_view key) const noexcept;
+    std::vector<std::string_view> blob_keys() const noexcept;
+
+private:
+    const cpipe_metadata_t*         impl_;
+    const cpipe_metadata_suite_v1*  suite_;
+};
+
+// ---- MetadataBuilder (writer for one output buffer) ----
+class MetadataBuilder {
+public:
+    // Inherit shared CalibrationBlock pointer from one of the inputs without
+    // deep copy; the new metadata sees the same calibration as input_idx.
+    Result<void> share_calibration_from(size_t input_idx);
+    Result<void> clear_calibration();
+    Result<void> clear_cfa();
+
+    Result<void> set_as_shot_neutral(const std::array<float,3>&);
+    Result<void> set_orientation(uint8_t);
+
+    Result<void> set_cs_role(std::string_view);
+    Result<void> add_applied_step(std::string_view);
+    Result<void> remove_applied_step(std::string_view);
+    Result<void> set_active_area(Rect2u);
+
+    Result<void> set_tensor_quant(int scheme,
+                                  std::optional<int8_t> axis,
+                                  std::span<const float>   scales,
+                                  std::span<const int32_t> zero_points = {});
+
+    Result<void> set_blob(std::string_view key,
+                          std::span<const std::byte> bytes);
+
+    enum class MergePolicy : int {
+        Primary         = 0,
+        MeanScalars     = 1,
+        MedianTimestamp = 2,
+        AndState        = 3,
+        UnionState      = 4,
+    };
+    Result<void> merge_from(size_t input_idx, MergePolicy);
+
+private:
+    cpipe_metadata_builder_t*               impl_;
+    const cpipe_metadata_builder_suite_v1*  suite_;
+};
+
 // ---- Buffer (read-only facade over cpipe_buffer_t) ----
 class Buffer {
 public:
@@ -380,7 +603,12 @@ public:
     uint32_t          depth()       const noexcept;
     int               format()      const noexcept;   // PixelFormat
     int               kind()        const noexcept;   // BufferKind
-    std::string_view  color_role()  const noexcept;
+
+    // Per-buffer metadata view; nullptr only on scratch buffers (B16).
+    const BufferMetadata* metadata() const noexcept;
+
+    // Convenience: cs_role pulled directly from metadata (or "undefined").
+    std::string_view  cs_role()     const noexcept;
 
     // CPU access — only for CPU-device nodes.
     enum class Access { Read, Write, ReadWrite };
@@ -408,6 +636,8 @@ public:
 
     Result<Buffer*> request_scratch(uint64_t bytes,
                                     int kind /* BufferKind */);
+    // The returned scratch buffer's metadata() is nullptr (B16). Plugins must
+    // not invoke any metadata getter on it.
 
     void mark(std::string_view label) noexcept;
 
@@ -459,11 +689,15 @@ public:
                                  const ParamView&) { return {}; }
 
     // Hot path. Called by the scheduler from any worker thread; the same instance is never reentered.
+    // out_metadata.size() == outputs.size(); each builder is host-default-initialised
+    // from inputs[0].metadata() (P18). Plugins issue diff setters; the host
+    // freezes them after process() returns.
     virtual Result<void> process(ComputeContext&,
                                  InferenceContext*,
                                  const ParamView&,
-                                 std::span<const Buffer*> inputs,
-                                 std::span<Buffer*>       outputs) = 0;
+                                 std::span<const Buffer*>      inputs,
+                                 std::span<Buffer*>            outputs,
+                                 std::span<MetadataBuilder*>   out_metadata) = 0;
 };
 
 // ---- dispatch shim — hides cpipe_main_entry_t dispatch from plugin authors ----
@@ -509,11 +743,22 @@ Authors write `node.json`:
     { "name": "in",  "kind": "in",
       "caps": { "buffer_kind": "Image2D",
                 "channels": ["rgb"], "precision": ["fp16","fp32"] },
-      "cardinality": "single" },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied":     ["demosaic", "white_balance", "color_matrix"],
+        "requires_steps_not_applied": [],
+        "requires_fields":            ["calibration.noise_profile", "cs_role"]
+      } },
     { "name": "out", "kind": "out",
       "caps": { "buffer_kind": "Image2D",
                 "channels": ["rgb"], "precision": ["fp16"] },
-      "cardinality": "single" }
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from":      "in",
+        "sets_steps_applied": ["vendor.cpipe.bm3d_denoise"],
+        "writes_fields":      [],
+        "clears_fields":      []
+      } }
   ],
 
   "params": [
@@ -597,6 +842,13 @@ CPIPE_REGISTER_NODE(BM3D, BM3D_MANIFEST_JSON)
 | `compute.engine` | `Halide / Slang / Inference` | yes |
 | `compute.in_pixel_bytes` etc. | Memory-cost estimate for the scheduler (P15) | yes |
 | `color` | OCIO role (advisory; transforms happen in dedicated nodes) | yes (use `"any"` if irrelevant) |
+| `ports[i].metadata.requires_steps_applied` | Reverse-DNS step IDs that must already be in the input's `applied_steps[]` | no |
+| `ports[i].metadata.requires_steps_not_applied` | Reverse-DNS step IDs that must NOT yet be present | no |
+| `ports[i].metadata.requires_fields` | Dotted-path field IDs (e.g. `calibration.noise_profile`, `capture.exposure_time_ns`) the input metadata must carry | no |
+| `ports[out].metadata.inherits_from` | Name of the input port that the output's metadata defaults to (host fast-path; `"none"` resets the builder) | no |
+| `ports[out].metadata.sets_steps_applied` | Reverse-DNS step IDs the host expects the node to add to the output's `applied_steps[]` | no |
+| `ports[out].metadata.clears_fields` | Fields the node removes from the output (e.g. `calibration.cfa` after demosaic) | no |
+| `ports[out].metadata.writes_fields` | Fields the node sets on the output (used for downstream `requires_fields` resolution) | no |
 | `test.golden_pairs` | CI input (research 09 IQA harness) | no |
 
 ---
@@ -631,9 +883,11 @@ CPIPE_REGISTER_NODE(BM3D, BM3D_MANIFEST_JSON)
 ### 8.5 process
 
 - Called on every `Pipeline::run()` when the scheduler dispatches the node.
-- `in_ctx`: `const cpipe_process_ctx*` (compute / inference / inputs / outputs).
+- `in_ctx`: `const cpipe_process_ctx*` (compute / inference / inputs / outputs / out_metadata).
 - Concurrency (P9): the scheduler guarantees that the same instance's `process` is **serialized**; different instances may run concurrently; the calling thread varies (TaskFlow worker pool). Plugins do not need their own per-instance lock; globals shared across instances need explicit locking.
 - A single `process` may submit multiple compute calls (e.g. BM3D = match → transform → aggregate, three kernels).
+- **Metadata builders.** Each output buffer has one `cpipe_metadata_builder_t*` in `ctx->out_metadata`. Before `process()` runs, the host pre-populates each builder per `ports[out].metadata.inherits_from` (default: `inputs[0].metadata()` deep-copied). The plugin issues diff-style setters during `process()`. **The host calls `freeze()` on every builder once `process()` returns** and attaches the resulting `shared_ptr<const BufferMetadata>` to the output buffer (P18). After freeze, the builder is invalid; the buffer's metadata is immutable forever. Returning `CPIPE_OK` without touching a builder is the passthrough case (output's metadata is identical to input 0's).
+- The host validates `sets_steps_applied` / `writes_fields` / `clears_fields` claims at freeze time; mismatches with the manifest declaration produce `CPIPE_INTERNAL_ERROR` and abort the run.
 
 ---
 
@@ -767,7 +1021,8 @@ public:
                               sdk::InferenceContext*,
                               const sdk::ParamView&,
                               std::span<const sdk::Buffer*> in,
-                              std::span<sdk::Buffer*>       out) override {
+                              std::span<sdk::Buffer*>       out,
+                              std::span<sdk::MetadataBuilder*> /*out_meta*/) override {
         return cc.submit_halide("passthrough_copy", in, out);
     }
 };
@@ -793,9 +1048,14 @@ public:
                               sdk::InferenceContext*,
                               const sdk::ParamView& p,
                               std::span<const sdk::Buffer*> in,
-                              std::span<sdk::Buffer*>       out) override {
+                              std::span<sdk::Buffer*>       out,
+                              std::span<sdk::MetadataBuilder*> meta) override {
         cc.mark("demosaic_amaze");
-        return cc.submit_halide("demosaic_amaze", in, out);
+        if (auto r = cc.submit_halide("demosaic_amaze", in, out); !r) return r;
+        // Output is no longer mosaiced. Drop CFA descriptor and record the step.
+        meta[0]->clear_cfa();
+        meta[0]->add_applied_step("demosaic");
+        return {};
     }
 };
 CPIPE_REGISTER_NODE(cpipe::nodes::DemosaicAmaze, DEMOSAIC_AMAZE_MANIFEST_JSON)
@@ -817,7 +1077,8 @@ public:
     sdk::Result<void> process(sdk::ComputeContext& cc, sdk::InferenceContext*,
                               const sdk::ParamView& p,
                               std::span<const sdk::Buffer*> in,
-                              std::span<sdk::Buffer*>       out) override {
+                              std::span<sdk::Buffer*>       out,
+                              std::span<sdk::MetadataBuilder*> /*meta*/) override {
         PushConst pc{ float(p.d("ev_bias")),
                       float(p.d("saturation_clip")) };
         return cc.submit_slang(
@@ -844,7 +1105,8 @@ public:
                               sdk::InferenceContext* inf,
                               const sdk::ParamView& p,
                               std::span<const sdk::Buffer*> in,
-                              std::span<sdk::Buffer*>       out) override {
+                              std::span<sdk::Buffer*>       out,
+                              std::span<sdk::MetadataBuilder*> /*meta*/) override {
         cc.mark("nafnet_inference");
         return inf->submit("nafnet_w32_int8", in, out);
     }
@@ -879,16 +1141,19 @@ These limits do not block v2: the ABI and manifest schema already reserve extens
 |-------|------------------------|--------------|
 | `IBuffer` interface | yes | — |
 | `BufferLayout` / `PixelFormat` / `BufferKind` | yes | — (this doc references the enum values) |
+| `BufferMetadata` (struct, anatomy, lifecycle, builder semantics, burst merge, OpcodeList retention, ABI evolution) | yes (§6) | — |
 | Concrete backend types (`VulkanBuffer`, etc.) | yes | — |
 | Allocator (VMA / MTLHeap) | yes | — |
 | External imports (AHB / IOSurface / host pointer) | yes | — |
 | `IFence` / `ITimeline` | yes (host-only) | — |
 | `Camera2BufferProducer` / `DngReader` | yes | — |
 | `cpipe_buffer_t` opaque + `buffer_suite_v1` | — | yes |
+| `cpipe_metadata_t` + `cpipe_metadata_suite_v1` (read) | — | yes (§3) |
+| `cpipe_metadata_builder_t` + `cpipe_metadata_builder_suite_v1` (write) | — | yes (§3) |
 | `cpipe_node.h` complete ABI | — | yes |
-| `sdk.hpp` (`Buffer` / `ComputeContext` / `Node`) | — | yes |
+| `sdk.hpp` (`Buffer` / `BufferMetadata` / `MetadataBuilder` / `ComputeContext` / `Node`) | — | yes |
 | `CPIPE_REGISTER_NODE` and linker-section trick | — | yes |
-| Manifest schema | — | yes |
+| Manifest schema (incl. `metadata.requires_*` / `writes_*` / `clears_*`) | — | yes |
 | Node examples | — | yes |
 
 The pipeline JSON (the Editor-produced, CLI-consumed `pipeline.cpipe.json` graph description) is owned by [`research/11-pipeline-editor-and-connectivity.md`](research/11-pipeline-editor-and-connectivity.md); this document only references it.

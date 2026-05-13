@@ -774,6 +774,8 @@ The `BatchedBuffer` is what cpipe's pipeline DAG receives. Per-frame
 metadata travels alongside the buffer all the way through the DAG so any
 node that needs (e.g.) the per-frame exposure time has direct access.
 
+**v1 mapping into `BufferMetadata`** ([`buffer.md §6`](../buffer.md#6-buffermetadata)): the `FrameMeta` shape sketched here is the Camera2-specific *source* of metadata; the runtime representation that flows on every `IBuffer` is `cpipe::compute::BufferMetadata`. The static fields (`color_matrix*`, `forward_matrix*`, `noise_profile_per_channel`, `cfa_pattern`, `white_level`) are hoisted into a single `shared_ptr<const CalibrationBlock>` shared by all N burst frames; the dynamic fields (`sensor_timestamp_ns`, `exposure_time_ns`, `iso`, `cc_gains`, `lens_*`, `burst_index`, `burst_size`) live in each buffer's per-frame `CaptureBlock`. The `STATISTICS_HOT_PIXEL_MAP`, `LENS_DISTORTION` polynomials, and DNG `OpcodeList*` wire bytes (when synthesised by the writer) flow through `BufferMetadata.ext_blobs` under reverse-DNS keys.
+
 ### 4.3 Hand-off to Vulkan compute (cluster A interaction)
 
 ```cpp

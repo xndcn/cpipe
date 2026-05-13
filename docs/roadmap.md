@@ -218,7 +218,7 @@ Each subsequent section follows the same template:
 
 **Sub-domains.**
 
-- **Multi-frame `BatchedBuffer`**: extend `cpipe::IBuffer` to support cardinality-N inputs ([`buffer.md` §10.3](buffer.md#103-pipeline-inputs--outputs)).
+- **Multi-frame `BatchedBuffer`**: extend `cpipe::IBuffer` to support cardinality-N inputs ([`buffer.md` §11.3](buffer.md#113-pipeline-inputs--outputs)).
 - **HDR+ derivative align/merge/finish stages**: alignment pyramid + tile-merge with raised cosine, Bayer-domain. Not gated on neural denoise — classical path lands first.
 - **ExecuTorch 1.2.0 integration**: XNNPACK CPU backend in `cpipe-runtime`. Linux desktop only.
 - **ExecuTorch Vulkan backend**: AOT-compile NAFNet-w32 + AdaInt 3D-LUT.
@@ -411,7 +411,7 @@ v2 opens the architecture beyond v1's hard limits:
 
 Reiterated here so contributors don't accidentally expand v1.0:
 
-- Tile-based / out-of-core image processing (D2; [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1)).
+- Tile-based / out-of-core image processing (D2; [`buffer.md` §12](buffer.md#12-sub-view-not-implemented-in-v1)).
 - Streaming / live preview (D5).
 - Zero-shutter-lag (D3).
 - Dynamic DAG topology (D6).

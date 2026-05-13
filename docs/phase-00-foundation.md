@@ -218,7 +218,7 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 - [x] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
 - [x] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
 - [x] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
-- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
+- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §12](buffer.md#12-sub-view-not-implemented-in-v1).
 
 **Verification:**
 - [x] `ctest -R test_pixel_format` green.
