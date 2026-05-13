@@ -110,6 +110,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-48 | Metadata suite scope                    | P1 wires the typed getters listed in [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh): `cpipe_calibration_view`, `cpipe_capture_view`, `cs_role`, `applied_steps`, `active_area`, `tensor_quant` (returns `Scheme::None`), `get_blob`. Builder mirrors the §3 list. |
 | PD-49 | Risk register                           | Phase-local risks tracked in §10 (`P1-R1` … `P1-RN`); inherited risks from [`research/00-summary.md` §7](research/00-summary.md#7-risk-register) cited but not restated. |
 | PD-50 | What Shipped / What Slipped flow        | Phase doc §12 + [`roadmap.md` §4](roadmap.md#4-phase-1--walking-skeleton-tag-v02) + [`README.md`](../README.md) "Current Status" updated in the same PR that pushes `v0.2`. |
+| PD-51 | Halide `host-vulkan` CMake spelling     | `cpipe_add_halide_library()` accepts phase-doc shorthand `host-vulkan` and normalizes it to `${Halide_HOST_TARGET}-vulkan` before calling Halide v21's helper, because Halide multi-target validation requires every target entry to share the same explicit triple spelling. |
 
 ---
 
@@ -240,14 +241,14 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Bump `vcpkg.json` to add the P1 dependencies. Author the `vcpkg/overlay-ports/kvazaar/` port. Enable `host-vulkan` codegen in `cmake/HalideHelpers.cmake`. Implement `BufferMetadata` / `CalibrationBlock` / `CaptureBlock` / `TensorQuant` / `ByteBlob` types in `cpipe-core` per [`buffer.md` §6](buffer.md#6-buffermetadata).
 
 **Acceptance criteria:**
-- [ ] `vcpkg install` succeeds for the eleven new ports (libraw, opencolorio, lcms, libheif, libde265, vulkan-memory-allocator, vulkan-headers, vulkan-loader, openimageio, tracy + the kvazaar overlay).
-- [ ] `BufferLayout` unchanged; `BufferMetadata` types compile in `cpipe-core` with no Vulkan / OCIO / Halide / OIIO includes.
-- [ ] `cpipe-core` unit tests for default-constructed metadata round-trip; `MetadataBuilder` (host-side struct) freeze produces an immutable snapshot.
-- [ ] `host-vulkan` Halide variant produces a no-op AOT build (one synthetic test generator) without breaking the CPU build.
+- [x] `vcpkg install` succeeds for the eleven new ports (libraw, opencolorio, lcms, libheif, libde265, vulkan-memory-allocator, vulkan-headers, vulkan-loader, openimageio, tracy + the kvazaar overlay).
+- [x] `BufferLayout` unchanged; `BufferMetadata` types compile in `cpipe-core` with no Vulkan / OCIO / Halide / OIIO includes.
+- [x] `cpipe-core` unit tests for default-constructed metadata round-trip; `MetadataBuilder` (host-side struct) freeze produces an immutable snapshot.
+- [x] `host-vulkan` Halide variant produces a no-op AOT build (one synthetic test generator) without breaking the CPU build.
 
 **Verification:**
-- [ ] `ctest -R test_buffer_metadata` green.
-- [ ] `nm $(find . -name '*.a') | grep -E 'CalibrationBlock|CaptureBlock'` shows symbols in `libcpipe-core.a`.
+- [x] `ctest -R test_buffer_metadata` green.
+- [x] `nm $(find . -name '*.a') | grep -E 'CalibrationBlock|CaptureBlock'` shows symbols in `libcpipe-core.a`.
 
 **Dependencies:** None (after P0).
 

@@ -1,0 +1,17 @@
+{
+  "name": "kvazaar",
+  "version-semver": "2.3.2",
+  "description": "Open-source HEVC encoder.",
+  "homepage": "https://github.com/ultravideo/kvazaar",
+  "license": "BSD-3-Clause",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}

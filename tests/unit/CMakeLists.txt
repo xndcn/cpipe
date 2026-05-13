@@ -1,6 +1,7 @@
 find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+include(HalideHelpers)
 
 function(cpipe_add_unit_test target)
     add_executable(${target} ${ARGN})
@@ -16,6 +17,7 @@ target_link_libraries(test-registry-fixture PRIVATE cpipe::sdk)
 cpipe_add_unit_test(test_pixel_format test_pixel_format.cpp)
 cpipe_add_unit_test(test_buffer_layout test_buffer_layout.cpp)
 cpipe_add_unit_test(test_buffer_usage test_buffer_usage.cpp)
+cpipe_add_unit_test(test_buffer_metadata test_buffer_metadata.cpp)
 cpipe_add_unit_test(test_cpu_buffer test_cpu_buffer.cpp)
 cpipe_add_unit_test(test_status test_status.cpp)
 cpipe_add_unit_test(test_registry test_registry.cpp test_abi_c_compile.c)
@@ -38,3 +40,18 @@ target_link_libraries(
 cpipe_add_unit_test(test_pipeline_load test_pipeline_load.cpp)
 target_compile_definitions(test_pipeline_load PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(test_pipeline_load PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)
+
+add_halide_generator(cpipe_unit_halide_generators SOURCES noop_halide_generator.cpp)
+cpipe_add_halide_library(
+    metadata_noop_halide
+    FROM
+        cpipe_unit_halide_generators
+    GENERATOR
+        metadata_noop
+    FUNCTION_NAME
+        metadata_noop
+    TARGETS
+        x86-64-linux
+        host-vulkan
+)
+add_dependencies(test_buffer_metadata metadata_noop_halide)

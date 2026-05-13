@@ -1,6 +1,6 @@
 {
   "name": "cpipe",
-  "version-string": "0.1.0-alpha",
+  "version-string": "0.2.0-alpha",
   "builtin-baseline": "81e3c888ef717a026eb57bb2f3cb0dbd30246271",
   "dependencies": [
     "taskflow",
@@ -9,6 +9,20 @@
     "nlohmann-json",
     "json-schema-validator",
     "tl-expected",
-    "cli11"
+    "cli11",
+    "libraw",
+    "opencolorio",
+    "lcms",
+    {
+      "name": "libheif",
+      "default-features": false
+    },
+    "libde265",
+    "vulkan-memory-allocator",
+    "vulkan-headers",
+    "vulkan-loader",
+    "openimageio",
+    "tracy",
+    "kvazaar"
   ]
 }

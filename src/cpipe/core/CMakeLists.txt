@@ -1,4 +1,4 @@
-add_library(cpipe-core STATIC BufferLayout.cpp CpuBuffer.cpp)
+add_library(cpipe-core STATIC BufferLayout.cpp BufferMetadata.cpp CpuBuffer.cpp)
 add_library(cpipe::core ALIAS cpipe-core)
 
 cpipe_target_warning_flags(cpipe-core)
