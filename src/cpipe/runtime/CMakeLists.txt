@@ -2,6 +2,9 @@ find_package(Taskflow CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+find_package(VulkanHeaders CONFIG REQUIRED)
+find_package(VulkanLoader CONFIG REQUIRED)
+find_package(VulkanMemoryAllocator CONFIG REQUIRED)
 include(HalideHelpers)
 cpipe_ensure_halide()
 
@@ -29,7 +32,11 @@ add_library(
         "${pipeline_schema_cpp}"
         Registry.cpp
         Scheduler.cpp
+        Sync.cpp
         stub.cpp
+        VulkanBuffer.cpp
+        VulkanDevicePlane.cpp
+        VulkanImage.cpp
 )
 add_library(cpipe::runtime ALIAS cpipe-runtime)
 
@@ -40,9 +47,12 @@ target_link_libraries(
     PUBLIC
         cpipe::core
         Halide::Runtime
+        GPUOpen::VulkanMemoryAllocator
+        Vulkan::Headers
     PRIVATE
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
         Taskflow::Taskflow
+        Vulkan::Loader
         spdlog::spdlog
 )
