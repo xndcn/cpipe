@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.blacklevel.dng_levels",
+  "version": "1.0.0",
+  "label": "DNG Black/White Levels",
+  "category": "raw",
+  "doc": "Subtracts DNG black level and normalizes by white level.",
+  "ports": [
+    {
+      "name": "bayer",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["linearization"],
+        "requires_fields": ["calibration.cfa", "calibration.black_level", "calibration.white_level"]
+      }
+    },
+    {
+      "name": "bayer",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "bayer",
+        "sets_steps_applied": ["black_white_scaling"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Host",
+    "in_pixel_bytes": 4,
+    "out_pixel_bytes": 4,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

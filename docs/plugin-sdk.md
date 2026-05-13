@@ -127,6 +127,12 @@ typedef struct cpipe_compute_s     cpipe_compute_t;    /* ComputeContext */
 typedef struct cpipe_inference_s   cpipe_inference_t;  /* InferenceContext */
 
 /* ---------------- Buffer suite v1 ---------------- */
+typedef enum {
+    CPIPE_CPU_ACCESS_READ = 0,
+    CPIPE_CPU_ACCESS_WRITE = 1,
+    CPIPE_CPU_ACCESS_READ_WRITE = 2
+} cpipe_cpu_access_t;
+
 /* Read-only shape + CPU access (CPU-device nodes only). Per-buffer
  * metadata is fetched via cpipe_metadata_suite_v1 below. */
 typedef struct {
@@ -141,7 +147,7 @@ typedef struct {
 
     /* CPU access — valid only when the buffer was allocated with CPU_READ/WRITE usage.
      * Blocks until GPU work completes. unlock_cpu must follow. */
-    int (*lock_cpu)        (cpipe_buffer_t*, int access /* 0=R,1=W,2=RW */, void** ptr);
+    int (*lock_cpu)        (cpipe_buffer_t*, int access, void** ptr);
     int (*unlock_cpu)      (cpipe_buffer_t*);
     int (*flush_cpu_writes)(cpipe_buffer_t*);
 } cpipe_buffer_suite_v1;
@@ -158,6 +164,11 @@ typedef struct {
     uint8_t  cfa_pattern[16];          /* up to 4x4 */
     float    black_level[4];
     uint32_t white_level;
+    int      has_linearization_table;
+    int    (*get_linearization_table)(const cpipe_metadata_t*,
+                                      size_t max_values,
+                                      size_t* out_n,
+                                      uint16_t* out_values);
     int      has_color_matrix1;  float color_matrix1[9];   /* row-major 3x3 */
     int      has_color_matrix2;  float color_matrix2[9];
     int      has_forward_matrix1;float forward_matrix1[9];
@@ -519,9 +530,11 @@ Header-only. Plugin authors write C++ classes; they do not touch the C ABI direc
 // cpipe/sdk.hpp — header-only C++ SDK. C++20.
 #pragma once
 #include "cpipe_node.h"
+#include <array>
 #include <span>
 #include <string_view>
 #include <variant>
+#include <vector>
 #include <expected>          // C++23; tl::expected polyfill works too
 
 namespace cpipe::sdk {
@@ -530,6 +543,15 @@ namespace cpipe::sdk {
 struct Error { cpipe_status_t code; std::string message; };
 template <class T>
 using Result = std::expected<T, Error>;
+
+struct CalibrationView {
+    bool has_cfa;
+    std::array<uint8_t, 2> cfa_repeat;
+    std::array<uint8_t, 16> cfa_pattern;
+    std::array<float, 4> black_level;
+    uint32_t white_level;
+    std::vector<uint16_t> linearization_table;
+};
 
 // ---- BufferMetadata (read-only facade over cpipe_metadata_t) ----
 class BufferMetadata {

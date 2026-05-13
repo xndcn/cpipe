@@ -44,6 +44,8 @@ private:
                         std::size_t* out_size);
     static int list_blob_keys(const cpipe_metadata_t* metadata, std::size_t max,
                               std::size_t* out_total, const char** out_keys);
+    static int get_linearization_table(const cpipe_metadata_t* metadata, std::size_t max_values,
+                                       std::size_t* out_n, std::uint16_t* out_values);
     static int get_noise_profile(const cpipe_metadata_t* metadata, std::size_t max_pairs,
                                  std::size_t* out_n, float* out_a, float* out_b);
     static int get_camera_id(const cpipe_metadata_t* metadata, char* out, std::size_t cap);

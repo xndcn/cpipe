@@ -115,6 +115,8 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-53 | Validation-layer manual check fallback  | When `vkconfig` / distro validation-layer packages are not installed, the manual T2 Debug check may use a local Vulkan SDK / vcpkg validation-layer install with `VK_ADD_LAYER_PATH` + `LD_LIBRARY_PATH` to confirm `VK_LAYER_KHRONOS_validation` loads. This does not add validation layers to the project manifest. |
 | PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. Generated `main_entry` helpers use internal linkage, and `Registry::load_builtin_nodes()` skips null descriptor slots defensively. |
 | PD-55 | T5 fixture-blocked verification          | T5 may land a tested ingest-core slice using synthetic minimal DNG fixtures while PD-13 remains unsatisfied. This does **not** replace `tests/corpus/pixel8pro.dng`; the Pixel 8 Pro fixture acceptance boxes stay unchecked until a cropped CC0 / CC-BY real fixture is added. |
+| PD-56 | T6 CPU metadata-node implementation      | `linearize.dng_lut` and `blacklevel.dng_levels` are implemented as CPU plugin loops for the T6 slice because the current `cpipe_compute_suite_v1::submit_halide` adapter accepts only image input/output buffers and cannot pass per-frame `LinearizationTable` / black / white metadata into an AOT Halide signature. The manifests say `engine: Host`; a later compute-suite parameter-buffer extension can move the same math into AOT Halide without changing node IDs. |
+| PD-57 | LinearizationTable ABI completion        | T6 exposes the already-modeled `CalibrationBlock.linearization_table` through `cpipe_calibration_view::get_linearization_table`. This completes the v1-frozen calibration surface documented in [`buffer.md` §6](buffer.md#6-buffermetadata) / [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh) rather than adding a new metadata field. |
 
 ---
 
@@ -395,13 +397,15 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Implement `com.cpipe.linearize.dng_lut` (LinearizationTable applied per pixel; outputs R32_SFLOAT Bayer FP) and `com.cpipe.blacklevel.dng_levels` (subtract black, divide by white-black; outputs R32_SFLOAT Bayer FP in [0,1]). Both are CPU AOT Halide nodes. Land per-node EXR golden fixtures.
 
 **Acceptance criteria:**
-- [ ] Each node's `process()` reads required metadata fields (LinearizationTable / black_level / white_level) via `cpipe_metadata_suite_v1`.
-- [ ] Each node sets `applied_steps += "linearization"` / `"black_white_scaling"` accordingly; manifest `sets_steps_applied` validates.
-- [ ] `ctest -R test_node_linearize` and `test_node_blacklevel` pass.
+- [x] Each node's `process()` reads required metadata fields (LinearizationTable / black_level / white_level) via `cpipe_metadata_suite_v1`.
+- [x] Each node sets `applied_steps += "linearization"` / `"black_white_scaling"` accordingly; manifest `sets_steps_applied` validates.
+- [x] `ctest -R test_node_linearize` and `test_node_blacklevel` pass.
 - [ ] `ctest -L golden` PSNR ≥ 40 dB on each node's golden EXR pair.
 
 **Verification:**
 - [ ] Goldens in `tests/golden/linearize.dng_lut/{in,out}.exr` and `tests/golden/blacklevel.dng_levels/{in,out}.exr` (LFS) compare green via OIIO.
+
+**Status note.** T6 landed the synthetic unit-test slice under PD-56 / PD-57. The EXR golden corpus remains unchecked until the golden harness and LFS fixtures are added.
 
 **Dependencies:** T4, T5.
 

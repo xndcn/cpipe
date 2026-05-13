@@ -5,6 +5,7 @@
 
 #include <cpipe/sdk/cpipe_node.h>
 
+#include <algorithm>
 #include <array>
 #include <cstddef>
 #include <cstdint>
@@ -17,6 +18,12 @@
 #include <vector>
 
 namespace cpipe::sdk {
+
+enum class CpuAccess : int {
+    Read = CPIPE_CPU_ACCESS_READ,
+    Write = CPIPE_CPU_ACCESS_WRITE,
+    ReadWrite = CPIPE_CPU_ACCESS_READ_WRITE,
+};
 
 struct Error {
     cpipe_status_t code{CPIPE_FAILED};
@@ -33,10 +40,57 @@ struct Rect2u {
     std::uint32_t height{0};
 };
 
+struct CalibrationView {
+    bool has_cfa{false};
+    std::array<std::uint8_t, 2> cfa_repeat{};
+    std::array<std::uint8_t, 16> cfa_pattern{};
+    std::array<float, 4> black_level{};
+    std::uint32_t white_level{0};
+    std::vector<std::uint16_t> linearization_table;
+};
+
 class BufferMetadata {
 public:
     BufferMetadata(const cpipe_metadata_t* impl, const cpipe_metadata_suite_v1* suite)
         : impl_(impl), suite_(suite) {}
+
+    [[nodiscard]] Result<CalibrationView> calibration() const {
+        if (suite_ == nullptr || suite_->get_calibration == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_NEED_METADATA, "metadata suite unavailable"});
+        }
+
+        cpipe_calibration_view raw{};
+        const auto status = static_cast<cpipe_status_t>(suite_->get_calibration(impl_, &raw));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "get_calibration failed"});
+        }
+
+        CalibrationView out{};
+        out.has_cfa = raw.has_cfa != 0;
+        std::copy(std::begin(raw.cfa_repeat), std::end(raw.cfa_repeat), out.cfa_repeat.begin());
+        std::copy(std::begin(raw.cfa_pattern), std::end(raw.cfa_pattern), out.cfa_pattern.begin());
+        std::copy(std::begin(raw.black_level), std::end(raw.black_level), out.black_level.begin());
+        out.white_level = raw.white_level;
+        if (raw.has_linearization_table != 0 && raw.get_linearization_table != nullptr) {
+            std::size_t total = 0;
+            const auto count_status =
+                static_cast<cpipe_status_t>(raw.get_linearization_table(impl_, 0, &total, nullptr));
+            if (count_status != CPIPE_OK) {
+                return tl::unexpected(Error{count_status, "get_linearization_table count failed"});
+            }
+            out.linearization_table.resize(total);
+            if (total > 0) {
+                const auto read_status = static_cast<cpipe_status_t>(raw.get_linearization_table(
+                    impl_, out.linearization_table.size(), &total, out.linearization_table.data()));
+                if (read_status != CPIPE_OK) {
+                    return tl::unexpected(
+                        Error{read_status, "get_linearization_table read failed"});
+                }
+                out.linearization_table.resize(total);
+            }
+        }
+        return out;
+    }
 
     [[nodiscard]] std::string_view cs_role() const noexcept {
         if (suite_ == nullptr || suite_->get_cs_role == nullptr || impl_ == nullptr) {
@@ -154,6 +208,66 @@ public:
 
     [[nodiscard]] cpipe_buffer_t* impl() const noexcept {
         return impl_;
+    }
+
+    [[nodiscard]] Result<std::vector<std::uint32_t>> dims() const {
+        if (suite_ == nullptr || suite_->get_dims == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_BAD_INDEX, "buffer suite unavailable"});
+        }
+        std::uint8_t ndim = 0;
+        std::uint32_t raw[8]{};
+        const auto status = static_cast<cpipe_status_t>(suite_->get_dims(impl_, &ndim, raw));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "get_dims failed"});
+        }
+        return std::vector<std::uint32_t>{raw, raw + ndim};
+    }
+
+    [[nodiscard]] Result<int> format() const {
+        if (suite_ == nullptr || suite_->get_format == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_BAD_INDEX, "buffer suite unavailable"});
+        }
+        int format = 0;
+        const auto status = static_cast<cpipe_status_t>(suite_->get_format(impl_, &format));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "get_format failed"});
+        }
+        return format;
+    }
+
+    [[nodiscard]] Result<void*> lock_cpu(CpuAccess access) const {
+        if (suite_ == nullptr || suite_->lock_cpu == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_BAD_INDEX, "buffer suite unavailable"});
+        }
+        void* ptr = nullptr;
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->lock_cpu(impl_, static_cast<int>(access), &ptr));
+        if (status != CPIPE_OK || ptr == nullptr) {
+            return tl::unexpected(Error{status, "lock_cpu failed"});
+        }
+        return ptr;
+    }
+
+    Result<void> unlock_cpu() const {
+        if (suite_ == nullptr || suite_->unlock_cpu == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_BAD_INDEX, "buffer suite unavailable"});
+        }
+        const auto status = static_cast<cpipe_status_t>(suite_->unlock_cpu(impl_));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "unlock_cpu failed"});
+        }
+        return {};
+    }
+
+    Result<void> flush_cpu_writes() const {
+        if (suite_ == nullptr || suite_->flush_cpu_writes == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_BAD_INDEX, "buffer suite unavailable"});
+        }
+        const auto status = static_cast<cpipe_status_t>(suite_->flush_cpu_writes(impl_));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "flush_cpu_writes failed"});
+        }
+        return {};
     }
 
     [[nodiscard]] const cpipe_buffer_suite_v1* suite() const noexcept {

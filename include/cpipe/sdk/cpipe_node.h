@@ -42,6 +42,12 @@ typedef struct cpipe_metadata_builder_s cpipe_metadata_builder_t;
 typedef struct cpipe_compute_s cpipe_compute_t;
 typedef struct cpipe_inference_s cpipe_inference_t;
 
+typedef enum {
+    CPIPE_CPU_ACCESS_READ = 0,
+    CPIPE_CPU_ACCESS_WRITE = 1,
+    CPIPE_CPU_ACCESS_READ_WRITE = 2
+} cpipe_cpu_access_t;
+
 typedef struct {
     int (*get_dims)(const cpipe_buffer_t*, uint8_t* ndim, uint32_t out_dims[8]);
     int (*get_format)(const cpipe_buffer_t*, int* out_format);
@@ -60,6 +66,9 @@ typedef struct {
     uint8_t cfa_pattern[16];
     float black_level[4];
     uint32_t white_level;
+    int has_linearization_table;
+    int (*get_linearization_table)(const cpipe_metadata_t*, size_t max_values, size_t* out_n,
+                                   uint16_t* out_values);
     int has_color_matrix1;
     float color_matrix1[9];
     int has_color_matrix2;

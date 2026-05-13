@@ -53,6 +53,24 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
 )
+cpipe_add_unit_test(test_node_linearize test_node_linearize.cpp)
+target_link_libraries(
+    test_node_linearize
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_blacklevel test_node_blacklevel.cpp)
+target_link_libraries(
+    test_node_blacklevel
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_pipeline_load test_pipeline_load.cpp)
 target_compile_definitions(test_pipeline_load PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(test_pipeline_load PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)

@@ -1,0 +1,50 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.linearize.dng_lut",
+  "version": "1.0.0",
+  "label": "DNG Linearization LUT",
+  "category": "raw",
+  "doc": "Applies the DNG LinearizationTable to RAW16 Bayer samples.",
+  "ports": [
+    {
+      "name": "raw",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_fields": ["calibration.linearization_table"]
+      }
+    },
+    {
+      "name": "bayer",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "raw",
+        "sets_steps_applied": ["linearization"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Host",
+    "in_pixel_bytes": 2,
+    "out_pixel_bytes": 4,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

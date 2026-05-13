@@ -216,6 +216,7 @@ int HostContext::get_calibration(const cpipe_metadata_t* metadata, cpipe_calibra
 
     *out = {};
     out->get_noise_profile = &HostContext::get_noise_profile;
+    out->get_linearization_table = &HostContext::get_linearization_table;
     if (!impl->calibration) {
         return CPIPE_OK;
     }
@@ -230,6 +231,9 @@ int HostContext::get_calibration(const cpipe_metadata_t* metadata, cpipe_calibra
     }
     std::copy(calibration.black_level.begin(), calibration.black_level.end(), out->black_level);
     out->white_level = calibration.white_level;
+    if (calibration.linearization_table) {
+        out->has_linearization_table = 1;
+    }
     if (calibration.color_matrix1) {
         out->has_color_matrix1 = 1;
         std::copy(calibration.color_matrix1->values.begin(),
@@ -252,6 +256,25 @@ int HostContext::get_calibration(const cpipe_metadata_t* metadata, cpipe_calibra
     }
     out->calibration_illuminant1 = calibration.calibration_illuminant1;
     out->calibration_illuminant2 = calibration.calibration_illuminant2;
+    return CPIPE_OK;
+}
+
+int HostContext::get_linearization_table(const cpipe_metadata_t* metadata, std::size_t max_values,
+                                         std::size_t* out_n, std::uint16_t* out_values) {
+    const auto* impl = metadata_from_handle(metadata);
+    if (impl == nullptr || out_n == nullptr || (max_values > 0 && out_values == nullptr)) {
+        return CPIPE_BAD_INDEX;
+    }
+    if (!impl->calibration || !impl->calibration->linearization_table) {
+        *out_n = 0;
+        return CPIPE_OK;
+    }
+    const auto& values = impl->calibration->linearization_table->values;
+    *out_n = values.size();
+    const auto count = std::min(max_values, values.size());
+    for (std::size_t i = 0; i < count; ++i) {
+        out_values[i] = values[i];
+    }
     return CPIPE_OK;
 }
 
