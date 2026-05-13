@@ -90,7 +90,8 @@ std::array<float, 9> inverse3(const std::array<float, 9>& m) {
 float bayer_sample(const Image& image, int x, int y) {
     x = std::clamp(x, 0, image.width - 1);
     y = std::clamp(y, 0, image.height - 1);
-    return image.pixels[static_cast<std::size_t>(y) * image.width + x];
+    return image.pixels[(static_cast<std::size_t>(y) * static_cast<std::size_t>(image.width)) +
+                        static_cast<std::size_t>(x)];
 }
 
 std::array<float, 4> demosaic_rgba(const Image& bayer, int x, int y) {
@@ -164,7 +165,9 @@ Image blacklevel_output(const Image& input) {
         for (int x = 0; x < input.width; ++x) {
             const auto cfa = ((y & 1) * 2) + (x & 1);
             const auto channel = pattern[static_cast<std::size_t>(cfa)];
-            const auto offset = static_cast<std::size_t>(y) * input.width + x;
+            const auto offset =
+                (static_cast<std::size_t>(y) * static_cast<std::size_t>(input.width)) +
+                static_cast<std::size_t>(x);
             const auto scaled = (input.pixels[offset] - black[static_cast<std::size_t>(channel)]) /
                                 (white - black[static_cast<std::size_t>(channel)]);
             image.pixels.push_back(std::clamp(scaled, 0.0F, 1.0F));

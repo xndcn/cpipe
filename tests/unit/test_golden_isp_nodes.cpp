@@ -73,7 +73,9 @@ FloatImage read_fixture(const std::string& node, const std::string& filename,
     REQUIRE(spec.nchannels == expected_channels);
 
     FloatImage image{spec.width, spec.height, spec.nchannels, {}};
-    image.pixels.resize(static_cast<std::size_t>(image.width) * image.height * image.channels);
+    image.pixels.resize(static_cast<std::size_t>(image.width) *
+                        static_cast<std::size_t>(image.height) *
+                        static_cast<std::size_t>(image.channels));
     const OIIO::ROI roi{0, image.width, 0, image.height, 0, 1, 0, image.channels};
     REQUIRE(buffer.get_pixels(roi, OIIO::TypeDesc::FLOAT, image.pixels.data()));
     return image;
@@ -157,7 +159,7 @@ void write_rgba16(CpuBuffer& buffer, const FloatImage& image) {
 
 FloatImage read_f32(CpuBuffer& buffer, const int width, const int height) {
     FloatImage image{width, height, 1, {}};
-    image.pixels.resize(static_cast<std::size_t>(width) * height);
+    image.pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height));
     const auto* in = static_cast<const float*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
     std::copy(in, in + image.pixels.size(), image.pixels.begin());
     buffer.unlock_cpu();
@@ -166,7 +168,7 @@ FloatImage read_f32(CpuBuffer& buffer, const int width, const int height) {
 
 FloatImage read_rgba16(CpuBuffer& buffer, const int width, const int height) {
     FloatImage image{width, height, 4, {}};
-    image.pixels.resize(static_cast<std::size_t>(width) * height * 4U);
+    image.pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
     const auto* in = static_cast<const std::uint16_t*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
     for (std::size_t i = 0; i < image.pixels.size(); ++i) {
         image.pixels[i] = half_to_float(in[i]);
