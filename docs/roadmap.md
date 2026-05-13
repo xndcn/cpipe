@@ -109,6 +109,8 @@ Each subsequent section follows the same template:
 
 ## 4. Phase 1 — Walking Skeleton (tag `v0.2`)
 
+**Status.** In progress; tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
+
 **Objective.** A real DNG (Bayer, no Quad Bayer yet) becomes an SDR HEIF through 5 stages of the canonical ISP pipeline on Linux, end-to-end on a developer laptop.
 
 **Sub-domains.**

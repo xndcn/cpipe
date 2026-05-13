@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) is released. APIs unstable; only the passthrough skeleton is usable.
+> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) is released. Phase 1 (`v0.2` — Walking Skeleton) is in progress. APIs unstable; only the passthrough skeleton is usable today.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -53,6 +53,11 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 **Phase 0** (`v0.1`) is released: the skeleton builds, tests, and runs the
 passthrough pipeline. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
+**Phase 1** (`v0.2` — Walking Skeleton) is in progress: a real Bayer DNG
+through five ISP stages (linearize → blacklevel → demosaic → wb → colormatrix)
+to an SDR HEIF, with one Halide Vulkan AOT path on demosaic. See
+[`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md).
+
 ## Build From Source
 
 Requirements:
@@ -81,7 +86,7 @@ cmake --build --preset linux-release-clang -j
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
-| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | planned     |
+| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | in progress |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |
@@ -101,7 +106,8 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 | [`docs/tech.md`](docs/tech.md)                                      | Every external dependency, version pin, and license verdict                   |
 | [`docs/buffer.md`](docs/buffer.md)                                  | `IBuffer` subsystem; B1–B12 locked decisions; allocator + external imports    |
 | [`docs/plugin-sdk.md`](docs/plugin-sdk.md)                          | Plugin C ABI (P1–P16); JSON manifest; `CPIPE_REGISTER_NODE` lifecycle         |
-| [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Active phase plan (Phase 0)                                                   |
+| [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Phase 0 plan and outcome (shipped)                                            |
+| [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Active phase plan (Phase 1)                                              |
 | [`docs/research/_toc.md`](docs/research/_toc.md)                    | D1–D19 locked decisions; research cluster map; methodology                    |
 | [`docs/research/00-summary.md`](docs/research/00-summary.md)        | Master research synthesis — recommended stack, cross-cluster matrix, risks    |
 

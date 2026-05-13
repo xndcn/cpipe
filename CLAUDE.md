@@ -84,7 +84,7 @@ The project advances one **T-task** at a time, defined in the active phase doc (
 - **Branch:** `<type>/p<phase>-t<task>-<slug>` where `<type>` ∈ `feat / fix / refactor / docs / test / chore / perf / ci`.
 - **One PR per T-task.** Sub-task PRs are allowed only if the T DoD closes before any of its acceptance boxes is ticked.
 - **Strict TDD.** Failing Catch2 test (RED) first, then implementation (GREEN). For structural tasks (repo / CMake / CI), `cmake` or `ctest` failing on a missing target is a valid RED.
-- **SPDX header (PD-25)** on every new `.h / .hpp / .cpp`.
+- **SPDX header (P0-PD-25)** on every new `.h / .hpp / .cpp`.
 - **Phase-local decisions** append a `PD-N` row in the same PR. `RD-N / D-N / B-N / P-N` are human-only — flag, do not edit.
 
 ### Done — all must hold in the PR
@@ -103,7 +103,7 @@ Same PR also updates the changelog surface:
 - **Open Question resolved:** [`architecture.md §17`](docs/architecture.md) + the references in [`roadmap.md`](docs/roadmap.md).
 - Commit message: `<type>: <description>`. Co-author attribution off.
 
-`CHANGELOG.md` is intentionally absent (PD-2): `phase-XX-*.md` + `roadmap.md` + `git log` is the changelog.
+`CHANGELOG.md` is intentionally absent (P0-PD-2): `phase-XX-*.md` + `roadmap.md` + `git log` is the changelog.
 
 ---
 
