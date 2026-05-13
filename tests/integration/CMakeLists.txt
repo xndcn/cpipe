@@ -17,6 +17,7 @@ target_link_libraries(
         cpipe::builtin_nodes
 )
 add_test(NAME test_passthrough_end_to_end COMMAND test_passthrough_end_to_end)
+set_tests_properties(test_passthrough_end_to_end PROPERTIES LABELS integration)
 
 add_executable(test_diamond_dag_parallel test_diamond_dag_parallel.cpp)
 cpipe_target_warning_flags(test_diamond_dag_parallel)
@@ -27,6 +28,7 @@ target_link_libraries(
         cpipe::runtime
 )
 add_test(NAME test_diamond_dag_parallel COMMAND test_diamond_dag_parallel)
+set_tests_properties(test_diamond_dag_parallel PROPERTIES LABELS integration)
 
 add_executable(test_min_pipeline_dng_to_heif test_min_pipeline_dng_to_heif.cpp)
 add_dependencies(test_min_pipeline_dng_to_heif cpipe)
@@ -47,3 +49,4 @@ target_link_libraries(
         cpipe::builtin_nodes
 )
 add_test(NAME test_min_pipeline_dng_to_heif COMMAND test_min_pipeline_dng_to_heif)
+set_tests_properties(test_min_pipeline_dng_to_heif PROPERTIES LABELS integration)
