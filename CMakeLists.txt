@@ -26,3 +26,7 @@ add_subdirectory(src/cpipe/runtime)
 add_subdirectory(src/cpipe/nodes)
 add_subdirectory(src/cpipe/server)
 add_subdirectory(src/cpipe/cli)
+
+if(BUILD_TESTING)
+    add_subdirectory(tests)
+endif()

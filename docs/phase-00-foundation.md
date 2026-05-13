@@ -208,16 +208,16 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the core data types from [`buffer.md` §3–§5](buffer.md#3-pixelformat): `PixelFormat`, `BufferLayout`, `BufferKind`, `BufferUsage`, `IBuffer` interface, status codes, and a working `CpuBuffer` backed by `posix_memalign`.
 
 **Acceptance criteria:**
-- [ ] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
-- [ ] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
-- [ ] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
-- [ ] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
+- [x] `PixelFormat` enum holds all 14 v1 entries from `buffer.md §3`.
+- [x] `BufferLayout::size_bytes()` returns correct byte count for each `(kind, format, dims, stride)` combination tested.
+- [x] `CpuBuffer` lock / unlock pairs survive at least two cycles and yield aligned pointers (verified via assertion in test).
+- [x] `IBuffer::sub_view()` returns `nullptr` and logs a warning per [`buffer.md` §11](buffer.md#11-sub-view-not-implemented-in-v1).
 
 **Verification:**
-- [ ] `ctest -R test_pixel_format` green.
-- [ ] `ctest -R test_buffer_layout` green.
-- [ ] `ctest -R test_cpu_buffer` green.
-- [ ] `ctest -R test_status` green.
+- [x] `ctest -R test_pixel_format` green.
+- [x] `ctest -R test_buffer_layout` green.
+- [x] `ctest -R test_cpu_buffer` green.
+- [x] `ctest -R test_status` green.
 
 **Dependencies:** T1.
 
