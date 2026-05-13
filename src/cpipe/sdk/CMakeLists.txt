@@ -1,6 +1,8 @@
 add_library(cpipe-sdk INTERFACE)
 add_library(cpipe::sdk ALIAS cpipe-sdk)
 
+find_package(tl-expected CONFIG REQUIRED)
+
 target_include_directories(
     cpipe-sdk
     INTERFACE
@@ -8,4 +10,4 @@ target_include_directories(
         "$<INSTALL_INTERFACE:include>"
 )
 
-target_link_libraries(cpipe-sdk INTERFACE cpipe::core)
+target_link_libraries(cpipe-sdk INTERFACE cpipe::core tl::expected)
