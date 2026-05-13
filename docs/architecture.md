@@ -441,25 +441,24 @@ A release tag triggers vcpkg-baseline freeze, version stamp into `cpipe::version
 
 ## 15. Module × Phase Matrix
 
-The full 12-month roadmap and Definition-of-Done per phase live in [Research 00 §8](research/00-summary.md#8-v1-implementation-roadmap-12-months). This matrix is the orientation for *which module ships when*:
+The full v1.0 phase plan and Definition-of-Done per phase live in [`roadmap.md`](roadmap.md). This matrix is the orientation for *which module ships when* under the consolidated 6-phase v1.0 plan (Android slipped to v1.1 per [RD-27](roadmap.md#1-decision-quick-reference)):
 
-| Module / target              | P0 | P1 | P2 | P3 | P4 | P5 | P6 |
-|------------------------------|----|----|----|----|----|----|----|
-| `cpipe-core`                 |  ●  |    |    |    |    |    |    |
-| `cpipe-runtime` (Linux Vulkan) |  ●  |  ●  |    |    |    |    |    |
-| `cpipe-sdk`                  |  ●  |  ●  |    |    |    |    |    |
-| `cpipe-builtin-nodes` (5 nodes)  |    |  ●  |    |    |    |    |    |
-| `cpipe-builtin-nodes` (18 classic) |    |    |  ●  |    |    |    |    |
-| `cpipe-builtin-nodes` (3 AI)  |    |    |    |    |  ●  |    |    |
-| Color & HEIF output          |    |  ●  |  ●  |    |    |    |    |
-| HDR HEIF + UltraHDR          |    |    |  ●  |    |    |    |    |
-| `cpipe-server` + Web Editor  |    |    |    |  ●  |    |    |    |
-| IQA harness + perf bench     |    |    |    |  ●  |    |    |    |
-| `cpipe-android` + Camera2    |    |    |    |    |    |  ●  |    |
-| Hexagon HTP via QAIRT        |    |    |    |    |    |  ●  |    |
-| Docs + sample plugin + beta  |    |    |    |    |    |    |  ●  |
+| Module / target                                       | P0 | P1 | P2 | P3 | P4 | P5 |
+|-------------------------------------------------------|----|----|----|----|----|----|
+| `cpipe-core`                                          |  ●  |    |    |    |    |    |
+| `cpipe-runtime` (Linux Vulkan)                        |  ●  |  ●  |    |    |    |    |
+| `cpipe-sdk`                                           |  ●  |  ●  |    |    |    |    |
+| `cpipe-builtin-nodes` (passthrough)                   |  ●  |    |    |    |    |    |
+| `cpipe-builtin-nodes` (5 nodes)                       |    |  ●  |    |    |    |    |
+| `cpipe-builtin-nodes` (18 classic)                    |    |    |  ●  |    |    |    |
+| `cpipe-builtin-nodes` (3 AI)                          |    |    |    |    |  ●  |    |
+| Color & SDR HEIF                                      |    |  ●  |    |    |    |    |
+| HDR HEIF (PQ) + OCIO Looks + Quad Bayer remosaic      |    |    |  ●  |    |    |    |
+| `cpipe-server` + Web Editor                           |    |    |    |  ●  |    |    |
+| IQA harness + perf bench                              |    |    |    |  ●  |    |    |
+| Docs + sample plugin + RC bake                        |    |    |    |    |    |  ●  |
 
-(P0 = months 0–1, P1 = 1–3, P2 = 3–5, P3 = 4–7 in parallel with P2, P4 = 5–9, P5 = 7–11, P6 = 11–12.)
+`cpipe-android` + Camera2 + Hexagon HTP via QAIRT are deferred to **v1.1** ([RD-27](roadmap.md#1-decision-quick-reference)) and intentionally do not appear in the v1.0 matrix above. Phase ordering is sequential per [RD-19](roadmap.md#1-decision-quick-reference); cadence is decision-driven, not date-driven ([RD-4](roadmap.md#1-decision-quick-reference)).
 
 ---
 

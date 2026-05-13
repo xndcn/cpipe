@@ -73,7 +73,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-21 | `.clang-format` style                            | `BasedOnStyle: Google`, `ColumnLimit: 100`, `IndentWidth: 4`, `AccessModifierOffset: -4`, `AllowShortFunctionsOnASingleLine: Empty`.                                                                                                  |
 | PD-22 | `.clang-tidy` rule set                           | Enable `readability-*`, `modernize-*`, `cppcoreguidelines-*`, `bugprone-*`, `performance-*`, `portability-*`. Disable `fuchsia-*`, `llvm-*`, `google-readability-todo`. Baseline-suppress existing warnings on first integration.    |
 | PD-23 | `pre-commit` framework                           | Python `pre-commit` framework. Hooks: `clang-format`, `trailing-whitespace`, `end-of-file-fixer`, `check-yaml`, `check-json`. Documented in README.                                                                                   |
-| PD-24 | Docs generator                                   | None in P0. `docs/` is markdown only; GitHub renders. Doxygen / mdBook slip to P6 (Polish).                                                                                                                                          |
+| PD-24 | Docs generator                                   | None in P0. `docs/` is markdown only; GitHub renders. Doxygen / mdBook slip to P5 (Polish).                                                                                                                                          |
 | PD-25 | Source-file license header                       | Three-line SPDX style: `// SPDX-License-Identifier: Apache-2.0` + `// Copyright (c) 2026 cpipe contributors` + blank line. Applies to every `.h / .hpp / .cpp` authored.                                                              |
 | PD-26 | Test coverage in P0                              | 8–12 unit tests (Catch2) + 1 integration smoke test. No coverage percentage gate; tests target the obvious invariants per §8.                                                                                                          |
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
@@ -495,19 +495,19 @@ If commands 1–9 all return zero exit status and latest `main` CI is green on t
 
 ## 12. Dependencies (vcpkg.json baseline)
 
-P0 vcpkg manifest (PD-10):
+P0 vcpkg manifest (PD-10, PD-29):
 
 ```json
 {
   "name": "cpipe",
   "version-string": "0.1.0-alpha",
-  "builtin-baseline": "<pinned-microsoft-vcpkg-commit>",
+  "builtin-baseline": "81e3c888ef717a026eb57bb2f3cb0dbd30246271",
   "dependencies": [
     "taskflow",
     "catch2",
     "spdlog",
     "nlohmann-json",
-    "nlohmann-json-schema-validator",
+    "json-schema-validator",
     "tl-expected",
     "cli11"
   ]
@@ -520,7 +520,7 @@ The baseline commit is selected when T1 lands and recorded in PD-10 history; sub
 
 ---
 
-## 12. Out of Scope (P0)
+## 13. Out of Scope (P0)
 
 Stated explicitly so contributors don't accidentally expand P0:
 
@@ -538,7 +538,7 @@ Stated explicitly so contributors don't accidentally expand P0:
 
 ---
 
-## 13. See Also
+## 14. See Also
 
 - [`roadmap.md`](roadmap.md) — overall phase plan, RD-NN decisions.
 - [`architecture.md`](architecture.md) — six-target layout, threading model, lifecycle.
