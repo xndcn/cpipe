@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.1.json",
+  "version": "0.1",
+  "id": "invalid-unknown-node",
+  "input": {
+    "kind": "Image2D",
+    "format": "R8G8B8A8_UNORM",
+    "width": 64,
+    "height": 64
+  },
+  "nodes": [
+    {
+      "id": "missing",
+      "type": "com.cpipe.builtin.missing",
+      "params": {}
+    }
+  ],
+  "edges": []
+}

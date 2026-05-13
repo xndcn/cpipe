@@ -82,6 +82,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-30 | T1 `cpipe-sdk` artifact kind                     | T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is an `INTERFACE` header-only target, so the skeleton produces four static libraries, one header-only SDK target, and one CLI executable. |
 | PD-31 | Halide v21 acquisition                           | `cmake/HalideHelpers.cmake` fetches the official Halide v21.0.0 x86_64 Linux binary release archive by default; source builds are avoided in P0 CI to keep the cold-build budget under PD-13.                                         |
 | PD-32 | Node schema validation gate                      | P0 keeps pre-commit scoped to PD-23 hooks; node manifest JSON Schema validation runs in Catch2 with `nlohmann_json_schema_validator::validator`, and the Editor's Ajv gate is deferred to P3.                                         |
+| PD-33 | P0 raw fixture layout                            | The P0 pipeline schema carries an `input` layout block (`Image2D`, `R8G8B8A8_UNORM`, width, height) so the CLI can run raw `.bin` fixtures without DNG ingest; `passthrough.bin` is generated under `build/.../tests/fixtures/`.       |
 
 ---
 
@@ -333,12 +334,12 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement `cpipe-cli` (CLI11-based, single `run` subcommand per PD-18). `Pipeline::load` parses pipeline JSON via nlohmann/json, validates against an embedded `pipeline-v0.1.json` schema, topologically sorts, and runs the minimum memory plan (allocates `CpuBuffer` for each intermediate).
 
 **Acceptance criteria:**
-- [ ] `cpipe run input.bin -p pipeline.json -o output.bin` exits 0 on the passthrough pipeline.
-- [ ] `cpipe run` rejects an invalid pipeline JSON (e.g. unknown node type, dangling edge) with a non-zero exit and a clear error message.
+- [x] `cpipe run input.bin -p pipeline.json -o output.bin` exits 0 on the passthrough pipeline.
+- [x] `cpipe run` rejects an invalid pipeline JSON (e.g. unknown node type, dangling edge) with a non-zero exit and a clear error message.
 
 **Verification:**
-- [ ] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/passthrough.json -o /tmp/out.bin && cmp /tmp/out.bin tests/fixtures/passthrough.bin` succeeds.
-- [ ] `cpipe run tests/fixtures/passthrough.bin -p tests/fixtures/invalid_pipeline.json -o /tmp/out.bin` exits non-zero.
+- [x] `cpipe run build/linux-debug/tests/fixtures/passthrough.bin -p tests/fixtures/passthrough.json -o /tmp/out.bin && cmp /tmp/out.bin build/linux-debug/tests/fixtures/passthrough.bin` succeeds.
+- [x] `cpipe run build/linux-debug/tests/fixtures/passthrough.bin -p tests/fixtures/invalid_pipeline.json -o /tmp/out.bin` exits non-zero.
 
 **Dependencies:** T5.
 
