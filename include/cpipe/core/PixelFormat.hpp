@@ -62,6 +62,32 @@ enum class PixelFormat : std::uint16_t {
     return 0;
 }
 
+[[nodiscard]] constexpr std::uint64_t channel_count(PixelFormat format) noexcept {
+    switch (format) {
+        case PixelFormat::R8G8B8A8_UNORM:
+        case PixelFormat::R10G10B10A2_UNORM:
+        case PixelFormat::R16G16B16A16_SFLOAT:
+        case PixelFormat::R32G32B32A32_SFLOAT:
+            return 4;
+        case PixelFormat::R8G8B8_UNORM:
+        case PixelFormat::R16G16B16_SFLOAT:
+        case PixelFormat::R32G32B32_SFLOAT:
+            return 3;
+        case PixelFormat::UNDEFINED:
+            return 0;
+        default:
+            return 1;
+    }
+}
+
+[[nodiscard]] constexpr std::uint64_t bytes_per_channel(PixelFormat format) noexcept {
+    const auto channels = channel_count(format);
+    if (channels == 0) {
+        return 0;
+    }
+    return bytes_per_pixel(format) / channels;
+}
+
 [[nodiscard]] constexpr std::string_view to_string(PixelFormat format) noexcept {
     switch (format) {
         case PixelFormat::UNDEFINED:

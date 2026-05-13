@@ -80,6 +80,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
 | PD-29 | vcpkg package name for JSON Schema validator     | The upstream project remains `nlohmann/json-schema-validator` per PD-10, but the vcpkg manifest uses the actual port name `json-schema-validator`; CMake still consumes `nlohmann_json_schema_validator::validator`.                   |
 | PD-30 | T1 `cpipe-sdk` artifact kind                     | T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is an `INTERFACE` header-only target, so the skeleton produces four static libraries, one header-only SDK target, and one CLI executable. |
+| PD-31 | Halide v21 acquisition                           | `cmake/HalideHelpers.cmake` fetches the official Halide v21.0.0 x86_64 Linux binary release archive by default; source builds are avoided in P0 CI to keep the cold-build budget under PD-13.                                         |
 
 ---
 
@@ -276,14 +277,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Implement the minimum `cpipe-runtime` needed to dispatch one node: a TaskFlow `Executor` (sized to `std::thread::hardware_concurrency() - 1` per [`architecture.md` §4](architecture.md#4-process-and-thread-model)), a `Scheduler` that walks the topo order serially (PD-20), a `ComputeContext` whose `submit_halide` host-side adapts `cpipe_buffer_t*` → `halide_buffer_t*` per [`plugin-sdk.md` §9.1](plugin-sdk.md#91-halide-aot), and an `InferenceContext` returning `CPIPE_UNSUPPORTED`.
 
 **Acceptance criteria:**
-- [ ] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
-- [ ] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
-- [ ] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
-- [ ] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
+- [x] `runtime::Scheduler` walks a topologically sorted node list and calls each node's `process()` in order.
+- [x] `ComputeContext::submit_halide("passthrough_copy", in, out)` invokes the AOT entry point and produces correct output on `CpuBuffer` inputs.
+- [x] `halide_set_custom_do_par_for` redirects Halide's CPU parallelism into the cpipe `tf::Executor` per [`architecture.md` §4](architecture.md#4-process-and-thread-model).
+- [x] `inference->submit(...)` returns `CPIPE_UNSUPPORTED`.
 
 **Verification:**
-- [ ] `ctest -R test_scheduler_topo` green.
-- [ ] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
+- [x] `ctest -R test_scheduler_topo` green.
+- [x] `ctest -R test_halide_adapter` green (a stand-alone Halide AOT call using a trivial generator).
 
 **Dependencies:** T3.
 
