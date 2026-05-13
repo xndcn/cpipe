@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/BufferMetadata.hpp>
@@ -11,7 +12,6 @@
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
-#include <algorithm>
 #include <iterator>
 #include <memory>
 #include <nlohmann/json.hpp>
@@ -84,8 +84,8 @@ TEST_CASE("blacklevel.dng_levels subtracts per-CFA black and normalizes by white
 
     auto input_handle = cpipe::runtime::make_buffer_handle(input);
     auto output_handle = cpipe::runtime::make_buffer_handle(output);
-    auto builder = cpipe::runtime::make_metadata_builder_handle(input->metadata(),
-                                                                {input->metadata()});
+    auto builder =
+        cpipe::runtime::make_metadata_builder_handle(input->metadata(), {input->metadata()});
     const cpipe_buffer_t* inputs[] = {input_handle.get()};
     cpipe_buffer_t* outputs[] = {output_handle.get()};
     cpipe_metadata_builder_t* out_metadata[] = {builder.get()};

@@ -17,9 +17,8 @@ public:
 
     /// Performs the DNG black/white linear scale from
     /// docs/research/07-classic-isp-algorithms.md §3.9.
-    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
-                              std::span<sdk::Buffer*> outputs,
+    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*, const sdk::ParamView&,
+                              std::span<const sdk::Buffer*> inputs, std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
             outputs[0] == nullptr || out_metadata.empty() || out_metadata[0] == nullptr) {
@@ -54,8 +53,7 @@ public:
         }
         if (!calibration->has_cfa || calibration->cfa_repeat[0] != 2 ||
             calibration->cfa_repeat[1] != 2 || calibration->white_level == 0) {
-            return tl::unexpected(
-                sdk::Error{CPIPE_NEED_METADATA, "blacklevel missing DNG levels"});
+            return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "blacklevel missing DNG levels"});
         }
 
         const auto input_lock = inputs[0]->lock_cpu(sdk::CpuAccess::Read);

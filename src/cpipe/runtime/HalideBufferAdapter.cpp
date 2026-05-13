@@ -64,10 +64,13 @@ HalideBufferAdapter::HalideBufferAdapter(compute::IBuffer& buffer,
     }
 
     halide_.dimensions = static_cast<std::int32_t>(layout.ndim);
+    std::int32_t dense_stride = 1;
     for (std::uint8_t i = 0; i < layout.ndim; ++i) {
-        const auto stride = layout.stride[i] != 0 ? layout.stride[i] : channel_bytes;
-        dimensions_[i] = halide_dimension_t{0, static_cast<std::int32_t>(layout.dims[i]),
-                                            static_cast<std::int32_t>(stride / channel_bytes)};
+        const auto stride = layout.stride[i] != 0
+                                ? static_cast<std::int32_t>(layout.stride[i] / channel_bytes)
+                                : dense_stride;
+        dimensions_[i] = halide_dimension_t{0, static_cast<std::int32_t>(layout.dims[i]), stride};
+        dense_stride = stride * static_cast<std::int32_t>(layout.dims[i]);
     }
 }
 

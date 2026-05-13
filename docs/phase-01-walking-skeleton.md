@@ -117,6 +117,8 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-55 | T5 fixture-blocked verification          | T5 may land a tested ingest-core slice using synthetic minimal DNG fixtures while PD-13 remains unsatisfied. This does **not** replace `tests/corpus/pixel8pro.dng`; the Pixel 8 Pro fixture acceptance boxes stay unchecked until a cropped CC0 / CC-BY real fixture is added. |
 | PD-56 | T6 CPU metadata-node implementation      | `linearize.dng_lut` and `blacklevel.dng_levels` are implemented as CPU plugin loops for the T6 slice because the current `cpipe_compute_suite_v1::submit_halide` adapter accepts only image input/output buffers and cannot pass per-frame `LinearizationTable` / black / white metadata into an AOT Halide signature. The manifests say `engine: Host`; a later compute-suite parameter-buffer extension can move the same math into AOT Halide without changing node IDs. |
 | PD-57 | LinearizationTable ABI completion        | T6 exposes the already-modeled `CalibrationBlock.linearization_table` through `cpipe_calibration_view::get_linearization_table`. This completes the v1-frozen calibration surface documented in [`buffer.md` §6](buffer.md#6-buffermetadata) / [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh) rather than adding a new metadata field. |
+| PD-58 | T7 Vulkan FP16 target feature            | `demosaic.bilinear` keeps the locked `R16G16B16A16_SFLOAT` output from PD-21. Halide's Vulkan backend requires the `vk_float16` target feature for that output type, so the Vulkan AOT target is `${Halide_HOST_TARGET}-vulkan-vk_float16` rather than bare `host-vulkan`. |
+| PD-59 | T7 RGGB CFA gate                         | The T7 Halide `demosaic_bilinear` signature remains `(R32 Bayer input, FP16 RGBA output)` to fit the current `submit_halide` ABI. Because CFA pattern scalars cannot yet be passed into Halide AOT, this slice accepts RGGB (`0,1,1,2`) and returns `CPIPE_UNSUPPORTED` for other 2×2 Bayer patterns. Four-pattern support requires either separate AOT variants or a compute-suite parameter extension. |
 
 ---
 
@@ -424,15 +426,17 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Implement `com.cpipe.demosaic.bilinear` Halide generator targeting both `x86-64-linux` and `host-vulkan`. The CPU path is the default; the Vulkan path is selected when the runtime advertises a Vulkan device. Drop CFA from the output metadata; transition output to `R16G16B16A16_SFLOAT`.
 
 **Acceptance criteria:**
-- [ ] `add_halide_library` produces a CPU `.o` and a host-vulkan SPIR-V variant for the same generator.
-- [ ] `ComputeContext::submit_halide("demosaic_bilinear", ...)` runs on CPU when `CPIPE_VULKAN_DEVICE_INDEX=-1`.
+- [x] `add_halide_library` produces a CPU `.o` and a host-vulkan SPIR-V variant for the same generator.
+- [x] `ComputeContext::submit_halide("demosaic_bilinear", ...)` runs on CPU when `CPIPE_VULKAN_DEVICE_INDEX=-1`.
 - [ ] Same call runs on Vulkan when device available; Tracy capture shows the `submit_halide` span on Vulkan device.
 - [ ] Per-node golden PSNR ≥ 40 dB on CPU; if Vulkan device available, Vulkan path matches CPU within 1 ULP per channel (separate test).
-- [ ] `out_metadata.clear_cfa()` and `add_applied_step("demosaic")` validated by manifest at freeze.
+- [x] `out_metadata.clear_cfa()` and `add_applied_step("demosaic")` validated by manifest at freeze.
 
 **Verification:**
-- [ ] `ctest -R test_node_demosaic_bilinear` green.
-- [ ] `ctest -R test_node_demosaic_bilinear_vulkan` green when `CPIPE_VULKAN_AVAILABLE=ON`.
+- [x] `ctest -R test_node_demosaic_bilinear` green.
+- [x] `ctest -R test_node_demosaic_bilinear_vulkan` green when `CPIPE_VULKAN_AVAILABLE=ON`.
+
+**Status note.** T7 landed the synthetic unit-test slice. The Vulkan test creates a project `VulkanDevicePlane` when `CPIPE_VULKAN_AVAILABLE=ON` and exercises Halide's multi-target wrapper; it does not yet provide a Tracy capture proving cpipe-owned Vulkan dispatch. Golden EXR / PSNR acceptance remains unchecked.
 
 **Dependencies:** T2, T6.
 

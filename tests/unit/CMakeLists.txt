@@ -71,6 +71,27 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_demosaic_bilinear test_node_demosaic_bilinear.cpp)
+target_link_libraries(
+    test_node_demosaic_bilinear
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_demosaic_bilinear_vulkan test_node_demosaic_bilinear_vulkan.cpp)
+target_link_libraries(
+    test_node_demosaic_bilinear_vulkan
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+set_tests_properties(
+    test_node_demosaic_bilinear_vulkan PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0"
+)
 cpipe_add_unit_test(test_pipeline_load test_pipeline_load.cpp)
 target_compile_definitions(test_pipeline_load PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(test_pipeline_load PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)

@@ -1,7 +1,12 @@
 include(HalideHelpers)
 cpipe_ensure_halide()
 
-add_halide_generator(cpipe_halide_generators SOURCES passthrough_copy_generator.cpp)
+add_halide_generator(
+    cpipe_halide_generators
+    SOURCES
+        passthrough_copy_generator.cpp
+        demosaic/demosaic_bilinear_generator.cpp
+)
 cpipe_add_halide_library(
     passthrough_copy
     FROM
@@ -12,6 +17,18 @@ cpipe_add_halide_library(
         passthrough_copy
     TARGETS
         x86-64-linux
+)
+cpipe_add_halide_library(
+    demosaic_bilinear
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        demosaic_bilinear
+    FUNCTION_NAME
+        demosaic_bilinear
+    TARGETS
+        x86-64-linux
+        ${Halide_HOST_TARGET}-vulkan-vk_float16
 )
 
 set(passthrough_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/passthrough_manifest.cpp")
@@ -64,6 +81,18 @@ add_custom_command(
     DEPENDS blacklevel/blacklevel_dng_levels.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(demosaic_bilinear_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/demosaic_bilinear_manifest.cpp")
+add_custom_command(
+    OUTPUT "${demosaic_bilinear_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/demosaic/demosaic_bilinear.json"
+        -DOUTPUT_CPP="${demosaic_bilinear_manifest_cpp}"
+        -DSYMBOL_NAME=DEMOSAIC_BILINEAR_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS demosaic/demosaic_bilinear.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 add_library(
     cpipe-builtin-nodes
     STATIC
@@ -71,10 +100,12 @@ add_library(
         dng_input/dng_input.cpp
         linearize/linearize_dng_lut.cpp
         blacklevel/blacklevel_dng_levels.cpp
+        demosaic/demosaic_bilinear.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"
         "${linearize_dng_lut_manifest_cpp}"
         "${blacklevel_dng_levels_manifest_cpp}"
+        "${demosaic_bilinear_manifest_cpp}"
 )
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
 
@@ -86,4 +117,5 @@ target_link_libraries(
         cpipe::sdk
         cpipe::runtime
         passthrough_copy
+        demosaic_bilinear
 )

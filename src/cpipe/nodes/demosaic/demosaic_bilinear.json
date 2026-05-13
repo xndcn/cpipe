@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.demosaic.bilinear",
+  "version": "1.0.0",
+  "label": "Bilinear Demosaic",
+  "category": "raw",
+  "doc": "Demosaics RGGB Bayer data with bilinear interpolation.",
+  "ports": [
+    {
+      "name": "bayer",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["black_white_scaling"],
+        "requires_fields": ["calibration.cfa"]
+      }
+    },
+    {
+      "name": "rgba",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "bayer",
+        "clears_fields": ["calibration.cfa"],
+        "sets_steps_applied": ["demosaic"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "halide_aot": ["demosaic_bilinear"],
+    "in_pixel_bytes": 4,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

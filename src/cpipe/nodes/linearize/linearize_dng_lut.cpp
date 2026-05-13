@@ -17,9 +17,8 @@ public:
 
     /// Applies the DNG raw-domain linearization stage described with black/white
     /// normalization in docs/research/07-classic-isp-algorithms.md §3.9.
-    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
-                              std::span<sdk::Buffer*> outputs,
+    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*, const sdk::ParamView&,
+                              std::span<const sdk::Buffer*> inputs, std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
             outputs[0] == nullptr || out_metadata.empty() || out_metadata[0] == nullptr) {

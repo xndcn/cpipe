@@ -36,6 +36,16 @@ BufferLayout rgba_layout(std::uint32_t width, std::uint32_t height) {
     return layout;
 }
 
+BufferLayout r32_layout(std::uint32_t width, std::uint32_t height) {
+    BufferLayout layout{};
+    layout.kind = BufferKind::Image2D;
+    layout.format = PixelFormat::R32_SFLOAT;
+    layout.ndim = 2;
+    layout.dims[0] = width;
+    layout.dims[1] = height;
+    return layout;
+}
+
 }  // namespace
 
 TEST_CASE("HalideBufferAdapter exposes interleaved RGBA image shape") {
@@ -54,6 +64,22 @@ TEST_CASE("HalideBufferAdapter exposes interleaved RGBA image shape") {
     REQUIRE(halide->dim[1].stride == 32);
     REQUIRE(halide->dim[2].extent == 4);
     REQUIRE(halide->dim[2].stride == 1);
+}
+
+TEST_CASE("HalideBufferAdapter exposes dense single-channel image row stride") {
+    CpuBuffer buffer{r32_layout(8, 4), BufferUsage::Input | BufferUsage::CpuRead};
+
+    cpipe::runtime::HalideBufferAdapter adapter{buffer, IBuffer::CpuAccess::Read};
+    const auto* halide = adapter.get();
+
+    REQUIRE(halide->host != nullptr);
+    REQUIRE(halide->type.code == halide_type_float);
+    REQUIRE(halide->type.bits == 32);
+    REQUIRE(halide->dimensions == 2);
+    REQUIRE(halide->dim[0].extent == 8);
+    REQUIRE(halide->dim[0].stride == 1);
+    REQUIRE(halide->dim[1].extent == 4);
+    REQUIRE(halide->dim[1].stride == 8);
 }
 
 TEST_CASE("ComputeContext submit_halide copies CpuBuffer bytes") {

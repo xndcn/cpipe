@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/BufferMetadata.hpp>
@@ -11,7 +12,6 @@
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
-#include <algorithm>
 #include <cstdint>
 #include <iterator>
 #include <memory>
@@ -64,12 +64,12 @@ TEST_CASE("linearize.dng_lut applies DNG LinearizationTable and records metadata
     metadata->cs_role = "raw_camera";
 
     auto input = std::make_shared<CpuBuffer>(
-        layout(PixelFormat::R16_UINT), BufferUsage::Input | BufferUsage::CpuRead |
-                                          BufferUsage::CpuWrite);
+        layout(PixelFormat::R16_UINT),
+        BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
     input->set_metadata(metadata);
     auto output = std::make_shared<CpuBuffer>(
-        layout(PixelFormat::R32_SFLOAT), BufferUsage::Output | BufferUsage::CpuRead |
-                                           BufferUsage::CpuWrite);
+        layout(PixelFormat::R32_SFLOAT),
+        BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     const std::uint16_t raw[] = {0, 1, 2, 3, 4, 5, 2, 0};
     auto* in = static_cast<std::uint16_t*>(input->lock_cpu(IBuffer::CpuAccess::Write));
@@ -84,8 +84,8 @@ TEST_CASE("linearize.dng_lut applies DNG LinearizationTable and records metadata
 
     auto input_handle = cpipe::runtime::make_buffer_handle(input);
     auto output_handle = cpipe::runtime::make_buffer_handle(output);
-    auto builder = cpipe::runtime::make_metadata_builder_handle(input->metadata(),
-                                                                {input->metadata()});
+    auto builder =
+        cpipe::runtime::make_metadata_builder_handle(input->metadata(), {input->metadata()});
     const cpipe_buffer_t* inputs[] = {input_handle.get()};
     cpipe_buffer_t* outputs[] = {output_handle.get()};
     cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
