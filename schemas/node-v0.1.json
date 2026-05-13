@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/node/v0.1.json",
+  "type": "object",
+  "required": ["id", "version", "ports", "compute", "color"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": { "type": "string" },
+    "id": { "type": "string", "pattern": "^com\\.cpipe\\." },
+    "version": { "type": "string" },
+    "ports": { "type": "array" },
+    "compute": { "type": "object" },
+    "color": { "type": "object" }
+  }
+}

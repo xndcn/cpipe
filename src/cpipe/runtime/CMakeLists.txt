@@ -7,6 +7,7 @@ add_library(
     cpipe-runtime
     STATIC
         ComputeContext.cpp
+        BufferHandle.cpp
         HalideBufferAdapter.cpp
         HostContext.cpp
         InferenceContext.cpp

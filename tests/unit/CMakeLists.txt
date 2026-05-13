@@ -1,4 +1,6 @@
 find_package(Catch2 CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
+find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 
 function(cpipe_add_unit_test target)
     add_executable(${target} ${ARGN})
@@ -22,3 +24,14 @@ cpipe_add_unit_test(test_scheduler_topo test_scheduler_topo.cpp)
 target_link_libraries(test_scheduler_topo PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_halide_adapter test_halide_adapter.cpp)
 target_link_libraries(test_halide_adapter PRIVATE cpipe::runtime)
+cpipe_add_unit_test(test_passthrough_node test_passthrough_node.cpp)
+target_compile_definitions(test_passthrough_node PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_link_libraries(
+    test_passthrough_node
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+        nlohmann_json_schema_validator::validator
+)

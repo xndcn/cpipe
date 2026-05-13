@@ -3,12 +3,12 @@ if(NOT DEFINED INPUT_JSON OR NOT DEFINED OUTPUT_CPP OR NOT DEFINED SYMBOL_NAME)
 endif()
 
 file(READ "${INPUT_JSON}" json_text)
-string(JSON json_canonical ERROR_VARIABLE json_error SET "${json_text}" ".")
+string(JSON json_type ERROR_VARIABLE json_error TYPE "${json_text}")
 if(json_error)
     message(FATAL_ERROR "Invalid JSON in ${INPUT_JSON}: ${json_error}")
 endif()
 
-string(REPLACE "\\" "\\\\" json_literal "${json_canonical}")
+string(REPLACE "\\" "\\\\" json_literal "${json_text}")
 string(REPLACE "\"" "\\\"" json_literal "${json_literal}")
 string(REPLACE "\n" "\\n\"\n\"" json_literal "${json_literal}")
 

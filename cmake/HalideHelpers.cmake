@@ -30,5 +30,6 @@ function(cpipe_ensure_halide)
 endfunction()
 
 function(cpipe_add_halide_library target)
-    message(FATAL_ERROR "cpipe_add_halide_library(${target}) is finalized in T5")
+    cpipe_ensure_halide()
+    add_halide_library(${target} ${ARGN})
 endfunction()

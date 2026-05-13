@@ -81,6 +81,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-29 | vcpkg package name for JSON Schema validator     | The upstream project remains `nlohmann/json-schema-validator` per PD-10, but the vcpkg manifest uses the actual port name `json-schema-validator`; CMake still consumes `nlohmann_json_schema_validator::validator`.                   |
 | PD-30 | T1 `cpipe-sdk` artifact kind                     | T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is an `INTERFACE` header-only target, so the skeleton produces four static libraries, one header-only SDK target, and one CLI executable. |
 | PD-31 | Halide v21 acquisition                           | `cmake/HalideHelpers.cmake` fetches the official Halide v21.0.0 x86_64 Linux binary release archive by default; source builds are avoided in P0 CI to keep the cold-build budget under PD-13.                                         |
+| PD-32 | Node schema validation gate                      | P0 keeps pre-commit scoped to PD-23 hooks; node manifest JSON Schema validation runs in Catch2 with `nlohmann_json_schema_validator::validator`, and the Editor's Ajv gate is deferred to P3.                                         |
 
 ---
 
@@ -304,14 +305,14 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the Halide generator `passthrough_copy` (CPU target only — Vulkan target reserved for P1), wire `add_halide_library()` to compile it into a static archive, write `nodes/passthrough.cpp` (the C++ `Passthrough` class), `nodes/passthrough.json` (manifest), and the `EmbedJson.cmake` step that turns the JSON into a `.cpp` literal per [`plugin-sdk.md` §7.2](plugin-sdk.md#72-embedding-in-the-binary). Register via `CPIPE_REGISTER_NODE`.
 
 **Acceptance criteria:**
-- [ ] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
-- [ ] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Ajv CLI step in pre-commit).
-- [ ] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
-- [ ] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
+- [x] `passthrough_copy_generator.cpp` compiles into a Halide AOT static library.
+- [x] `nodes/passthrough.json` validates against `schemas/node-v0.1.json` (Catch2 host-side validator per PD-32).
+- [x] `Passthrough::process()` submits the Halide AOT, copies input bytes to output bytes for any `R8G8B8A8_UNORM` `Image2D`.
+- [x] The descriptor `com.cpipe.builtin.passthrough` appears in the registry at startup.
 
 **Verification:**
-- [ ] `ctest -R test_passthrough_node` green.
-- [ ] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
+- [x] `ctest -R test_passthrough_node` green.
+- [x] Generated manifest `.cpp` literal is byte-identical to source JSON (modulo whitespace canonicalization).
 
 **Dependencies:** T4.
 
