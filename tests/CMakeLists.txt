@@ -1,4 +1,5 @@
 add_subdirectory(unit)
+add_subdirectory(integration)
 
 add_executable(gen_passthrough_input fixtures/gen_passthrough_input.cpp)
 cpipe_target_warning_flags(gen_passthrough_input)

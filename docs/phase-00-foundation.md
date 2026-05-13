@@ -83,6 +83,9 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-31 | Halide v21 acquisition                           | `cmake/HalideHelpers.cmake` fetches the official Halide v21.0.0 x86_64 Linux binary release archive by default; source builds are avoided in P0 CI to keep the cold-build budget under PD-13.                                         |
 | PD-32 | Node schema validation gate                      | P0 keeps pre-commit scoped to PD-23 hooks; node manifest JSON Schema validation runs in Catch2 with `nlohmann_json_schema_validator::validator`, and the Editor's Ajv gate is deferred to P3.                                         |
 | PD-33 | P0 raw fixture layout                            | The P0 pipeline schema carries an `input` layout block (`Image2D`, `R8G8B8A8_UNORM`, width, height) so the CLI can run raw `.bin` fixtures without DNG ingest; `passthrough.bin` is generated under `build/.../tests/fixtures/`.       |
+| PD-34 | P0 clang-tidy baseline                           | CI runs clang-tidy on production `.cpp` translation units with headers filtered to `include/cpipe` and `src/cpipe`; the broad PD-22 families remain enabled, but style/C-ABI checks that conflict with P0's C ABI, linker-section symbols, or force project-wide style migrations are baseline-suppressed. |
+| PD-35 | Release test gate                                | The CI `build-release` job also runs `ctest --preset linux-release-clang --output-on-failure` so T7's end-to-end smoke coverage is exercised under both Debug sanitizer and Release builds.                                          |
+| PD-36 | Halide CI target baseline                        | The P0 passthrough generator uses Halide target `x86-64-linux` instead of `host` in CI builds to avoid runner-specific CPU feature selection causing SIGILL; this remains a CPU AOT target and Vulkan/Hexagon targets still slip to P1+. |
 
 ---
 
@@ -359,8 +362,8 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Author the single integration test that drives the whole chain — registry walk → Pipeline::load → Scheduler dispatch → ComputeContext::submit_halide → CpuBuffer compare. Run it under both Debug (ASAN+UBSAN) and Release in CI. Tag `v0.1` once green for ≥ 24 hours.
 
 **Acceptance criteria:**
-- [ ] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
-- [ ] ASAN + UBSAN produce no findings on the integration run.
+- [x] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
+- [x] ASAN + UBSAN produce no findings on the integration run.
 - [ ] CI green on `main` for ≥ 24 consecutive hours.
 - [ ] Tag `v0.1` created and pushed.
 
