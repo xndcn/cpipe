@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/MemoryPlanner.hpp>
-
 #include <algorithm>
+#include <cpipe/runtime/MemoryPlanner.hpp>
 #include <cstdint>
 #include <nlohmann/json.hpp>
 

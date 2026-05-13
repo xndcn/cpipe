@@ -6,6 +6,7 @@
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
+#include <cpipe/runtime/ParamHandle.hpp>
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
@@ -54,6 +55,13 @@ HostContext::HostContext() {
     compute_suite_.submit_slang = &HostContext::submit_slang;
     compute_suite_.request_scratch = &HostContext::request_scratch;
     compute_suite_.record_marker = &HostContext::record_marker;
+
+    param_suite_.get_double = &HostContext::get_param_double;
+    param_suite_.get_int = &HostContext::get_param_int;
+    param_suite_.get_bool = &HostContext::get_param_bool;
+    param_suite_.get_enum = &HostContext::get_param_enum;
+    param_suite_.get_curve = &HostContext::get_param_curve;
+    param_suite_.get_color = &HostContext::get_param_color;
 
     inference_suite_.submit_inference = &HostContext::submit_inference;
 
@@ -612,6 +620,67 @@ int HostContext::set_blob(cpipe_metadata_builder_t* builder, const char* key, co
 
 int HostContext::merge_from(cpipe_metadata_builder_t*, std::size_t, int policy) {
     return policy == 0 ? CPIPE_OK : CPIPE_UNSUPPORTED;
+}
+
+int HostContext::get_param_double(const cpipe_props_t* props, const char* key, double* out) {
+    const auto* params = params_from_handle(props);
+    if (params == nullptr || key == nullptr || out == nullptr || !params->contains(key) ||
+        !params->at(key).is_number()) {
+        return CPIPE_NEED_PARAM;
+    }
+    *out = params->at(key).get<double>();
+    return CPIPE_OK;
+}
+
+int HostContext::get_param_int(const cpipe_props_t* props, const char* key, std::int64_t* out) {
+    const auto* params = params_from_handle(props);
+    if (params == nullptr || key == nullptr || out == nullptr || !params->contains(key) ||
+        !params->at(key).is_number_integer()) {
+        return CPIPE_NEED_PARAM;
+    }
+    *out = params->at(key).get<std::int64_t>();
+    return CPIPE_OK;
+}
+
+int HostContext::get_param_bool(const cpipe_props_t* props, const char* key, int* out) {
+    const auto* params = params_from_handle(props);
+    if (params == nullptr || key == nullptr || out == nullptr || !params->contains(key) ||
+        !params->at(key).is_boolean()) {
+        return CPIPE_NEED_PARAM;
+    }
+    *out = params->at(key).get<bool>() ? 1 : 0;
+    return CPIPE_OK;
+}
+
+int HostContext::get_param_enum(const cpipe_props_t* props, const char* key, const char** out) {
+    const auto* params = params_from_handle(props);
+    if (params == nullptr || key == nullptr || out == nullptr || !params->contains(key) ||
+        !params->at(key).is_string()) {
+        return CPIPE_NEED_PARAM;
+    }
+    *out = params->at(key).get_ref<const std::string&>().c_str();
+    return CPIPE_OK;
+}
+
+int HostContext::get_param_curve(const cpipe_props_t*, const char*, const float**, const float**,
+                                 std::size_t*) {
+    return CPIPE_UNSUPPORTED;
+}
+
+int HostContext::get_param_color(const cpipe_props_t* props, const char* key, float rgba[4]) {
+    const auto* params = params_from_handle(props);
+    if (params == nullptr || key == nullptr || rgba == nullptr || !params->contains(key) ||
+        !params->at(key).is_array() || params->at(key).size() != 4) {
+        return CPIPE_NEED_PARAM;
+    }
+    const auto& value = params->at(key);
+    for (std::size_t i = 0; i < 4; ++i) {
+        if (!value[i].is_number()) {
+            return CPIPE_NEED_PARAM;
+        }
+        rgba[i] = value[i].get<float>();
+    }
+    return CPIPE_OK;
 }
 
 int HostContext::submit_halide(cpipe_compute_t* compute_handle, const char* aot_id,

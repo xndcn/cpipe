@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <cpipe/runtime/PrecisionPlanner.hpp>
-
 #include <algorithm>
+#include <cpipe/runtime/PrecisionPlanner.hpp>
 #include <nlohmann/json.hpp>
 #include <utility>
 #include <vector>
@@ -17,8 +16,8 @@ void set_error(std::string* error, std::string message) {
     }
 }
 
-std::vector<std::string> port_precisions(const cpipe_plugin_desc_t* desc, std::string_view port_kind,
-                                         const std::string& port_name) {
+std::vector<std::string> port_precisions(const cpipe_plugin_desc_t* desc,
+                                         std::string_view port_kind, const std::string& port_name) {
     if (desc == nullptr || desc->manifest_json == nullptr) {
         return {};
     }

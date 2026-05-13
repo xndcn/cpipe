@@ -68,6 +68,13 @@ private:
     static int set_blob(cpipe_metadata_builder_t* builder, const char* key, const void* ptr,
                         std::size_t size);
     static int merge_from(cpipe_metadata_builder_t* builder, std::size_t input_idx, int policy);
+    static int get_param_double(const cpipe_props_t* props, const char* key, double* out);
+    static int get_param_int(const cpipe_props_t* props, const char* key, std::int64_t* out);
+    static int get_param_bool(const cpipe_props_t* props, const char* key, int* out);
+    static int get_param_enum(const cpipe_props_t* props, const char* key, const char** out);
+    static int get_param_curve(const cpipe_props_t* props, const char* key, const float** xs,
+                               const float** ys, std::size_t* n);
+    static int get_param_color(const cpipe_props_t* props, const char* key, float rgba[4]);
     static int submit_halide(cpipe_compute_t* compute, const char* aot_id,
                              const cpipe_buffer_t* const* inputs, std::size_t n_in,
                              cpipe_buffer_t* const* outputs, std::size_t n_out);

@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include <cpipe/core/BufferLayout.hpp>
 #include <cpipe/sdk/cpipe_node.h>
 
+#include <cpipe/core/BufferLayout.hpp>
 #include <cstdint>
 #include <span>
 

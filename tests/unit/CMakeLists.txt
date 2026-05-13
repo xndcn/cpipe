@@ -28,6 +28,17 @@ cpipe_add_unit_test(test_halide_adapter test_halide_adapter.cpp)
 target_link_libraries(test_halide_adapter PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_metadata_suite test_metadata_suite.cpp)
 target_link_libraries(test_metadata_suite PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)
+cpipe_add_unit_test(test_opcode_list_parser test_opcode_list_parser.cpp)
+target_link_libraries(test_opcode_list_parser PRIVATE cpipe::runtime)
+cpipe_add_unit_test(test_dng_reader test_dng_reader.cpp)
+target_link_libraries(
+    test_dng_reader
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_vulkan_device_plane test_vulkan_device_plane.cpp)
 target_link_libraries(test_vulkan_device_plane PRIVATE cpipe::runtime)
 set_tests_properties(test_vulkan_device_plane PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")

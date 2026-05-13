@@ -245,6 +245,20 @@ public:
     ParamView(cpipe_props_t* impl, const cpipe_param_suite_v1* suite)
         : impl_(impl), suite_(suite) {}
 
+    [[nodiscard]] Result<std::string_view> string(std::string_view key) const {
+        if (suite_ == nullptr || suite_->get_enum == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_NEED_PARAM, "param suite unavailable"});
+        }
+        const std::string key_string{key};
+        const char* out = nullptr;
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->get_enum(impl_, key_string.c_str(), &out));
+        if (status != CPIPE_OK || out == nullptr) {
+            return tl::unexpected(Error{status, "string param missing"});
+        }
+        return std::string_view{out};
+    }
+
     [[nodiscard]] cpipe_props_t* impl() const noexcept {
         return impl_;
     }

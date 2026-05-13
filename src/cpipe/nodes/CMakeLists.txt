@@ -26,7 +26,26 @@ add_custom_command(
     DEPENDS passthrough.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
-add_library(cpipe-builtin-nodes STATIC passthrough.cpp "${passthrough_manifest_cpp}")
+set(dng_input_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/dng_input_manifest.cpp")
+add_custom_command(
+    OUTPUT "${dng_input_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/dng_input/dng_input.json"
+        -DOUTPUT_CPP="${dng_input_manifest_cpp}"
+        -DSYMBOL_NAME=DNG_INPUT_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS dng_input/dng_input.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
+add_library(
+    cpipe-builtin-nodes
+    STATIC
+        passthrough.cpp
+        dng_input/dng_input.cpp
+        "${passthrough_manifest_cpp}"
+        "${dng_input_manifest_cpp}"
+)
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
 
 cpipe_target_warning_flags(cpipe-builtin-nodes)

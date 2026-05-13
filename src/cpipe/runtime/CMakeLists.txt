@@ -2,6 +2,7 @@ find_package(Taskflow CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
+find_package(libraw CONFIG REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
 find_package(VulkanLoader CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
@@ -23,6 +24,8 @@ add_custom_command(
 add_library(
     cpipe-runtime
     STATIC
+        ../ingest/dng/DngReader.cpp
+        ../ingest/dng_opcode/OpcodeListParser.cpp
         ComputeContext.cpp
         BufferHandle.cpp
         HalideBufferAdapter.cpp
@@ -30,6 +33,7 @@ add_library(
         InferenceContext.cpp
         MemoryPlanner.cpp
         MetadataHandle.cpp
+        ParamHandle.cpp
         Pipeline.cpp
         PrecisionPlanner.cpp
         "${pipeline_schema_cpp}"
@@ -55,6 +59,7 @@ target_link_libraries(
     PRIVATE
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
+        libraw::raw_r
         Taskflow::Taskflow
         Vulkan::Loader
         spdlog::spdlog

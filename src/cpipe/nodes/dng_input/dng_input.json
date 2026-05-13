@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.builtin.dng_input",
+  "version": "1.0.0",
+  "label": "DNG Input",
+  "category": "builtin",
+  "doc": "Loads a Bayer DNG into a RAW16 buffer with DNG metadata attached.",
+  "ports": [
+    {
+      "name": "raw",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "writes_fields": [
+          "calibration",
+          "capture",
+          "cs_role",
+          "active_area",
+          "exif_blob",
+          "xmp_blob",
+          "icc_blob",
+          "ext_blobs"
+        ]
+      }
+    }
+  ],
+  "params": [
+    {
+      "name": "path",
+      "type": "string",
+      "required": true
+    }
+  ],
+  "compute": {
+    "device": "CPU",
+    "engine": "Host",
+    "out_pixel_bytes": 2
+  },
+  "color": {
+    "input_role": "none",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

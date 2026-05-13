@@ -114,6 +114,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-52 | Vulkan unit-test LSan policy            | `test_vulkan_device_plane` runs with `ASAN_OPTIONS=detect_leaks=0` because NVIDIA / Mesa Vulkan loader paths retain process-lifetime allocations that LeakSanitizer reports after all cpipe-owned Vulkan/VMA handles are destroyed. AddressSanitizer and UBSan remain enabled for the test. |
 | PD-53 | Validation-layer manual check fallback  | When `vkconfig` / distro validation-layer packages are not installed, the manual T2 Debug check may use a local Vulkan SDK / vcpkg validation-layer install with `VK_ADD_LAYER_PATH` + `LD_LIBRARY_PATH` to confirm `VK_LAYER_KHRONOS_validation` loads. This does not add validation layers to the project manifest. |
 | PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. Generated `main_entry` helpers use internal linkage, and `Registry::load_builtin_nodes()` skips null descriptor slots defensively. |
+| PD-55 | T5 fixture-blocked verification          | T5 may land a tested ingest-core slice using synthetic minimal DNG fixtures while PD-13 remains unsatisfied. This does **not** replace `tests/corpus/pixel8pro.dng`; the Pixel 8 Pro fixture acceptance boxes stay unchecked until a cropped CC0 / CC-BY real fixture is added. |
 
 ---
 
