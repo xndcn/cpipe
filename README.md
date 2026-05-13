@@ -50,7 +50,31 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 
 ## Current Status
 
-We're in **Phase 0** (`v0.1`). See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+We're in **Phase 0** (`v0.1`). The repository skeleton and native build targets are
+being brought up task-by-task. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
+
+## Build From Source
+
+Requirements:
+
+- Ubuntu 24.04 or equivalent Linux x86_64 environment.
+- CMake 3.28+, Ninja, Clang 18+ or GCC 13+.
+- vcpkg with `VCPKG_ROOT` pointing at the checkout.
+- Python `pre-commit`.
+
+```bash
+pre-commit install
+cmake --preset linux-debug
+cmake --build --preset linux-debug -j
+ctest --preset ci --output-on-failure
+```
+
+Release preset:
+
+```bash
+cmake --preset linux-release-clang
+cmake --build --preset linux-release-clang -j
+```
 
 ## Roadmap
 

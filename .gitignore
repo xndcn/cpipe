@@ -1,0 +1,11 @@
+build/
+cmake-build-*/
+.cache/
+.vscode/
+.idea/
+*.user
+*.swp
+*.swo
+compile_commands.json
+.pre-commit-cache/
+__pycache__/

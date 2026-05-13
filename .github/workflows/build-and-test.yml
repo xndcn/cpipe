@@ -1,0 +1,116 @@
+name: build-and-test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  VCPKG_ROOT: ${{ github.workspace }}/.vcpkg
+  VCPKG_BINARY_SOURCES: clear;files,${{ github.workspace }}/.vcpkg-cache,readwrite
+
+jobs:
+  lint:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build ccache
+      - name: Check formatting
+        run: |
+          for dir in include src tests; do
+            [ -d "$dir" ] && find "$dir" -type f \( -name '*.h' -o -name '*.hpp' -o -name '*.c' -o -name '*.cpp' \) -print0
+          done | xargs -0 -r clang-format-18 --dry-run --Werror
+      - name: Configure for clang-tidy
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+          cmake --preset linux-release-clang
+      - name: clang-tidy
+        run: |
+          find src -type f -name '*.cpp' -print0 | xargs -0 -r clang-tidy-18 -p build/linux-release-clang
+
+  build-debug:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vcpkg-cache
+            ~/.cache/ccache
+          key: vcpkg-debug-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ github.sha }}
+          restore-keys: |
+            vcpkg-debug-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+      - name: Build
+        run: |
+          CC=clang-18 CXX=clang++-18 cmake --preset linux-debug
+          cmake --build --preset linux-debug -j
+
+  build-release:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vcpkg-cache
+            ~/.cache/ccache
+          key: vcpkg-release-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ github.sha }}
+          restore-keys: |
+            vcpkg-release-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+      - name: Build
+        run: |
+          cmake --preset linux-release-clang
+          cmake --build --preset linux-release-clang -j
+
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-18 ninja-build ccache
+      - name: Restore caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vcpkg-cache
+            ~/.cache/ccache
+          key: vcpkg-test-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ github.sha }}
+          restore-keys: |
+            vcpkg-test-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
+      - name: Bootstrap vcpkg
+        run: |
+          git clone https://github.com/microsoft/vcpkg "$VCPKG_ROOT"
+          git -C "$VCPKG_ROOT" checkout 81e3c888ef717a026eb57bb2f3cb0dbd30246271
+          "$VCPKG_ROOT/bootstrap-vcpkg.sh" -disableMetrics
+      - name: Build and test
+        run: |
+          CC=clang-18 CXX=clang++-18 cmake --preset linux-debug
+          cmake --build --preset linux-debug -j
+          ctest --preset ci --output-on-failure

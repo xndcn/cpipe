@@ -78,6 +78,8 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-26 | Test coverage in P0                              | 8–12 unit tests (Catch2) + 1 integration smoke test. No coverage percentage gate; tests target the obvious invariants per §8.                                                                                                          |
 | PD-27 | Git LFS                                          | **Not enabled** in P0. Test fixtures are generated programmatically (a 64×64 RGBA8 gradient). LFS bootstraps in P1 when EXR golden fixtures appear.                                                                                  |
 | PD-28 | Task slicing                                     | Seven vertical tasks (T1–T7); two checkpoints (after T3 and after T7).                                                                                                                                                                |
+| PD-29 | vcpkg package name for JSON Schema validator     | The upstream project remains `nlohmann/json-schema-validator` per PD-10, but the vcpkg manifest uses the actual port name `json-schema-validator`; CMake still consumes `nlohmann_json_schema_validator::validator`.                   |
+| PD-30 | T1 `cpipe-sdk` artifact kind                     | T1 follows [`architecture.md` §3](architecture.md#3-native-module-decomposition): `cpipe-sdk` is an `INTERFACE` header-only target, so the skeleton produces four static libraries, one header-only SDK target, and one CLI executable. |
 
 ---
 
@@ -179,9 +181,9 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 **Description.** Initialize the public GitHub repo, write the top-level CMake / vcpkg / preset files, drop in tooling configs, scaffold the six empty targets, and stand up GitHub Actions.
 
 **Acceptance criteria:**
-- [ ] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
-- [ ] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces six empty static libs / one empty CLI binary.
-- [ ] `pre-commit run --all-files` passes.
+- [x] `github.com/xndcn/cpipe` is public; `LICENSE` (Apache 2.0) and `README.md` (with pre-alpha warning) are at the root.
+- [x] `cmake --preset linux-debug && cmake --build --preset linux-debug` succeeds and produces the Phase 0 target skeleton (`cpipe-sdk` is header-only per [`architecture.md` §3](architecture.md#3-native-module-decomposition)).
+- [x] `pre-commit run --all-files` passes.
 - [ ] GitHub Actions workflow `build-and-test.yml` is green on a placeholder PR.
 
 **Verification:**
