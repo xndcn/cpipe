@@ -12,6 +12,7 @@
 #include <cpipe/runtime/ParamHandle.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/PrecisionPlanner.hpp>
+#include <cpipe/runtime/Scheduler.hpp>
 #include <cpipe/runtime/Trace.hpp>
 #include <cstddef>
 #include <cstdint>
@@ -442,79 +443,100 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
         return CPIPE_FAILED;
     }
 
-    for (const auto& node : nodes_) {
-        auto params_json = node.params;
-        const bool has_output = node_has_output(node.descriptor);
-        if (!has_output && output) {
-            params_json["path"] = output->string();
+    std::vector<ScheduledNode> scheduled_nodes;
+    scheduled_nodes.reserve(nodes_.size());
+    for (std::size_t index = 0; index < nodes_.size(); ++index) {
+        const auto* node = &nodes_[index];
+        std::vector<std::size_t> dependencies;
+        if (index > 0) {
+            dependencies.push_back(index - 1);
         }
-        auto params = make_param_handle(params_json);
+        scheduled_nodes.push_back(ScheduledNode{
+            .id = node->id,
+            .process =
+                [&, node] {
+                    auto params_json = node->params;
+                    const bool has_output = node_has_output(node->descriptor);
+                    if (!has_output && output) {
+                        params_json["path"] = output->string();
+                    }
+                    auto params = make_param_handle(params_json);
 
-        void* instance = nullptr;
-        status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
-            CPIPE_ACTION_CREATE, host_context.host(), nullptr, params.get(), nullptr, &instance));
-        if (status != CPIPE_OK) {
-            set_error(error, "node create failed: " + node.id);
-            return status;
-        }
+                    void* instance = nullptr;
+                    auto node_status = static_cast<cpipe_status_t>(
+                        node->descriptor->main_entry(CPIPE_ACTION_CREATE, host_context.host(),
+                                                     nullptr, params.get(), nullptr, &instance));
+                    if (node_status != CPIPE_OK) {
+                        set_error(error, "node create failed: " + node->id);
+                        return node_status;
+                    }
 
-        auto input_handle = make_buffer_handle(current);
-        const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
-        std::shared_ptr<IBuffer> next;
-        std::unique_ptr<cpipe_buffer_t> output_handle;
-        std::unique_ptr<cpipe_metadata_builder_t> output_metadata_builder;
-        cpipe_buffer_t* process_outputs[] = {nullptr};
-        cpipe_metadata_builder_t* process_out_metadata[] = {nullptr};
-        std::size_t output_count = 0;
-        if (has_output) {
-            const auto output_layout =
-                output_layout_for_node(node.descriptor, current->layout(), error);
-            if (!output_layout) {
-                return CPIPE_FAILED;
-            }
-            next = std::make_shared<CpuBuffer>(
-                *output_layout, BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
-            output_handle = make_buffer_handle(next);
-            std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
-                current->metadata()};
-            output_metadata_builder =
-                make_metadata_builder_handle(current->metadata(), std::move(input_metadata));
-            process_outputs[0] = output_handle.get();
-            process_out_metadata[0] = output_metadata_builder.get();
-            output_count = 1;
-        }
+                    auto input_handle = make_buffer_handle(current);
+                    const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
+                    std::shared_ptr<IBuffer> next;
+                    std::unique_ptr<cpipe_buffer_t> output_handle;
+                    std::unique_ptr<cpipe_metadata_builder_t> output_metadata_builder;
+                    cpipe_buffer_t* process_outputs[] = {nullptr};
+                    cpipe_metadata_builder_t* process_out_metadata[] = {nullptr};
+                    std::size_t output_count = 0;
+                    if (has_output) {
+                        const auto output_layout =
+                            output_layout_for_node(node->descriptor, current->layout(), error);
+                        if (!output_layout) {
+                            return CPIPE_FAILED;
+                        }
+                        next = std::make_shared<CpuBuffer>(
+                            *output_layout,
+                            BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+                        output_handle = make_buffer_handle(next);
+                        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
+                            current->metadata()};
+                        output_metadata_builder = make_metadata_builder_handle(
+                            current->metadata(), std::move(input_metadata));
+                        process_outputs[0] = output_handle.get();
+                        process_out_metadata[0] = output_metadata_builder.get();
+                        output_count = 1;
+                    }
 
-        cpipe_process_ctx process{
-            .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
-            .inference = nullptr,
-            .inputs = process_inputs,
-            .n_in = 1,
-            .outputs = has_output ? process_outputs : nullptr,
-            .n_out = output_count,
-            .out_metadata = has_output ? process_out_metadata : nullptr,
-        };
-        status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
-            CPIPE_ACTION_PROCESS, host_context.host(), reinterpret_cast<cpipe_node_t*>(instance),
-            params.get(), &process, nullptr));
-        if (has_output) {
-            next->set_metadata(freeze_metadata_builder(output_metadata_builder.get()));
-        }
+                    cpipe_process_ctx process{
+                        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
+                        .inference = nullptr,
+                        .inputs = process_inputs,
+                        .n_in = 1,
+                        .outputs = has_output ? process_outputs : nullptr,
+                        .n_out = output_count,
+                        .out_metadata = has_output ? process_out_metadata : nullptr,
+                    };
+                    node_status = static_cast<cpipe_status_t>(
+                        node->descriptor->main_entry(CPIPE_ACTION_PROCESS, host_context.host(),
+                                                     reinterpret_cast<cpipe_node_t*>(instance),
+                                                     params.get(), &process, nullptr));
+                    if (has_output) {
+                        next->set_metadata(freeze_metadata_builder(output_metadata_builder.get()));
+                    }
 
-        const auto destroy_status = static_cast<cpipe_status_t>(node.descriptor->main_entry(
-            CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance, nullptr));
-        if (status != CPIPE_OK) {
-            set_error(error, "node process failed: " + node.id);
-            return status;
-        }
-        if (destroy_status != CPIPE_OK) {
-            set_error(error, "node destroy failed: " + node.id);
-            return destroy_status;
-        }
-        if (has_output) {
-            current = std::move(next);
-        }
+                    const auto destroy_status = static_cast<cpipe_status_t>(
+                        node->descriptor->main_entry(CPIPE_ACTION_DESTROY, host_context.host(),
+                                                     nullptr, nullptr, instance, nullptr));
+                    if (node_status != CPIPE_OK) {
+                        set_error(error, "node process failed: " + node->id);
+                        return node_status;
+                    }
+                    if (destroy_status != CPIPE_OK) {
+                        set_error(error, "node destroy failed: " + node->id);
+                        return destroy_status;
+                    }
+                    if (has_output) {
+                        current = std::move(next);
+                    }
+                    return CPIPE_OK;
+                },
+            .dependencies = std::move(dependencies),
+        });
     }
-    return CPIPE_OK;
+
+    Scheduler scheduler;
+    return scheduler.run(scheduled_nodes);
 }
 
 cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,

@@ -539,14 +539,14 @@ reference work remains separate.
 **Acceptance criteria:**
 - [x] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` exits 0; `heif-info` valid.
 - [ ] `ctest -R test_min_pipeline_dng_to_heif` PSNR ≥ 37 dB.
-- [ ] Tracy capture (`-DCPIPE_ENABLE_TRACY=ON` build) shows the three spans on a smoke run.
+- [x] Tracy capture (`-DCPIPE_ENABLE_TRACY=ON` build) shows the three spans on a smoke run.
 - [ ] `roadmap.md §4` P1 row updated to "shipped"; `README.md` "Current Status" mirrors it; `phase-01-walking-skeleton.md §12` "What Shipped / What Slipped" filled in.
 - [ ] `git tag --list 'v0.2'` returns `v0.2`; GitHub Release notes attached.
 
 **Verification:**
 - [ ] DoD §11 commands all green.
 
-**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. PD-68 added the real Pixel 8 Pro fixture path to the same integration test; local `/tmp/heif-info -d /tmp/cpipe_pixel8pro_fixture.heif` confirmed `general_profile_idc: 1`, `prof`, `nclx`, CICP `(1,13,1)`, and `bits_per_channel: 8,8,8` for `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/cpipe_pixel8pro_fixture.heif`. PSNR reference, Tracy capture, tag, and GitHub Release gates remain blocked per PD-66.
+**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. PD-68 added the real Pixel 8 Pro fixture path to the same integration test; local `/tmp/heif-info -d /tmp/cpipe_pixel8pro_fixture.heif` confirmed `general_profile_idc: 1`, `prof`, `nclx`, CICP `(1,13,1)`, and `bits_per_channel: 8,8,8` for `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/cpipe_pixel8pro_fixture.heif`. A local `-DCPIPE_ENABLE_TRACY=ON` Debug build captured `/tmp/cpipe_p1_trace.tracy`; `tracy-csvexport` reported `Pipeline::run` (1 hit), `Scheduler::dispatch_node` (6 hits), and `ComputeContext::submit_halide` (1 hit) for the Pixel 8 Pro smoke run. PSNR reference, tag, and GitHub Release gates remain blocked per PD-66.
 
 **Dependencies:** T9.
 
