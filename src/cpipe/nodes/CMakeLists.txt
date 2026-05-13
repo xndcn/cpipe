@@ -93,6 +93,33 @@ add_custom_command(
     DEPENDS demosaic/demosaic_bilinear.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(wb_dual_illuminant_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/wb_dual_illuminant_manifest.cpp")
+add_custom_command(
+    OUTPUT "${wb_dual_illuminant_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/wb/wb_dual_illuminant.json"
+        -DOUTPUT_CPP="${wb_dual_illuminant_manifest_cpp}"
+        -DSYMBOL_NAME=WB_DUAL_ILLUMINANT_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS wb/wb_dual_illuminant.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
+set(colormatrix_dng_to_working_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/colormatrix_dng_to_working_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${colormatrix_dng_to_working_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/colormatrix/colormatrix_dng_to_working.json"
+        -DOUTPUT_CPP="${colormatrix_dng_to_working_manifest_cpp}"
+        -DSYMBOL_NAME=COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS colormatrix/colormatrix_dng_to_working.json
+            "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 add_library(
     cpipe-builtin-nodes
     STATIC
@@ -101,11 +128,15 @@ add_library(
         linearize/linearize_dng_lut.cpp
         blacklevel/blacklevel_dng_levels.cpp
         demosaic/demosaic_bilinear.cpp
+        wb/wb_dual_illuminant.cpp
+        colormatrix/colormatrix_dng_to_working.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"
         "${linearize_dng_lut_manifest_cpp}"
         "${blacklevel_dng_levels_manifest_cpp}"
         "${demosaic_bilinear_manifest_cpp}"
+        "${wb_dual_illuminant_manifest_cpp}"
+        "${colormatrix_dng_to_working_manifest_cpp}"
 )
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
 

@@ -112,8 +112,26 @@ std::vector<std::string> manifest_metadata_steps(const cpipe_plugin_desc_t* desc
     return {};
 }
 
+std::string manifest_color_role(const cpipe_plugin_desc_t* desc, std::string_view field) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        return "any";
+    }
+
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    const auto color = manifest.find("color");
+    if (color == manifest.end()) {
+        return "any";
+    }
+    return color->value(std::string{field}, "any");
+}
+
 bool contains_step(const std::vector<std::string>& steps, const std::string& step) {
     return std::find(steps.begin(), steps.end(), step) != steps.end();
+}
+
+bool color_roles_compatible(const std::string& produced, const std::string& required) {
+    return produced.empty() || required.empty() || produced == "any" || required == "any" ||
+           produced == required;
 }
 
 }  // namespace
@@ -226,6 +244,14 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
                           "metadata step required by pipeline edge is not produced: " + step);
                 return CPIPE_NEED_METADATA;
             }
+        }
+
+        const auto produced_role = manifest_color_role(nodes[edge.from].descriptor, "output_role");
+        const auto required_role = manifest_color_role(nodes[edge.to].descriptor, "input_role");
+        if (!color_roles_compatible(produced_role, required_role)) {
+            set_error(error, "color role mismatch on pipeline edge: " + produced_role + " -> " +
+                                 required_role);
+            return CPIPE_NEED_METADATA;
         }
     }
 

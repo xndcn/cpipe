@@ -119,6 +119,8 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-57 | LinearizationTable ABI completion        | T6 exposes the already-modeled `CalibrationBlock.linearization_table` through `cpipe_calibration_view::get_linearization_table`. This completes the v1-frozen calibration surface documented in [`buffer.md` §6](buffer.md#6-buffermetadata) / [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh) rather than adding a new metadata field. |
 | PD-58 | T7 Vulkan FP16 target feature            | `demosaic.bilinear` keeps the locked `R16G16B16A16_SFLOAT` output from PD-21. Halide's Vulkan backend requires the `vk_float16` target feature for that output type, so the Vulkan AOT target is `${Halide_HOST_TARGET}-vulkan-vk_float16` rather than bare `host-vulkan`. |
 | PD-59 | T7 RGGB CFA gate                         | The T7 Halide `demosaic_bilinear` signature remains `(R32 Bayer input, FP16 RGBA output)` to fit the current `submit_halide` ABI. Because CFA pattern scalars cannot yet be passed into Halide AOT, this slice accepts RGGB (`0,1,1,2`) and returns `CPIPE_UNSUPPORTED` for other 2×2 Bayer patterns. Four-pattern support requires either separate AOT variants or a compute-suite parameter extension. |
+| PD-60 | T8 CPU metadata-node implementation      | `wb.dual_illuminant` and `colormatrix.dng_to_working` are implemented as CPU plugin loops for the T8 slice because the current `cpipe_compute_suite_v1::submit_halide` adapter accepts only image input/output buffers and cannot pass `AsShotNeutral` gains or `ColorMatrix1` into an AOT Halide signature. The manifests say `engine: Host`; a later compute-suite parameter-buffer extension can move the same math into AOT Halide without changing node IDs. |
+| PD-61 | Manifest color-role load validation      | `Pipeline::load` now compares producer `color.output_role` to consumer `color.input_role` on every edge, with `any` as the wildcard. Role mismatches fail with `CPIPE_NEED_METADATA`, closing the P1 manifest-enforced working-space gate for `colormatrix.dng_to_working`. |
 
 ---
 
@@ -454,13 +456,15 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Implement `com.cpipe.wb.dual_illuminant` (P1 minimal: invert AsShotNeutral per channel) and `com.cpipe.colormatrix.dng_to_working` (hand-coded 3×3 chain → linear Rec.2020 D65). Both CPU AOT.
 
 **Acceptance criteria:**
-- [ ] wb node produces `applied_steps += "white_balance"`; output is white-balanced RGBA FP16.
-- [ ] colormatrix node produces `applied_steps += "color_matrix"`, `cs_role = "scene_linear_rec2020"`; output is in working color space.
+- [x] wb node produces `applied_steps += "white_balance"`; output is white-balanced RGBA FP16.
+- [x] colormatrix node produces `applied_steps += "color_matrix"`, `cs_role = "scene_linear_rec2020"`; output is in working color space.
 - [ ] Per-node golden PSNR ≥ 40 dB on each.
-- [ ] If upstream metadata's `cs_role != "raw_camera"`, the colormatrix manifest's `requires_steps_applied` rejects load.
+- [x] If the upstream manifest output role is not `raw_camera`, the colormatrix manifest color-role gate rejects load; missing `white_balance` still rejects via `requires_steps_applied`.
 
 **Verification:**
-- [ ] `ctest -R test_node_wb` green; `ctest -R test_node_colormatrix` green.
+- [x] `ctest -R test_node_wb` green; `ctest -R test_node_colormatrix` green.
+
+**Status note.** T8 landed the synthetic unit-test slice. `test_node_wb` validates inverse `AsShotNeutral` gains and metadata propagation; `test_node_colormatrix` validates `ColorMatrix1` → Bradford D50-to-D65 → Rec.2020 D65 math, runtime `raw_camera` rejection, and pipeline-load color-role gating. Golden EXR / PSNR acceptance remains unchecked.
 
 **Dependencies:** T7.
 

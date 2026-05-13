@@ -47,6 +47,14 @@ struct CalibrationView {
     std::array<float, 4> black_level{};
     std::uint32_t white_level{0};
     std::vector<std::uint16_t> linearization_table;
+    std::optional<std::array<float, 9>> color_matrix1;
+    std::optional<std::array<float, 9>> color_matrix2;
+    std::optional<std::array<float, 9>> forward_matrix1;
+    std::optional<std::array<float, 9>> forward_matrix2;
+};
+
+struct CaptureView {
+    std::array<float, 3> as_shot_neutral{1.0F, 1.0F, 1.0F};
 };
 
 class BufferMetadata {
@@ -71,6 +79,26 @@ public:
         std::copy(std::begin(raw.cfa_pattern), std::end(raw.cfa_pattern), out.cfa_pattern.begin());
         std::copy(std::begin(raw.black_level), std::end(raw.black_level), out.black_level.begin());
         out.white_level = raw.white_level;
+        if (raw.has_color_matrix1 != 0) {
+            out.color_matrix1.emplace();
+            std::copy(std::begin(raw.color_matrix1), std::end(raw.color_matrix1),
+                      out.color_matrix1->begin());
+        }
+        if (raw.has_color_matrix2 != 0) {
+            out.color_matrix2.emplace();
+            std::copy(std::begin(raw.color_matrix2), std::end(raw.color_matrix2),
+                      out.color_matrix2->begin());
+        }
+        if (raw.has_forward_matrix1 != 0) {
+            out.forward_matrix1.emplace();
+            std::copy(std::begin(raw.forward_matrix1), std::end(raw.forward_matrix1),
+                      out.forward_matrix1->begin());
+        }
+        if (raw.has_forward_matrix2 != 0) {
+            out.forward_matrix2.emplace();
+            std::copy(std::begin(raw.forward_matrix2), std::end(raw.forward_matrix2),
+                      out.forward_matrix2->begin());
+        }
         if (raw.has_linearization_table != 0 && raw.get_linearization_table != nullptr) {
             std::size_t total = 0;
             const auto count_status =
@@ -89,6 +117,23 @@ public:
                 out.linearization_table.resize(total);
             }
         }
+        return out;
+    }
+
+    [[nodiscard]] Result<CaptureView> capture() const {
+        if (suite_ == nullptr || suite_->get_capture == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_NEED_METADATA, "metadata suite unavailable"});
+        }
+
+        cpipe_capture_view raw{};
+        const auto status = static_cast<cpipe_status_t>(suite_->get_capture(impl_, &raw));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "get_capture failed"});
+        }
+
+        CaptureView out{};
+        std::copy(std::begin(raw.as_shot_neutral), std::end(raw.as_shot_neutral),
+                  out.as_shot_neutral.begin());
         return out;
     }
 
