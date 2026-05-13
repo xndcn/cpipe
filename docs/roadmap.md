@@ -73,6 +73,8 @@ Each subsequent section follows the same template:
 
 ## 3. Phase 0 — Foundation (tag `v0.1`)
 
+**Status.** Shipped as `v0.1`.
+
 **Objective.** A repository skeleton that compiles, tests, and runs a trivial passthrough node end-to-end on Linux.
 
 **Sub-domains.**
@@ -89,15 +91,15 @@ Each subsequent section follows the same template:
 
 **Inputs.** None.
 
-**Outputs.** Public GitHub repo, green CI matrix, one passing end-to-end unit test (`tests/unit/test_passthrough.cpp`).
+**Outputs.** Public GitHub repo, green CI matrix, focused unit coverage, and one passing end-to-end integration test (`tests/integration/test_passthrough_end_to_end.cpp`).
 
 **Definition of Done.**
 
 1. `cmake --preset linux-debug && cmake --build --preset linux-debug && ctest --preset ci` is green.
-2. `cpipe run tests/fixtures/passthrough.dng -p tests/fixtures/passthrough.json -o /tmp/out.bin` exits 0 and produces a non-empty file.
+2. `cpipe run build/linux-debug/tests/fixtures/passthrough.bin -p tests/fixtures/passthrough.json -o /tmp/out.bin` exits 0 and produces byte-identical output for the generated P0 raw fixture.
 3. Repository is public, README marks "Pre-alpha — APIs unstable", `LICENSE` is Apache 2.0.
 
-**Acceptance gate.** CI workflow `linux-x86_64-build-and-test` passes on `main`. Single passthrough integration test is the smoke test.
+**Acceptance gate.** CI workflow `build-and-test.yml` passes on `main`. Single passthrough integration test is the smoke test.
 
 **Active risks.** None new. Establish the CI matrix that subsequent phases rely on for [R12](research/00-summary.md#7-risk-register) (TaskFlow + Vulkan integration) visibility.
 

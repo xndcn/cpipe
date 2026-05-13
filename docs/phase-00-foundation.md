@@ -86,6 +86,7 @@ P0-specific decisions, locked from the planning Q&A. Where a P0 decision narrows
 | PD-34 | P0 clang-tidy baseline                           | CI runs clang-tidy on production `.cpp` translation units with headers filtered to `include/cpipe` and `src/cpipe`; the broad PD-22 families remain enabled, but style/C-ABI checks that conflict with P0's C ABI, linker-section symbols, or force project-wide style migrations are baseline-suppressed. |
 | PD-35 | Release test gate                                | The CI `build-release` job also runs `ctest --preset linux-release-clang --output-on-failure` so T7's end-to-end smoke coverage is exercised under both Debug sanitizer and Release builds.                                          |
 | PD-36 | Halide CI target baseline                        | The P0 passthrough generator uses Halide target `x86-64-linux` instead of `host` in CI builds to avoid runner-specific CPU feature selection causing SIGILL; this remains a CPU AOT target and Vulkan/Hexagon targets still slip to P1+. |
+| PD-37 | P0 release bake waiver                           | Maintainer waived the T7/Checkpoint B 24-hour green-main bake for `v0.1`; the release gate is latest `main` CI green on the release-candidate commit, plus pushed `v0.1` tag and GitHub Release evidence.                                |
 
 ---
 
@@ -359,18 +360,18 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### T7 — Integration Test + DoD Smoke
 
-**Description.** Author the single integration test that drives the whole chain — registry walk → Pipeline::load → Scheduler dispatch → ComputeContext::submit_halide → CpuBuffer compare. Run it under both Debug (ASAN+UBSAN) and Release in CI. Tag `v0.1` once green for ≥ 24 hours.
+**Description.** Author the single integration test that drives the whole chain — registry walk → Pipeline::load → Scheduler dispatch → ComputeContext::submit_halide → CpuBuffer compare. Run it under both Debug (ASAN+UBSAN) and Release in CI. Tag `v0.1` once latest `main` CI is green; the original 24-hour bake was waived by PD-37.
 
 **Acceptance criteria:**
 - [x] `tests/integration/test_passthrough_end_to_end.cpp` programmatically generates a 64×64 RGBA8 gradient input, runs the passthrough pipeline, and verifies byte-identical output.
 - [x] ASAN + UBSAN produce no findings on the integration run.
-- [ ] CI green on `main` for ≥ 24 consecutive hours.
-- [ ] Tag `v0.1` created and pushed.
+- [x] Latest release-candidate CI green on `main` (24-hour bake waived by PD-37).
+- [x] Tag `v0.1` created and pushed.
 
 **Verification:**
 - [x] `ctest -R test_passthrough_end_to_end` green under both Debug and Release presets.
-- [ ] `git tag --list 'v0.1'` returns `v0.1`.
-- [ ] GitHub Releases page shows `v0.1` with auto-generated release notes.
+- [x] `git tag --list 'v0.1'` returns `v0.1`.
+- [x] GitHub Releases page shows `v0.1` with auto-generated release notes.
 
 **Dependencies:** T6.
 
@@ -384,10 +385,10 @@ Seven vertical tasks (PD-28). Each ships in dependency order so the repo never e
 
 ### Checkpoint B — after T4–T7 (= P0 DoD)
 
-- [ ] DoD verification commands in §10 all pass.
-- [ ] CI matrix has been green for ≥ 24 hours.
+- [x] DoD verification commands in §10 all pass.
+- [x] CI matrix is green on the release-candidate commit (24-hour bake waived by PD-37).
 - [x] No regressions on the 8–12 unit tests or the 1 integration test.
-- [ ] `v0.1` tag is live.
+- [x] `v0.1` tag is live.
 
 ---
 
@@ -477,13 +478,22 @@ gh run list --workflow=build-and-test.yml --branch=main --limit=5
 # 8. Tag
 git tag -a v0.1 -m "cpipe v0.1 — Foundation"
 git push origin v0.1
+
+# 9. GitHub Release
+gh release create v0.1 --verify-tag --generate-notes --title "cpipe v0.1 - Foundation"
 ```
 
-If commands 1–7 all return zero exit status and CI has been green for ≥ 24 hours, P0 is done.
+If commands 1–9 all return zero exit status and latest `main` CI is green on the release-candidate commit, P0 is done. The original ≥ 24-hour bake is waived by PD-37.
 
 ---
 
-## 11. Dependencies (vcpkg.json baseline)
+## 11. What Shipped / What Slipped
+
+**What Shipped.** Phase 0 shipped the CMake/vcpkg/pre-commit/GitHub Actions skeleton, core buffer/data types, plugin C ABI surface, runtime registry/scheduler/context skeleton, Halide CPU AOT passthrough node, `cpipe run` CLI path, JSON Schemas, 11 unit tests, and 1 integration smoke test.
+
+**What Slipped.** No P0 feature scope slipped. The 24-hour green-main bake was waived by the maintainer for `v0.1` per PD-37; P1+ scope remains unchanged.
+
+## 12. Dependencies (vcpkg.json baseline)
 
 P0 vcpkg manifest (PD-10):
 
