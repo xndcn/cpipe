@@ -20,6 +20,15 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y clang-format-18 clang-tidy-18 ninja-build ccache
+      - name: Restore caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            .vcpkg-cache
+            ~/.cache/ccache
+          key: vcpkg-release-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-${{ github.sha }}
+          restore-keys: |
+            vcpkg-release-${{ runner.os }}-${{ hashFiles('vcpkg.json') }}-
       - name: Check formatting
         run: |
           for dir in include src tests; do
