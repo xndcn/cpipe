@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 1 (`v0.2` — Walking Skeleton) is released. APIs unstable; the Linux DNG → SDR HEIF walking skeleton is usable for the pinned Pixel 8 Pro corpus path.
+> ⚠️ **Pre-alpha.** Phase 1 (`v0.2` — Walking Skeleton) is released; Phase 2 (Classic Nodes + HDR, planned tag `v0.3`) is in flight. APIs unstable; the Linux DNG → SDR HEIF walking skeleton is usable for the pinned Pixel 8 Pro corpus path.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -60,6 +60,19 @@ green against the cpipe pre-HEIF reference. RawTherapee-derived references and
 cpipe-owned Vulkan queue-dispatch proof slipped to P2. See
 [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md).
 
+**Phase 2** (planned tag `v0.3` — Classic Nodes + HDR) is in flight: 21 T-tasks
+grow the runtime to all 18 classic nodes (RCD / AMaZE / Quad Bayer remosaic;
+OpcodeList2 GainMap; OpcodeList3 lens correction; full dual-illuminant WB;
+BM3D / guided / wavelet denoise; filmic / Mertens / ACES / Reinhard tone;
+3D-LUT; edge-aware USM), the HDR (PQ) HEIF output path (kvazaar Main10 +
+CICP 9/16/9 + mdcv / clli + ICC v4.4), and the OCIO Looks menu
+(Standard SDR / Standard HDR). Foundation work also retires the P1
+Vulkan-dispatch slip ([P1-PD-71](docs/phase-01-walking-skeleton.md#4-phase-decisions-pd-n)),
+extends the compute suite with parameter buffers + an OCIO host accessor,
+upgrades the memory planner to interference-graph coloring, and switches
+the precision planner to auto-insertion. Detail in
+[`docs/phase-02-classic-nodes-hdr.md`](docs/phase-02-classic-nodes-hdr.md).
+
 ## Build From Source
 
 Requirements:
@@ -89,7 +102,7 @@ cmake --build --preset linux-release-clang -j
 |--------|-------|-------------------------------------------------------------|-------------|
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | released; RawTherapee refs + full Vulkan proof slipped |
-| `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
+| `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | in flight ([phase-02](docs/phase-02-classic-nodes-hdr.md)) |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |
 | `v1.0` | P5    | Polish — docs, sample plugin, golden refresh, RC bake, GA   | planned     |
@@ -110,6 +123,7 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 | [`docs/plugin-sdk.md`](docs/plugin-sdk.md)                          | Plugin C ABI (P1–P16); JSON manifest; `CPIPE_REGISTER_NODE` lifecycle         |
 | [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Phase 0 plan and outcome (shipped)                                            |
 | [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Phase 1 plan and outcome (shipped)                                            |
+| [`docs/phase-02-classic-nodes-hdr.md`](docs/phase-02-classic-nodes-hdr.md) | Phase 2 plan (in flight)                                                       |
 | [`docs/research/_toc.md`](docs/research/_toc.md)                    | D1–D19 locked decisions; research cluster map; methodology                    |
 | [`docs/research/00-summary.md`](docs/research/00-summary.md)        | Master research synthesis — recommended stack, cross-cluster matrix, risks    |
 

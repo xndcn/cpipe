@@ -144,6 +144,8 @@ Each subsequent section follows the same template:
 
 ## 5. Phase 2 — Classic Nodes + HDR (tag `v0.3`)
 
+**Status.** In flight; detailed plan is in [`phase-02-classic-nodes-hdr.md`](phase-02-classic-nodes-hdr.md). Compute suite tail-extension (`submit_halide_with_params` + `submit_ocio_processor`), cpipe-owned Vulkan dispatch (retires [P1-PD-71](phase-01-walking-skeleton.md#4-phase-decisions-pd-n)), interference-graph memory planner, auto-insert precision planner, and the full 18-classic-node + Quad Bayer remosaic + HDR (PQ) HEIF + OCIO Looks v0.2 surface land across 21 T-tasks in three checkpoints; Architecture §17 Q6 (Quad Bayer GainMap multi-plane) resolves in P2.
+
 **Objective.** All 18 classic nodes from [Research 07](research/07-classic-isp-algorithms.md) ship; SDR + HDR (PQ) HEIF output is fully wired; OCIO Looks menu is operational; Quad Bayer remosaic path lands.
 
 **Sub-domains.**

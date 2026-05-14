@@ -493,7 +493,7 @@ These come from [Research 00 §9](research/00-summary.md#9-consolidated-open-que
 | Q3 | HTP context-binary cache invalidation across OS updates. | Production reliability; no architecture surface change. |
 | Q4 | Ship our own DCP writer for v2 calibration profiles, or stay JSON-only? | Adds a `cpipe::color::DcpWriter`; out of scope in v1. |
 | Q5 | v2 calibration capture flow — how invasive should the chart-photography UI be? | UX scope; out of scope in v1. |
-| Q6 | Quad Bayer DNG GainMap encoding when shooting in 4×4 native mode. | Whether `OpcodeList3` flat-field correction works without custom plumbing. |
+| Q6 | Quad Bayer DNG GainMap encoding when shooting in 4×4 native mode. | Resolved in [P2-PD-18](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) — `lens.shading_gainmap` applies per-Bayer-channel × 4 planes at the 4×4 stage before remosaic; 2×2 path is the single-plane unwrap. |
 | Q7 | Should AI demosaic ship in v1 vs v2 given Quad Bayer quality lift? | Adds an AI demosaic node; differentiation vs schedule trade-off. |
 | Q8 | Desktop-only mode for the editor (offline, no network)? | The editor already supports a local-first mode; flipping this only affects defaults. |
 | Q9 | Mobile-side Apple Adaptive HDR write fidelity — testing strategy. | Validation; Apple platform is v2. |
