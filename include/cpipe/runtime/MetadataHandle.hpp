@@ -28,7 +28,7 @@ namespace cpipe::runtime {
 [[nodiscard]] const compute::BufferMetadata* metadata_from_handle(const cpipe_metadata_t* handle);
 
 [[nodiscard]] std::unique_ptr<cpipe_metadata_builder_t> make_metadata_builder_handle(
-    std::shared_ptr<const compute::BufferMetadata> base,
+    const std::shared_ptr<const compute::BufferMetadata>& base,
     std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata = {});
 
 [[nodiscard]] compute::MetadataBuilder* builder_from_handle(cpipe_metadata_builder_t* handle);
