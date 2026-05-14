@@ -27,7 +27,7 @@ sdk::Result<std::vector<std::uint32_t>> checked_rgba16_image(const sdk::Buffer& 
             sdk::Error{CPIPE_BAD_PRECISION, std::string{node_name} + " format mismatch"});
     }
 
-    const auto dims = input.dims();
+    auto dims = input.dims();
     if (!dims) {
         return tl::unexpected(dims.error());
     }

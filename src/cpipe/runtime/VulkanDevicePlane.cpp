@@ -156,6 +156,7 @@ struct QueueSelection {
 
 }  // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 VulkanDevicePlaneCreateResult VulkanDevicePlane::create() {
     const char* icd_env = std::getenv("VK_ICD_FILENAMES");
     if (icd_env != nullptr && *icd_env == '\0') {

@@ -202,14 +202,14 @@ std::vector<std::uint32_t> u32_values(std::span<const std::byte> bytes, const En
     if (entry.type == kTypeShort && data.size() >= entry.count * 2ULL) {
         out.reserve(entry.count);
         for (std::uint32_t i = 0; i < entry.count; ++i) {
-            out.push_back(read_u16(data, i * 2U));
+            out.push_back(read_u16(data, static_cast<std::size_t>(i) * 2U));
         }
         return out;
     }
     if (entry.type == kTypeLong && data.size() >= entry.count * 4ULL) {
         out.reserve(entry.count);
         for (std::uint32_t i = 0; i < entry.count; ++i) {
-            out.push_back(read_u32(data, i * 4U));
+            out.push_back(read_u32(data, static_cast<std::size_t>(i) * 4U));
         }
     }
     return out;
@@ -331,6 +331,7 @@ std::vector<std::byte> read_all(std::ifstream& input) {
 
 }  // namespace
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 ParseResult OpcodeListParser::parse(const std::filesystem::path& path) {
     std::ifstream input{path, std::ios::binary};
     if (!input) {

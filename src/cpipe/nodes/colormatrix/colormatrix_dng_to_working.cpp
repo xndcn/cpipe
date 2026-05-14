@@ -36,7 +36,7 @@ sdk::Result<std::vector<std::uint32_t>> checked_rgba16_image(const sdk::Buffer& 
         return tl::unexpected(sdk::Error{CPIPE_BAD_PRECISION, "colormatrix format mismatch"});
     }
 
-    const auto dims = input.dims();
+    auto dims = input.dims();
     if (!dims) {
         return tl::unexpected(dims.error());
     }
@@ -117,11 +117,12 @@ public:
         if (!calibration) {
             return tl::unexpected(calibration.error());
         }
-        if (!calibration->color_matrix1) {
+        const auto& color_matrix1 = calibration->color_matrix1;
+        if (!color_matrix1) {
             return tl::unexpected(
                 sdk::Error{CPIPE_NEED_METADATA, "colormatrix missing ColorMatrix1"});
         }
-        const auto camera_to_xyz_d50 = inverse3(*calibration->color_matrix1);
+        const auto camera_to_xyz_d50 = inverse3(*color_matrix1);
         if (!camera_to_xyz_d50) {
             return tl::unexpected(
                 sdk::Error{CPIPE_NEED_METADATA, "colormatrix invalid ColorMatrix1"});

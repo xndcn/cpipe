@@ -24,7 +24,7 @@ sdk::Result<std::vector<std::uint32_t>> checked_input(const sdk::Buffer& input) 
         return tl::unexpected(sdk::Error{CPIPE_BAD_PRECISION, "heif_sdr format mismatch"});
     }
 
-    const auto dims = input.dims();
+    auto dims = input.dims();
     if (!dims) {
         return tl::unexpected(dims.error());
     }

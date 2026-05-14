@@ -6,6 +6,7 @@
 #include <libheif/heif.h>
 
 #include <algorithm>
+#include <cmath>
 #include <cpipe/color/HeifWriter.hpp>
 #include <cstddef>
 #include <cstring>
@@ -51,7 +52,7 @@ float half_to_float(std::uint16_t bits) {
 
 std::uint8_t quantize_unorm8(float value) {
     const auto clamped = std::clamp(value, 0.0F, 1.0F);
-    const auto rounded = static_cast<int>((clamped * 255.0F) + 0.5F);
+    const auto rounded = static_cast<int>(std::lround(clamped * 255.0F));
     return static_cast<std::uint8_t>(std::clamp(rounded, 0, 255));
 }
 

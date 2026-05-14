@@ -16,14 +16,14 @@ namespace cpipe::compute {
 class MetadataBuilder {
 public:
     MetadataBuilder();
-    explicit MetadataBuilder(std::shared_ptr<const BufferMetadata> base);
+    explicit MetadataBuilder(const std::shared_ptr<const BufferMetadata>& base);
 
     [[nodiscard]] bool is_frozen() const noexcept;
     [[nodiscard]] std::shared_ptr<const BufferMetadata> freeze();
 
     void set_calibration(std::shared_ptr<const CalibrationBlock> calibration);
     void clear_calibration();
-    void set_capture(CaptureBlock capture);
+    void set_capture(const CaptureBlock& capture);
     void set_as_shot_neutral(std::array<float, 3> as_shot_neutral);
     void set_orientation(std::uint8_t orientation);
     void set_cs_role(std::string role);

@@ -133,12 +133,8 @@ bool node_has_output(const cpipe_plugin_desc_t* desc) {
         return false;
     }
     const auto manifest = nlohmann::json::parse(desc->manifest_json);
-    for (const auto& port : manifest.value("ports", nlohmann::json::array())) {
-        if (port.value("kind", "") == "out") {
-            return true;
-        }
-    }
-    return false;
+    return std::ranges::any_of(manifest.value("ports", nlohmann::json::array()),
+                               [](const auto& port) { return port.value("kind", "") == "out"; });
 }
 
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
@@ -205,6 +201,7 @@ bool color_roles_compatible(const std::string& produced, const std::string& requ
 
 namespace cpipe::runtime {
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry& registry,
                               Pipeline* out, std::string* error) {
     if (out == nullptr) {
@@ -316,8 +313,11 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         const auto produced_role = manifest_color_role(nodes[edge.from].descriptor, "output_role");
         const auto required_role = manifest_color_role(nodes[edge.to].descriptor, "input_role");
         if (!color_roles_compatible(produced_role, required_role)) {
-            set_error(error, "color role mismatch on pipeline edge: " + produced_role + " -> " +
-                                 required_role);
+            std::string message = "color role mismatch on pipeline edge: ";
+            message += produced_role;
+            message += " -> ";
+            message += required_role;
+            set_error(error, std::move(message));
             return CPIPE_NEED_METADATA;
         }
     }
@@ -374,6 +374,7 @@ cpipe_status_t Pipeline::run_to_file(const std::filesystem::path& output,
     return run_bound(output, error);
 }
 
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
                                    std::string* error) const {
     CPIPE_TRACE_SCOPE("Pipeline::run");

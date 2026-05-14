@@ -14,7 +14,7 @@ CaptureBlock::~CaptureBlock() = default;
 
 MetadataBuilder::MetadataBuilder() = default;
 
-MetadataBuilder::MetadataBuilder(std::shared_ptr<const BufferMetadata> base) {
+MetadataBuilder::MetadataBuilder(const std::shared_ptr<const BufferMetadata>& base) {
     if (base) {
         metadata_ = *base;
     }
@@ -41,9 +41,9 @@ void MetadataBuilder::clear_calibration() {
     metadata_.calibration.reset();
 }
 
-void MetadataBuilder::set_capture(CaptureBlock capture) {
+void MetadataBuilder::set_capture(const CaptureBlock& capture) {
     ensure_mutable();
-    metadata_.capture = std::move(capture);
+    metadata_.capture = capture;
 }
 
 void MetadataBuilder::set_as_shot_neutral(std::array<float, 3> as_shot_neutral) {

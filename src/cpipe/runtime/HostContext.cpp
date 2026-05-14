@@ -265,11 +265,16 @@ int HostContext::get_linearization_table(const cpipe_metadata_t* metadata, std::
     if (impl == nullptr || out_n == nullptr || (max_values > 0 && out_values == nullptr)) {
         return CPIPE_BAD_INDEX;
     }
-    if (!impl->calibration || !impl->calibration->linearization_table) {
+    if (!impl->calibration) {
         *out_n = 0;
         return CPIPE_OK;
     }
-    const auto& values = impl->calibration->linearization_table->values;
+    const auto& calibration = *impl->calibration;
+    if (!calibration.linearization_table) {
+        *out_n = 0;
+        return CPIPE_OK;
+    }
+    const auto& values = calibration.linearization_table->values;
     *out_n = values.size();
     const auto count = std::min(max_values, values.size());
     for (std::size_t i = 0; i < count; ++i) {
