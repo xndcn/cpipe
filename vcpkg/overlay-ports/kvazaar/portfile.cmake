@@ -10,6 +10,7 @@ vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 
 vcpkg_cmake_configure(
     SOURCE_PATH "${SOURCE_PATH}"
+    DISABLE_PARALLEL_CONFIGURE
     OPTIONS
         -DBUILD_TESTS=OFF
         -DBUILD_KVAZAAR_BINARY=OFF
