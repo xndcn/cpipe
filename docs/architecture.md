@@ -488,7 +488,7 @@ These come from [Research 00 §9](research/00-summary.md#9-consolidated-open-que
 
 | # | Question | Architecture impact if it flips |
 |---|----------|----------------------------------|
-| Q1 | Is Adobe DNG SDK 1.7.1 redistributable under Apache 2.0 static linking? | If yes, simplifies `cpipe::ingest::dng` — drops the custom OpcodeList interpreter. |
+| Q1 | Is Adobe DNG SDK 1.7.1 redistributable under Apache 2.0 static linking? | Resolved: cancelled per [RD-11](roadmap.md#1-decision-quick-reference) — P1 T5 shipped the LibRaw 0.22 + first-party OpcodeList interpreter (`cpipe::ingest::dng_opcode::*`); revisit post-v1 only if needed. |
 | Q2 | Does Qualcomm publish a `VK_QCOM_…` extension that lets Vulkan import an HTP buffer? | Eliminates the AHB → HTP memcpy budgeted at the `Handoff` boundary. |
 | Q3 | HTP context-binary cache invalidation across OS updates. | Production reliability; no architecture surface change. |
 | Q4 | Ship our own DCP writer for v2 calibration profiles, or stay JSON-only? | Adds a `cpipe::color::DcpWriter`; out of scope in v1. |

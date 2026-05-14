@@ -109,7 +109,7 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 | [`docs/buffer.md`](docs/buffer.md)                                  | `IBuffer` subsystem; B1–B12 locked decisions; allocator + external imports    |
 | [`docs/plugin-sdk.md`](docs/plugin-sdk.md)                          | Plugin C ABI (P1–P16); JSON manifest; `CPIPE_REGISTER_NODE` lifecycle         |
 | [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Phase 0 plan and outcome (shipped)                                            |
-| [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Active phase plan (Phase 1)                                              |
+| [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Phase 1 plan and outcome (shipped)                                            |
 | [`docs/research/_toc.md`](docs/research/_toc.md)                    | D1–D19 locked decisions; research cluster map; methodology                    |
 | [`docs/research/00-summary.md`](docs/research/00-summary.md)        | Master research synthesis — recommended stack, cross-cluster matrix, risks    |
 
