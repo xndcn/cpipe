@@ -202,7 +202,11 @@ VulkanDevicePlaneCreateResult VulkanDevicePlane::create() {
             instance_info.enabledLayerCount = 1;
             instance_info.ppEnabledLayerNames = layers;
         }
-        check_vk(vkCreateInstance(&instance_info, nullptr, &instance), "vkCreateInstance");
+        const VkResult instance_result = vkCreateInstance(&instance_info, nullptr, &instance);
+        if (instance_result == VK_ERROR_INCOMPATIBLE_DRIVER) {
+            return unsupported("vkCreateInstance failed: " + vk_result_name(instance_result));
+        }
+        check_vk(instance_result, "vkCreateInstance");
 
         std::uint32_t device_count = 0;
         check_vk(vkEnumeratePhysicalDevices(instance, &device_count, nullptr),

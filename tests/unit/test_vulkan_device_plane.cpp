@@ -26,6 +26,7 @@ using cpipe::compute::PixelFormat;
 using cpipe::compute::StatusCode;
 using cpipe::runtime::VulkanBuffer;
 using cpipe::runtime::VulkanDevicePlane;
+using cpipe::runtime::VulkanDevicePlaneCreateResult;
 using cpipe::runtime::VulkanFence;
 using cpipe::runtime::VulkanImage;
 using cpipe::runtime::VulkanTimelineSemaphore;
@@ -75,13 +76,24 @@ BufferLayout r16_image_layout(std::uint32_t width, std::uint32_t height) {
     return layout;
 }
 
+bool require_vulkan_or_skip(const VulkanDevicePlaneCreateResult& created) {
+    if (created.status == StatusCode::Unsupported) {
+        SUCCEED("Vulkan device unavailable: " << created.message);
+        return false;
+    }
+    REQUIRE(created.status == StatusCode::Ok);
+    REQUIRE(created.plane != nullptr);
+    return true;
+}
+
 }  // namespace
 
 TEST_CASE("VulkanDevicePlane creates a usable Vulkan 1.3 device") {
     const auto created = VulkanDevicePlane::create();
+    if (!require_vulkan_or_skip(created)) {
+        return;
+    }
 
-    REQUIRE(created.status == StatusCode::Ok);
-    REQUIRE(created.plane != nullptr);
     REQUIRE(created.plane->api_version() >= VK_API_VERSION_1_3);
     REQUIRE(created.plane->queue_family_index() != VK_QUEUE_FAMILY_IGNORED);
     REQUIRE(created.plane->device_memory_budget_bytes() > 0);
@@ -104,7 +116,9 @@ TEST_CASE("VulkanDevicePlane reports unsupported when no ICD is visible") {
 
 TEST_CASE("VulkanBuffer CPU lock round-trips bytes through VMA memory") {
     const auto created = VulkanDevicePlane::create();
-    REQUIRE(created.status == StatusCode::Ok);
+    if (!require_vulkan_or_skip(created)) {
+        return;
+    }
 
     VulkanBuffer buffer{created.plane, blob_layout(4096),
                         BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite |
@@ -127,7 +141,9 @@ TEST_CASE("VulkanBuffer CPU lock round-trips bytes through VMA memory") {
 
 TEST_CASE("VulkanImage CPU lock uploads and downloads R16 image data") {
     const auto created = VulkanDevicePlane::create();
-    REQUIRE(created.status == StatusCode::Ok);
+    if (!require_vulkan_or_skip(created)) {
+        return;
+    }
 
     VulkanImage image{created.plane, r16_image_layout(256, 256),
                       BufferUsage::Intermediate | BufferUsage::CpuRead | BufferUsage::CpuWrite |
@@ -151,7 +167,9 @@ TEST_CASE("VulkanImage CPU lock uploads and downloads R16 image data") {
 
 TEST_CASE("Vulkan sync wrappers expose fence and timeline host waits") {
     const auto created = VulkanDevicePlane::create();
-    REQUIRE(created.status == StatusCode::Ok);
+    if (!require_vulkan_or_skip(created)) {
+        return;
+    }
 
     VulkanFence fence{*created.plane, true};
     REQUIRE(fence.is_signaled());
