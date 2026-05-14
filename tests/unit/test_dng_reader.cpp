@@ -2,6 +2,7 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <array>
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/core/BufferUsage.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
@@ -85,10 +86,21 @@ TEST_CASE("DngReader decodes a synthetic Bayer DNG into an R16 buffer with metad
     REQUIRE(metadata->calibration->linearization_table.has_value());
     REQUIRE(metadata->calibration->linearization_table->values ==
             std::vector<std::uint16_t>{0, 128, 1024, 4095});
+    REQUIRE(metadata->calibration->color_matrix1.has_value());
+    REQUIRE(metadata->calibration->color_matrix2.has_value());
+    REQUIRE(metadata->calibration->forward_matrix1.has_value());
+    REQUIRE(metadata->calibration->forward_matrix2.has_value());
     REQUIRE(metadata->capture.iso == 400);
+    REQUIRE(metadata->capture.exposure_time_ns == 8'000'000);
+    REQUIRE(metadata->capture.lens_aperture == Catch::Approx(1.7F));
+    REQUIRE(metadata->capture.lens_focal_length_mm == Catch::Approx(4.3F));
+    REQUIRE(metadata->capture.orientation == 1);
     REQUIRE(metadata->active_area.has_value());
+    REQUIRE(metadata->exif_blob != nullptr);
     REQUIRE(metadata->xmp_blob != nullptr);
     REQUIRE(metadata->icc_blob != nullptr);
+    REQUIRE(metadata->ext_blobs.contains("com.cpipe.dng.opcode_list_1_bytes"));
+    REQUIRE(metadata->ext_blobs.contains("com.cpipe.dng.opcode_list_2_bytes"));
     REQUIRE(metadata->ext_blobs.contains("com.cpipe.dng.opcode_list_3_bytes"));
 }
 

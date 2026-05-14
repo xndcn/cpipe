@@ -28,12 +28,15 @@ TEST_CASE("OpcodeListParser reads DNG metadata and preserves opcode bytes") {
     REQUIRE(parsed.metadata.calibration.black_level[3] == Catch::Approx(67.0F));
     REQUIRE(parsed.metadata.calibration.white_level == 4095);
     REQUIRE(parsed.metadata.calibration.color_matrix1.has_value());
+    REQUIRE(parsed.metadata.calibration.color_matrix2.has_value());
+    REQUIRE(parsed.metadata.calibration.forward_matrix1.has_value());
     REQUIRE(parsed.metadata.calibration.forward_matrix2.has_value());
     REQUIRE(parsed.metadata.capture.as_shot_neutral[1] == Catch::Approx(2.0F));
     REQUIRE(parsed.metadata.capture.iso == 400);
     REQUIRE(parsed.metadata.capture.exposure_time_ns == 8'000'000);
     REQUIRE(parsed.metadata.capture.lens_aperture == Catch::Approx(1.7F));
     REQUIRE(parsed.metadata.capture.lens_focal_length_mm == Catch::Approx(4.3F));
+    REQUIRE(parsed.metadata.capture.orientation == 1);
 
     REQUIRE(parsed.metadata.active_area.has_value());
     REQUIRE(parsed.metadata.active_area->width == 4);
@@ -44,6 +47,8 @@ TEST_CASE("OpcodeListParser reads DNG metadata and preserves opcode bytes") {
             std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}});
     REQUIRE(parsed.metadata.opcode_list_1 ==
             std::vector<std::byte>{std::byte{1}, std::byte{2}, std::byte{3}, std::byte{4}});
+    REQUIRE(parsed.metadata.opcode_list_2 ==
+            std::vector<std::byte>{std::byte{5}, std::byte{6}, std::byte{7}, std::byte{8}});
     REQUIRE(parsed.metadata.opcode_list_3 ==
             std::vector<std::byte>{std::byte{0}, std::byte{0}, std::byte{0}, std::byte{1},
                                    std::byte{9}, std::byte{10}, std::byte{11}, std::byte{12}});
