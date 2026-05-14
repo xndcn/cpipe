@@ -57,6 +57,11 @@ Scheduler::Scheduler(std::size_t worker_count) : executor_(worker_count) {
     }
 }
 
+Scheduler::~Scheduler() {
+    auto* expected = &executor_;
+    (void)g_halide_executor.compare_exchange_strong(expected, nullptr);
+}
+
 cpipe_status_t Scheduler::run(std::span<const ScheduledNode> nodes) {
     const bool has_dependencies = std::any_of(
         nodes.begin(), nodes.end(), [](const auto& node) { return !node.dependencies.empty(); });

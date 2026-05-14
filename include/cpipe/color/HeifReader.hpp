@@ -22,9 +22,17 @@ struct HeifInfo {
     int nclx_transfer_characteristics{0};
     int nclx_matrix_coefficients{0};
     std::vector<std::uint8_t> decoded_rgba;
+    std::vector<float> scene_linear_rec2020_rgba;
+};
+
+struct HeifReadOptions {
+    std::filesystem::path ocio_config_path;
 };
 
 [[nodiscard]] cpipe_status_t read_heif_sdr(const std::filesystem::path& path, HeifInfo* out,
+                                           std::string* error);
+[[nodiscard]] cpipe_status_t read_heif_sdr(const std::filesystem::path& path,
+                                           const HeifReadOptions& options, HeifInfo* out,
                                            std::string* error);
 
 }  // namespace cpipe::color

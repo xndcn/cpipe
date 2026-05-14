@@ -23,6 +23,7 @@ struct ScheduledNode {
 class Scheduler {
 public:
     explicit Scheduler(std::size_t worker_count = default_worker_count());
+    ~Scheduler();
 
     [[nodiscard]] cpipe_status_t run(std::span<const ScheduledNode> nodes);
     [[nodiscard]] tf::Executor& executor() noexcept;

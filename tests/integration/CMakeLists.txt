@@ -1,4 +1,5 @@
 find_package(Catch2 CONFIG REQUIRED)
+find_package(OpenImageIO CONFIG REQUIRED)
 
 add_executable(test_passthrough_end_to_end test_passthrough_end_to_end.cpp)
 cpipe_target_warning_flags(test_passthrough_end_to_end)
@@ -47,6 +48,7 @@ target_link_libraries(
         cpipe::runtime
         cpipe::sdk
         cpipe::builtin_nodes
+        OpenImageIO::OpenImageIO
 )
 add_test(NAME test_min_pipeline_dng_to_heif COMMAND test_min_pipeline_dng_to_heif)
 set_tests_properties(test_min_pipeline_dng_to_heif PROPERTIES LABELS integration)

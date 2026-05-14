@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <OpenColorIO/OpenColorIO.h>
 #include <libheif/heif.h>
 
 #include <cpipe/color/HeifReader.hpp>
@@ -14,6 +15,8 @@
 
 namespace cpipe::color {
 namespace {
+
+namespace OCIO = OCIO_NAMESPACE;
 
 void set_error(std::string* error, std::string message) {
     if (error != nullptr) {
@@ -36,9 +39,43 @@ bool check_heif(const heif_error& status, std::string_view action, std::string* 
     return false;
 }
 
+bool fill_scene_linear_rec2020(const std::vector<std::uint8_t>& decoded_rgba, std::uint32_t width,
+                               std::uint32_t height, const std::filesystem::path& config_path,
+                               std::vector<float>* out, std::string* error) {
+    if (out == nullptr) {
+        set_error(error, "output scene-linear vector is null");
+        return false;
+    }
+
+    const auto pixel_count = static_cast<std::size_t>(width) * height;
+    out->resize(pixel_count * 4U);
+    for (std::size_t i = 0; i < pixel_count * 4U; ++i) {
+        (*out)[i] = static_cast<float>(decoded_rgba[i]) / 255.0F;
+    }
+
+    try {
+        const auto config = OCIO::Config::CreateFromFile(config_path.string().c_str());
+        const auto processor =
+            config->getProcessor("output_srgb", "scene_linear_rec2020")->getDefaultCPUProcessor();
+        OCIO::PackedImageDesc desc{out->data(), static_cast<long>(width), static_cast<long>(height),
+                                   4L};
+        processor->apply(desc);
+    } catch (const std::exception& e) {
+        set_error(error, std::string{"OCIO inverse transform failed: "} + e.what());
+        return false;
+    }
+
+    return true;
+}
+
 }  // namespace
 
 cpipe_status_t read_heif_sdr(const std::filesystem::path& path, HeifInfo* out, std::string* error) {
+    return read_heif_sdr(path, HeifReadOptions{}, out, error);
+}
+
+cpipe_status_t read_heif_sdr(const std::filesystem::path& path, const HeifReadOptions& options,
+                             HeifInfo* out, std::string* error) {
     if (out == nullptr) {
         set_error(error, "output HeifInfo pointer is null");
         return CPIPE_BAD_INDEX;
@@ -115,6 +152,12 @@ cpipe_status_t read_heif_sdr(const std::filesystem::path& path, HeifInfo* out, s
     for (int y = 0; y < height; ++y) {
         std::memcpy(out->decoded_rgba.data() + (static_cast<std::size_t>(y) * row_bytes),
                     plane + (static_cast<std::size_t>(y) * stride), row_bytes);
+    }
+    if (!options.ocio_config_path.empty() &&
+        !fill_scene_linear_rec2020(out->decoded_rgba, out->width, out->height,
+                                   options.ocio_config_path, &out->scene_linear_rec2020_rgba,
+                                   error)) {
+        return CPIPE_FAILED;
     }
     return CPIPE_OK;
 }
