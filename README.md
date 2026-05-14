@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 0 (`v0.1`) is released. Phase 1 (`v0.2` — Walking Skeleton) is in progress. APIs unstable; only the passthrough skeleton is usable today.
+> ⚠️ **Pre-alpha.** Phase 1 (`v0.2` — Walking Skeleton) is released. APIs unstable; the Linux DNG → SDR HEIF walking skeleton is usable for the pinned Pixel 8 Pro corpus path.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -53,10 +53,11 @@ Full diagram in [`docs/research/00-summary.md` §3](docs/research/00-summary.md#
 **Phase 0** (`v0.1`) is released: the skeleton builds, tests, and runs the
 passthrough pipeline. See [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md).
 
-**Phase 1** (`v0.2` — Walking Skeleton) is in progress: the synthetic and
-Pixel 8 Pro DNG → five-stage ISP → SDR HEIF CLI smokes are in place, and the
-self-referenced per-node golden PSNR harness is green; integration/reference
-PSNR, release tag, and GitHub Release remain pending. See
+**Phase 1** (`v0.2` — Walking Skeleton) is released: the synthetic and Pixel 8
+Pro DNG → five-stage ISP → SDR HEIF CLI smokes are in place, the per-node
+golden PSNR harness is green, and the integration HEIF re-decode PSNR gate is
+green against the cpipe pre-HEIF reference. RawTherapee-derived references and
+cpipe-owned Vulkan queue-dispatch proof slipped to P2. See
 [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md).
 
 ## Build From Source
@@ -87,7 +88,7 @@ cmake --build --preset linux-release-clang -j
 | Tag    | Phase | Theme                                                       | Status      |
 |--------|-------|-------------------------------------------------------------|-------------|
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
-| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | in progress; ref PSNR/release pending |
+| `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | released; RawTherapee refs + full Vulkan proof slipped |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | planned |
 | `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |

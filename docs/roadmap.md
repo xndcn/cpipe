@@ -109,7 +109,7 @@ Each subsequent section follows the same template:
 
 ## 4. Phase 1 — Walking Skeleton (tag `v0.2`)
 
-**Status.** In progress; synthetic and Pixel 8 Pro DNG → SDR HEIF CLI smokes plus self-referenced per-node goldens are implemented, but integration/reference PSNR, the `v0.2` tag, and GitHub Release remain pending. Tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
+**Status.** Shipped as `v0.2`; synthetic and Pixel 8 Pro DNG → SDR HEIF CLI smokes, self-referenced per-node goldens, and integration HEIF re-decode PSNR are implemented. RawTherapee-derived references and cpipe-owned Vulkan queue-dispatch proof slipped to P2. Tracked by [`phase-01-walking-skeleton.md`](phase-01-walking-skeleton.md).
 
 **Objective.** A real DNG (Bayer, no Quad Bayer yet) becomes an SDR HEIF through 5 stages of the canonical ISP pipeline on Linux, end-to-end on a developer laptop.
 

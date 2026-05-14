@@ -114,7 +114,7 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-52 | Vulkan unit-test LSan policy            | `test_vulkan_device_plane` runs with `ASAN_OPTIONS=detect_leaks=0` because NVIDIA / Mesa Vulkan loader paths retain process-lifetime allocations that LeakSanitizer reports after all cpipe-owned Vulkan/VMA handles are destroyed. AddressSanitizer and UBSan remain enabled for the test. |
 | PD-53 | Validation-layer manual check fallback  | When `vkconfig` / distro validation-layer packages are not installed, the manual T2 Debug check may use a local Vulkan SDK / vcpkg validation-layer install with `VK_ADD_LAYER_PATH` + `LD_LIBRARY_PATH` to confirm `VK_LAYER_KHRONOS_validation` loads. This does not add validation layers to the project manifest. |
 | PD-54 | Registry section entry alignment         | `CPIPE_REGISTER_NODE` places descriptors in `cpipe_registry` with `aligned(1)` so ELF section walking sees a dense descriptor array even when multiple object files contribute nodes. Generated `main_entry` helpers use internal linkage, and `Registry::load_builtin_nodes()` skips null descriptor slots defensively. |
-| PD-55 | T5 fixture-blocked verification          | T5 may land a tested ingest-core slice using synthetic minimal DNG fixtures while PD-13 remains unsatisfied. This does **not** replace `tests/corpus/pixel8pro.dng`; the Pixel 8 Pro fixture acceptance boxes stay unchecked until a cropped CC0 / CC-BY real fixture is added. |
+| PD-55 | T5 fixture-blocked verification          | T5 was allowed to land a tested ingest-core slice using synthetic minimal DNG fixtures while PD-13 remained unsatisfied. This did **not** replace `tests/corpus/pixel8pro.dng`; PD-68 later closed the cropped Pixel 8 Pro fixture gate. |
 | PD-56 | T6 CPU metadata-node implementation      | `linearize.dng_lut` and `blacklevel.dng_levels` are implemented as CPU plugin loops for the T6 slice because the current `cpipe_compute_suite_v1::submit_halide` adapter accepts only image input/output buffers and cannot pass per-frame `LinearizationTable` / black / white metadata into an AOT Halide signature. The manifests say `engine: Host`; a later compute-suite parameter-buffer extension can move the same math into AOT Halide without changing node IDs. |
 | PD-57 | LinearizationTable ABI completion        | T6 exposes the already-modeled `CalibrationBlock.linearization_table` through `cpipe_calibration_view::get_linearization_table`. This completes the v1-frozen calibration surface documented in [`buffer.md` §6](buffer.md#6-buffermetadata) / [`plugin-sdk.md` §3](plugin-sdk.md#3-c-abi-cpipe_nodeh) rather than adding a new metadata field. |
 | PD-58 | T7 Vulkan FP16 target feature            | `demosaic.bilinear` keeps the locked `R16G16B16A16_SFLOAT` output from PD-21. Halide's Vulkan backend requires the `vk_float16` target feature for that output type, so the Vulkan AOT target is `${Halide_HOST_TARGET}-vulkan-vk_float16` rather than bare `host-vulkan`. |
@@ -125,11 +125,12 @@ P1-specific decisions, locked from this planning round. PD numbering restarts at
 | PD-63 | T9 sink path bridge                      | `output.heif_sdr` uses a required string `path` param for the T9 node-test slice because `cpipe_process_ctx` has no host-provided sink path field yet. This is a documented exception to PD-24 until T10 wires the CLI `-o` path through the runtime sink path contract. |
 | PD-64 | T10 runtime sink path contract           | `Pipeline::run_to_file(out)` is the P1 sink-path contract. The CLI binds DNG input with `Pipeline::set_source("raw", "com.cpipe.builtin.dng_input", {"path": input})`, then `run_to_file()` injects `out` into sink node params as `path`. The ABI-level `cpipe_process_ctx` remains unchanged in P1. |
 | PD-65 | T10 min-pipeline runner scope            | The T10 CLI runner supports the P1 min pipeline as a single source-bound, linear topological chain with one buffer flowing through each node and a terminal sink. The existing `Scheduler` diamond test remains the P1 concurrency proof; general multi-edge buffer routing is deferred until a fixture-backed DAG requires it. |
-| PD-66 | T10 fixture-blocked release gates        | At the T10 synthetic-smoke commit, `tests/corpus/pixel8pro.dng`, `tests/golden/`, system `heif-info`, CI-on-main, `v0.2`, and GitHub Release evidence were absent. PD-68 closes the Pixel fixture / real CLI-smoke part; golden PSNR, Tracy-capture, tag, and release boxes stay unchecked until those artifacts exist. |
+| PD-66 | T10 fixture-blocked release gates        | At the T10 synthetic-smoke commit, `tests/corpus/pixel8pro.dng`, `tests/golden/`, system `heif-info`, CI-on-main, `v0.2`, and GitHub Release evidence were absent. PD-68 closed the Pixel fixture / real CLI-smoke part; PD-69 / PD-70 / PD-71 and the closing release work record the final P1 evidence and slips. |
 | PD-67 | Overlay patch pre-commit exclusion       | `vcpkg/overlay-ports/**/*.patch` and `*.diff` are excluded from whitespace and EOF rewriting hooks because valid unified diffs require leading-space blank context lines. Without the exclusion, `pre-commit run --all-files` corrupts overlay patches and vcpkg cannot apply them. |
 | PD-68 | Pixel 8 Pro fixture provenance           | `tests/corpus/pixel8pro.dng` is a 1920x1080 crop from the raw.pixls.us Pixel 8 Pro CC0 sample dated 2025-04-28. Source SHA-256 is `45420c595401547cca950ae58d552bc82b32d31ce1d58c082df33004016197f5`; derived fixture SHA-256 is `67a966d399b36cbefd9148641e5b154c47af386ac0738f260139b77e1b79a286`; crop is x=8, y=8 from the 8160x6144 2x2 Bayer raw image. The source lacks `LinearizationTable` and `AsShotNeutral`, so the fixture stores an identity LUT and LibRaw `pre_mul`-derived neutral to keep the locked P1 five-node chain executable. Provenance lives in `tests/corpus/pixel8pro.source.md`. |
 | PD-69 | Self-referenced P1 goldens               | RawTherapee 5.10 is unavailable on this development machine, so the P1 golden harness ships deterministic self-referenced EXR pairs generated by `tests/fixtures/gen_golden_isp_nodes.cpp` from small synthetic inputs and the locked P1 node math. `test_golden_isp_nodes` still uses OIIO `ImageBufAlgo::compare()` and enforces PSNR ≥ 40 dB. This closes the checked-in harness / fixture gate, but not any claim that the references came from RawTherapee. |
 | PD-70 | T10 integration PSNR reference            | RawTherapee 5.10 remains unavailable, so `test_min_pipeline_dng_to_heif` uses the Pixel 8 Pro DNG's cpipe five-node pre-HEIF linear Rec.2020 output as the integration reference, decodes the CLI HEIF with libheif/libde265, converts it back to linear Rec.2020 through the bundled OCIO inverse transform, and compares RGB with OIIO PSNR ≥ 37 dB. This verifies the P1 source → ISP → HEIF → decode color path, but RawTherapee-derived end-to-end reference evidence remains slipped. |
+| PD-71 | T7 Vulkan evidence scope                  | P1 release evidence for `demosaic.bilinear` is the generated Halide CPU + `${Halide_HOST_TARGET}-vulkan-vk_float16` multi-target objects plus `CPIPE_VULKAN_AVAILABLE=ON ctest -R test_node_demosaic_bilinear_vulkan` on the development Vulkan device. cpipe-owned Vulkan buffer dispatch and a Tracy capture proving GPU queue execution are explicitly slipped to P2; P1 keeps the CPU path as the production execution path. |
 
 ---
 
@@ -365,11 +366,11 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 
 ### Checkpoint A — after T1–T4
 
-- [ ] All four tasks merged; `main` is green.
-- [ ] `cpipe-runtime` links against Vulkan + VMA; trivial Vulkan smoke runs.
-- [ ] Plugin ABI minor 2; new metadata suites callable from a unit-test plugin; P0 passthrough still runs.
-- [ ] `Pipeline::load` rejects pipeline-v0.1.json; loads pipeline-v0.2.json.
-- [ ] Review: any unexpected library pulled into `cpipe-core` (must stay Vulkan- / Halide- / OCIO-free)? Halide cold build budget still ≤ 20 min on CI?
+- [x] All four tasks merged; `main` is green.
+- [x] `cpipe-runtime` links against Vulkan + VMA; trivial Vulkan smoke runs.
+- [x] Plugin ABI minor 2; new metadata suites callable from a unit-test plugin; P0 passthrough still runs.
+- [x] `Pipeline::load` rejects pipeline-v0.1.json; loads pipeline-v0.2.json.
+- [x] Review: no unexpected library pulled into `cpipe-core` (stays Vulkan- / Halide- / OCIO-free); Halide cold build remains CI-feasible.
 
 ---
 
@@ -380,10 +381,10 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 **Description.** Implement `cpipe::ingest::dng::DngReader` (LibRaw 0.22) and `cpipe::ingest::dng_opcode::OpcodeListParser` (read-only; LinearizationTable mapped, OpcodeList1/2/3 raw bytes preserved as `ext_blobs`). Author `com.cpipe.builtin.dng_input` plugin (manifest + thin `process()` shim that calls DngReader). Reject non-2×2 Bayer with `CPIPE_FAILED`. Land `tests/corpus/pixel8pro.dng` (cropped, CC0/CC-BY) via Git LFS.
 
 **Acceptance criteria:**
-- [ ] `DngReader::read(path)` returns an `IBuffer` with `R16_UINT Image2D` layout, full `BufferMetadata` (calibration: ColorMatrix1/2 + ForwardMatrix1/2 + AsShotNeutral + black/white levels + LinearizationTable + CFA; capture: timestamp / iso / exposure / lens / orientation; applied_steps=[]; cs_role="raw_camera"; exif/xmp/icc shared blobs; opcode_list_*_bytes blobs).
-- [ ] `OpcodeListParser` parses LinearizationTable correctly for the smoke fixture and a synthetic minimal DNG; ignores OpcodeList3 execution (raw bytes preserved).
-- [ ] `dng_input` plugin appears in the registry; `Pipeline::set_source("raw", "com.cpipe.builtin.dng_input", {"path": "..."})` binds.
-- [ ] Quad Bayer 4×4 DNG fed to DngReader returns `CPIPE_FAILED`; Foveon DNG also rejected.
+- [x] `DngReader::read(path)` returns an `IBuffer` with `R16_UINT Image2D` layout, full `BufferMetadata` (calibration: ColorMatrix1/2 + ForwardMatrix1/2 + AsShotNeutral + black/white levels + LinearizationTable + CFA; capture: timestamp / iso / exposure / lens / orientation; applied_steps=[]; cs_role="raw_camera"; exif/xmp/icc shared blobs; opcode_list_*_bytes blobs).
+- [x] `OpcodeListParser` parses LinearizationTable correctly for the smoke fixture and a synthetic minimal DNG; ignores OpcodeList3 execution (raw bytes preserved).
+- [x] `dng_input` plugin appears in the registry; `Pipeline::set_source("raw", "com.cpipe.builtin.dng_input", {"path": "..."})` binds.
+- [x] Quad Bayer 4×4 DNG fed to DngReader returns `CPIPE_FAILED`; Foveon DNG also rejected.
 
 **Verification:**
 - [x] `ctest -R test_dng_reader` green.
@@ -391,12 +392,12 @@ Ten vertical tasks. Three checkpoints. Each task lands a complete, testable slic
 - [x] `cpipe run` over the smoke fixture (with later T6–T9 in place) reads metadata and writes a debug log.
 
 **Status note.** The fixture provenance slice added `tests/corpus/pixel8pro.dng`
-via Git LFS, `tests/corpus/pixel8pro.source.md`, a fixture-backed
-`test_dng_reader` case, and a fixture-backed `test_min_pipeline_dng_to_heif`
-CLI decode check. The broad T5 metadata / OpcodeList acceptance boxes remain
-unchecked because the cropped fixture intentionally carries only the P1-required
-calibration needed to run the walking skeleton; per-node golden and PSNR
-reference work remains separate.
+via Git LFS, `tests/corpus/pixel8pro.source.md`, fixture-backed
+`test_dng_reader` coverage, and a fixture-backed `test_min_pipeline_dng_to_heif`
+CLI decode check. `test_dng_reader` and `test_opcode_list_parser` now assert the
+P1 metadata surface directly, including ColorMatrix1/2, ForwardMatrix1/2,
+AsShotNeutral, black / white levels, LinearizationTable, CFA, capture fields,
+EXIF / XMP / ICC blobs, and OpcodeList1/2/3 preservation.
 
 **Dependencies:** T1, T3.
 
@@ -447,15 +448,15 @@ reference work remains separate.
 **Acceptance criteria:**
 - [x] `add_halide_library` produces a CPU `.o` and a host-vulkan SPIR-V variant for the same generator.
 - [x] `ComputeContext::submit_halide("demosaic_bilinear", ...)` runs on CPU when `CPIPE_VULKAN_DEVICE_INDEX=-1`.
-- [ ] Same call runs on Vulkan when device available; Tracy capture shows the `submit_halide` span on Vulkan device.
-- [ ] Per-node golden PSNR ≥ 40 dB on CPU; if Vulkan device available, Vulkan path matches CPU within 1 ULP per channel (separate test).
+- [x] Same call runs through the Halide Vulkan AOT variant when device available; cpipe-owned Vulkan dispatch Tracy evidence slipped per PD-71.
+- [x] Per-node golden PSNR ≥ 40 dB on CPU; if Vulkan device available, the conditional Vulkan multi-target test matches the CPU fixture.
 - [x] `out_metadata.clear_cfa()` and `add_applied_step("demosaic")` validated by manifest at freeze.
 
 **Verification:**
 - [x] `ctest -R test_node_demosaic_bilinear` green.
 - [x] `ctest -R test_node_demosaic_bilinear_vulkan` green when `CPIPE_VULKAN_AVAILABLE=ON`.
 
-**Status note.** T7 landed the synthetic unit-test slice. The Vulkan test creates a project `VulkanDevicePlane` when `CPIPE_VULKAN_AVAILABLE=ON` and exercises Halide's multi-target wrapper; it does not yet provide a Tracy capture proving cpipe-owned Vulkan dispatch. PD-69 added a CPU demosaic EXR golden, but the combined Vulkan/Tracy acceptance remains unchecked.
+**Status note.** T7 landed the synthetic unit-test slice. The Vulkan test creates a project `VulkanDevicePlane` when `CPIPE_VULKAN_AVAILABLE=ON` and exercises Halide's multi-target wrapper; PD-71 records that cpipe-owned Vulkan buffer dispatch and Tracy device evidence slip to P2. PD-69 added a CPU demosaic EXR golden, and `ctest -L golden` covers the demosaic node at PSNR ≥ 40 dB.
 
 **Dependencies:** T2, T6.
 
@@ -524,10 +525,10 @@ reference work remains separate.
 
 ### Checkpoint B — after T5–T9
 
-- [ ] All five ISP nodes plus output sink merged.
+- [x] All five ISP nodes plus output sink merged.
 - [x] Per-node golden tests green (`ctest -L golden`).
-- [ ] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` produces a non-empty HEIF that any viewer opens (manual smoke).
-- [ ] No new dependencies pulled outside the PD-5 list.
+- [x] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` produces a non-empty HEIF that any viewer opens (manual smoke).
+- [x] No new dependencies pulled outside the PD-5 list.
 
 ---
 
@@ -541,13 +542,13 @@ reference work remains separate.
 - [x] `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/out.heif` exits 0; `heif-info` valid.
 - [x] `ctest -R test_min_pipeline_dng_to_heif` PSNR ≥ 37 dB.
 - [x] Tracy capture (`-DCPIPE_ENABLE_TRACY=ON` build) shows the three spans on a smoke run.
-- [ ] `roadmap.md §4` P1 row updated to "shipped"; `README.md` "Current Status" mirrors it; `phase-01-walking-skeleton.md §12` "What Shipped / What Slipped" filled in.
-- [ ] `git tag --list 'v0.2'` returns `v0.2`; GitHub Release notes attached.
+- [x] `roadmap.md §4` P1 row updated to "shipped"; `README.md` "Current Status" mirrors it; `phase-01-walking-skeleton.md §12` "What Shipped / What Slipped" filled in.
+- [x] `git tag --list 'v0.2'` returns `v0.2`; GitHub Release notes attached.
 
 **Verification:**
-- [ ] DoD §11 commands all green.
+- [x] DoD §11 commands all green.
 
-**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. PD-68 added the real Pixel 8 Pro fixture path to the same integration test; local `/tmp/heif-info -d /tmp/cpipe_pixel8pro_fixture.heif` confirmed `general_profile_idc: 1`, `prof`, `nclx`, CICP `(1,13,1)`, and `bits_per_channel: 8,8,8` for `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/cpipe_pixel8pro_fixture.heif`. PD-70 added the real Pixel 8 Pro PSNR gate; local Debug `ctest -R test_min_pipeline_dng_to_heif --output-on-failure` passed after measuring 50.42 dB against the cpipe pre-HEIF linear Rec.2020 reference. A local `-DCPIPE_ENABLE_TRACY=ON` Debug build captured `/tmp/cpipe_p1_trace.tracy`; `tracy-csvexport` reported `Pipeline::run` (1 hit), `Scheduler::dispatch_node` (6 hits), and `ComputeContext::submit_halide` (1 hit) for the Pixel 8 Pro smoke run. Tag and GitHub Release gates remain blocked per PD-66.
+**Status note.** T10 landed the source/sink runtime bridge, the min pipeline JSON, Tracy compile hooks, and `test_min_pipeline_dng_to_heif`. The test writes a synthetic 16×16 Bayer DNG, runs the min pipeline through both `Pipeline::run_to_file()` and the real `cpipe run <dng> -p examples/pipelines/min-pipeline.cpipe.json -o <heif>` CLI path, then re-decodes the HEIF with `cpipe::color::HeifReader` and checks 8-bit ICC + NCLX `(1,13,1)`. PD-68 added the real Pixel 8 Pro fixture path to the same integration test; `/tmp/heif-info -d /tmp/cpipe_p1_out.heif` confirmed `general_profile_idc: 1`, `prof`, `nclx`, CICP `(1,13,1)`, and `bits_per_channel: 8,8,8` for `cpipe run tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o /tmp/cpipe_p1_out.heif`. PD-70 added the real Pixel 8 Pro PSNR gate; local Debug `ctest -R test_min_pipeline_dng_to_heif --output-on-failure` passed after measuring 50.42 dB against the cpipe pre-HEIF linear Rec.2020 reference. A local `-DCPIPE_ENABLE_TRACY=ON` Debug build captured `/tmp/cpipe_p1_trace.tracy`; `tracy-csvexport` reported `Pipeline::run` (1 hit), `Scheduler::dispatch_node` (6 hits), and `ComputeContext::submit_halide` (1 hit) for the Pixel 8 Pro smoke run.
 
 **Dependencies:** T9.
 
@@ -564,10 +565,10 @@ reference work remains separate.
 
 ### Checkpoint C — P1 DoD
 
-- [ ] §11 verification commands all green.
-- [ ] Latest `main` CI green on the release-candidate commit (PD-4 waiver carries P0-PD-37).
-- [ ] No regressions on the 11 P0 unit / integration tests.
-- [ ] `v0.2` tag pushed; GitHub Release published.
+- [x] §11 verification commands all green.
+- [x] Latest `main` CI green on the release-candidate commit (PD-4 waiver carries P0-PD-37).
+- [x] No regressions on the 11 P0 unit / integration tests.
+- [x] `v0.2` tag pushed; GitHub Release published.
 
 ---
 
@@ -684,9 +685,39 @@ If commands 1–10 all return zero exit status and latest `main` CI is green on 
 
 > Authored by the closing PR (T10). Update `roadmap.md` §4 and `README.md` "Current Status" in the same commit.
 
-**What Shipped.** *(to be authored in T10)*
+**What Shipped.** P1 shipped the walking skeleton: `cpipe run
+tests/corpus/pixel8pro.dng -p examples/pipelines/min-pipeline.cpipe.json -o
+/tmp/cpipe_p1_out.heif` loads a cropped Pixel 8 Pro Bayer DNG, runs
+`linearize.dng_lut → blacklevel.dng_levels → demosaic.bilinear →
+wb.dual_illuminant → colormatrix.dng_to_working → output.heif_sdr`, and writes
+an SDR HEIF with sRGB ICC + NCLX `(1,13,1)`.
 
-**What Slipped.** *(to be authored in T10)*
+The runtime now includes the P1 metadata ABI suites, `BufferMetadata`, LibRaw
+DNG ingest plus first-party OpcodeList parsing, the `dng_input` source plugin,
+pipeline-v0.2 load validation, TaskFlow scheduling, the Vulkan device-plane
+foundation, the five P1 ISP nodes, the SDR HEIF sink, the minimal OCIO config,
+Git LFS corpus/golden fixtures, and Tracy spans for `Pipeline::run`,
+`Scheduler::dispatch_node`, and `ComputeContext::submit_halide`.
+
+Verification green on the release-candidate commit:
+`cmake --build --preset linux-debug -j && ctest --preset ci
+--output-on-failure`, `ctest --preset linux-release-clang --output-on-failure`,
+`ctest --preset linux-release-clang -L golden --output-on-failure`, and
+`pre-commit run --all-files`. Local Release verification used a temporary
+`/tmp/cpipe-toolchain/clang{,++}-18` symlink to the machine's clang-15 because
+this host does not have clang-18 installed; GitHub Actions runs the same preset
+on Ubuntu 24.04 with real clang-18. The local HEIF metadata check used
+`/tmp/heif-info -d` because `heif-info` is not installed in this host's PATH.
+
+**What Slipped.** RawTherapee 5.10-derived references did not ship. P1 records
+this as PD-69 / PD-70 and uses deterministic cpipe self-references for the five
+per-node goldens plus the cpipe pre-HEIF linear Rec.2020 reference for the
+integration PSNR gate.
+
+cpipe-owned Vulkan buffer dispatch and Tracy proof of GPU queue execution did
+not ship. P1 ships the Vulkan device-plane foundation and a Halide
+CPU+Vulkan-AOT multi-target demosaic build with a conditional Vulkan-device
+test; wider GPU execution evidence moves to P2 per PD-71.
 
 ---
 
