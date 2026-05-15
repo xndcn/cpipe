@@ -8,8 +8,6 @@
 
 #include "demosaic_bilinear_fixture.hpp"
 
-extern "C" int demosaic_bilinear(halide_buffer_t* input, halide_buffer_t* output);
-
 TEST_CASE("demosaic.bilinear Vulkan AOT variant matches CPU fixture") {
     const auto* enabled = std::getenv("CPIPE_VULKAN_AVAILABLE");
     if (enabled == nullptr || std::string_view{enabled} != "ON") {
@@ -19,5 +17,5 @@ TEST_CASE("demosaic.bilinear Vulkan AOT variant matches CPU fixture") {
 
     const auto created = cpipe::runtime::VulkanDevicePlane::create();
     REQUIRE(created.status == cpipe::compute::StatusCode::Ok);
-    cpipe::tests::assert_demosaic_node(&demosaic_bilinear);
+    cpipe::tests::assert_demosaic_node();
 }

@@ -54,4 +54,8 @@ extern const char DEMOSAIC_BILINEAR_MANIFEST_JSON[];
 
 CPIPE_REGISTER_NODE(cpipe::nodes::DemosaicBilinear, DEMOSAIC_BILINEAR_MANIFEST_JSON)
 
-void cpipe_link_builtin_demosaic_bilinear() {}
+void cpipe_link_builtin_demosaic_bilinear_halide();
+
+void cpipe_link_builtin_demosaic_bilinear() {
+    cpipe_link_builtin_demosaic_bilinear_halide();
+}

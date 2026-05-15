@@ -296,16 +296,16 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 
 **Acceptance criteria:**
 
-- [ ] `cpipe::runtime::HalideFilterRegistry::instance()` enumerates `passthrough_copy`, `demosaic_bilinear` after `cpipe_link_all_builtin_nodes()` is called.
-- [ ] `grep -rn 'register_halide_filter\|register_halide_param_filter' src/ tests/` returns hits only inside `ComputeContext.{hpp,cpp}`, the new `HalideFilterRegistry.{hpp,cpp}`, the two `*_dispatch.cpp` for the legacy AOTs, the four T1 `*_dispatch.cpp` files, and `tests/unit/test_compute_suite_v1_ext.cpp` (test-injection seam).
-- [ ] `cpipe-runtime` no longer needs `extern "C"` declarations of `passthrough_copy` / `demosaic_bilinear` symbols in `Pipeline.cpp`.
-- [ ] All P0/P1 tests + the new `test_compute_suite_v1_ext` stay green under `ctest --preset linux-debug` (no regressions).
-- [ ] `test_min_pipeline_dng_to_heif` integration smoke green (validates that Pipeline gets its filters from the registry, not from explicit registration).
+- [x] `cpipe::runtime::HalideFilterRegistry::instance()` enumerates `passthrough_copy`, `demosaic_bilinear` after `cpipe_link_all_builtin_nodes()` is called.
+- [x] `grep -rn 'register_halide_filter\|register_halide_param_filter' src/ tests/` returns hits only inside `ComputeContext.{hpp,cpp}`, the new `HalideFilterRegistry.{hpp,cpp}`, the two `*_dispatch.cpp` for the legacy AOTs, the four T1 `*_dispatch.cpp` files, and `tests/unit/test_compute_suite_v1_ext.cpp` (test-injection seam).
+- [x] `cpipe-runtime` no longer needs `extern "C"` declarations of `passthrough_copy` / `demosaic_bilinear` symbols in `Pipeline.cpp`.
+- [x] All P0/P1 tests + the new `test_compute_suite_v1_ext` stay green under `ctest --preset linux-debug` (no regressions).
+- [x] `test_min_pipeline_dng_to_heif` integration smoke green (validates that Pipeline gets its filters from the registry, not from explicit registration).
 
 **Verification:**
 
-- [ ] `ctest --preset linux-debug --output-on-failure` green.
-- [ ] `ctest --preset linux-release-clang --output-on-failure` green.
+- [x] `ctest --preset linux-debug --output-on-failure` green.
+- [x] `ctest --preset linux-release-clang --output-on-failure` green.
 
 **Dependencies:** None (lands before T1). When T1's four migrated nodes ship their `*_dispatch.cpp`, they self-register via the macro introduced here.
 

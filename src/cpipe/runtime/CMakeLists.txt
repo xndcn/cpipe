@@ -32,6 +32,7 @@ add_library(
         ComputeContext.cpp
         BufferHandle.cpp
         HalideBufferAdapter.cpp
+        HalideFilterRegistry.cpp
         HostContext.cpp
         InferenceContext.cpp
         MemoryPlanner.cpp

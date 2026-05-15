@@ -15,7 +15,6 @@
 #include <nlohmann/json.hpp>
 #include <sstream>
 
-extern "C" int passthrough_copy(halide_buffer_t* input, halide_buffer_t* output);
 void cpipe_link_builtin_passthrough();
 
 namespace {
@@ -75,7 +74,6 @@ TEST_CASE("Passthrough node dispatches Halide AOT copy") {
     input->flush_cpu_writes();
 
     cpipe::runtime::ComputeContext compute;
-    compute.register_halide_filter("passthrough_copy", &passthrough_copy);
     cpipe::runtime::HostContext host_context;
 
     void* instance = nullptr;

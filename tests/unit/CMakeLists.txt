@@ -22,11 +22,20 @@ cpipe_add_unit_test(test_buffer_metadata test_buffer_metadata.cpp)
 cpipe_add_unit_test(test_cpu_buffer test_cpu_buffer.cpp)
 cpipe_add_unit_test(test_status test_status.cpp)
 cpipe_add_unit_test(test_registry test_registry.cpp test_abi_c_compile.c)
-target_link_libraries(test_registry PRIVATE cpipe::runtime cpipe::sdk test-registry-fixture)
+target_link_libraries(
+    test_registry
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        test-registry-fixture
+)
 cpipe_add_unit_test(test_scheduler_topo test_scheduler_topo.cpp)
 target_link_libraries(test_scheduler_topo PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_halide_adapter test_halide_adapter.cpp)
 target_link_libraries(test_halide_adapter PRIVATE cpipe::runtime)
+cpipe_add_unit_test(test_compute_suite_v1_ext test_compute_suite_v1_ext.cpp)
+target_link_libraries(test_compute_suite_v1_ext PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_metadata_suite test_metadata_suite.cpp)
 target_link_libraries(test_metadata_suite PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)
 cpipe_add_unit_test(test_opcode_list_parser test_opcode_list_parser.cpp)
