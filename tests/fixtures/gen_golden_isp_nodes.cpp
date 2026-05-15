@@ -298,6 +298,38 @@ Image blacklevel_output(const Image& input) {
     return image;
 }
 
+Image gainmap_input() {
+    Image image{8, 8, 1, {}};
+    image.pixels.reserve(64);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(0.12F + (0.018F * static_cast<float>(x)) +
+                                   (0.013F * static_cast<float>(y)));
+        }
+    }
+    return image;
+}
+
+Image gainmap_output(const Image& input) {
+    Image image{input.width, input.height, 1, {}};
+    image.pixels.reserve(input.pixels.size());
+    constexpr std::array<float, 4> gains{1.0F, 1.2F, 1.4F, 1.8F};
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            const auto tx = static_cast<float>(x) / static_cast<float>(input.width - 1);
+            const auto ty = static_cast<float>(y) / static_cast<float>(input.height - 1);
+            const auto top = gains[0] + ((gains[1] - gains[0]) * tx);
+            const auto bottom = gains[2] + ((gains[3] - gains[2]) * tx);
+            const auto gain = top + ((bottom - top) * ty);
+            const auto offset =
+                (static_cast<std::size_t>(y) * static_cast<std::size_t>(input.width)) +
+                static_cast<std::size_t>(x);
+            image.pixels.push_back(input.pixels[offset] * gain);
+        }
+    }
+    return image;
+}
+
 Image demosaic_input() {
     Image image{8, 8, 1, {}};
     image.pixels.reserve(64);
@@ -541,6 +573,7 @@ int main(int argc, char** argv) {
     const std::filesystem::path root{argv[1]};
     const auto lin_in = linearize_input();
     const auto black_in = blacklevel_input();
+    const auto gainmap_in = gainmap_input();
     const auto demosaic_in = demosaic_input();
     const auto rcd_in = demosaic_rcd_input();
     const auto amaze_in = demosaic_amaze_input();
@@ -551,6 +584,7 @@ int main(int argc, char** argv) {
     const bool ok =
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
         write_pair(root, "blacklevel.dng_levels", black_in, blacklevel_output(black_in)) &&
+        write_pair(root, "lens.shading_gainmap", gainmap_in, gainmap_output(gainmap_in)) &&
         write_pair(root, "demosaic.bilinear", demosaic_in, demosaic_output(demosaic_in)) &&
         write_pair(root, "demosaic.rcd", rcd_in, demosaic_rcd_output(rcd_in)) &&
         write_pair(root, "demosaic.amaze", amaze_in, demosaic_amaze_output(amaze_in)) &&

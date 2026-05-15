@@ -253,6 +253,20 @@ add_custom_command(
     DEPENDS output/heif_sdr.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(lens_shading_gainmap_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/lens_shading_gainmap_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${lens_shading_gainmap_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/lens/shading_gainmap.json"
+        -DOUTPUT_CPP="${lens_shading_gainmap_manifest_cpp}"
+        -DSYMBOL_NAME=LENS_SHADING_GAINMAP_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS lens/shading_gainmap.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(precision_convert_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/precision_convert_manifest.cpp")
 add_custom_command(
     OUTPUT "${precision_convert_manifest_cpp}"
@@ -288,6 +302,8 @@ add_library(
         wb/wb_dual_illuminant_dispatch.cpp
         colormatrix/colormatrix_dng_to_working.cpp
         colormatrix/colormatrix_dng_to_working_dispatch.cpp
+        lens/shading_gainmap.cpp
+        lens/shading_gainmap_dispatch.cpp
         precision/precision_convert.cpp
         precision/precision_convert_dispatch.cpp
         output/heif_sdr.cpp
@@ -301,6 +317,7 @@ add_library(
         "${demosaic_rcd_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
+        "${lens_shading_gainmap_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
         "${output_heif_sdr_manifest_cpp}"
 )

@@ -163,6 +163,21 @@ public:
         return rect;
     }
 
+    [[nodiscard]] Result<std::span<const std::byte>> blob(std::string_view key) const {
+        if (suite_ == nullptr || suite_->get_blob == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_NEED_METADATA, "metadata suite unavailable"});
+        }
+        const std::string key_string{key};
+        const void* ptr = nullptr;
+        std::size_t size = 0;
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->get_blob(impl_, key_string.c_str(), &ptr, &size));
+        if (status != CPIPE_OK || ptr == nullptr || size == 0) {
+            return tl::unexpected(Error{status, "metadata blob missing"});
+        }
+        return std::span<const std::byte>{static_cast<const std::byte*>(ptr), size};
+    }
+
     [[nodiscard]] bool has_step(std::string_view step) const noexcept {
         if (suite_ == nullptr || suite_->has_applied_step == nullptr || impl_ == nullptr) {
             return false;

@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.lens.shading_gainmap",
+  "version": "1.0.0",
+  "label": "Lens Shading GainMap",
+  "category": "raw",
+  "doc": "Applies DNG OpcodeList2 GainMap lens shading to linear Bayer data.",
+  "ports": [
+    {
+      "name": "linear_bayer",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_fields": ["calibration.cfa"],
+        "requires_blobs": ["com.cpipe.dng.opcode_list_2_bytes"]
+      }
+    },
+    {
+      "name": "corrected_bayer",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["f32"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "linear_bayer",
+        "sets_steps_applied": ["lens_shading_gainmap"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "halide_aot": ["lens_shading_gainmap"],
+    "in_pixel_bytes": 4,
+    "out_pixel_bytes": 4,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

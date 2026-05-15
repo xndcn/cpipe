@@ -9,6 +9,7 @@
 #include <cmath>
 #include <cpipe/core/BufferMetadata.hpp>
 #include <cpipe/core/BufferUsage.hpp>
+#include <cpipe/core/ByteBlob.hpp>
 #include <cpipe/core/CalibrationBlock.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/core/PixelFormat.hpp>
@@ -24,12 +25,15 @@
 #include <string>
 #include <vector>
 
+#include "gainmap_test_fixture.hpp"
+
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
 void cpipe_link_builtin_demosaic_rcd();
+void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_wb_dual_illuminant();
 
@@ -39,6 +43,7 @@ using cpipe::compute::BufferKind;
 using cpipe::compute::BufferLayout;
 using cpipe::compute::BufferMetadata;
 using cpipe::compute::BufferUsage;
+using cpipe::compute::ByteBlob;
 using cpipe::compute::CalibrationBlock;
 using cpipe::compute::CFADescriptor;
 using cpipe::compute::CpuBuffer;
@@ -264,6 +269,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_demosaic_bilinear();
     cpipe_link_builtin_demosaic_quad_bayer_remosaic();
     cpipe_link_builtin_demosaic_rcd();
+    cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();
     registry.load_builtin_nodes();
@@ -306,6 +312,30 @@ void assert_blacklevel_golden(cpipe::runtime::Registry& registry) {
     metadata->calibration = calibration;
     metadata->cs_role = "raw_camera";
     metadata->applied_steps = {"linearization"};
+
+    auto input = make_buffer(PixelFormat::R32_SFLOAT, input_image.width, input_image.height,
+                             BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_f32(*input, input_image);
+    auto output = make_buffer(PixelFormat::R32_SFLOAT, input_image.width, input_image.height,
+                              BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node(require_node(registry, kNode), input, output);
+    require_psnr_at_least(kFixture, read_f32(*output, input_image.width, input_image.height));
+}
+
+void assert_gainmap_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.lens.shading_gainmap";
+    constexpr auto kFixture = "lens.shading_gainmap";
+    const auto input_image = read_fixture(kFixture, "in.exr", 1);
+
+    auto metadata = metadata_with_cfa();
+    metadata->applied_steps = {"linearization"};
+    auto opcode_blob = std::make_shared<ByteBlob>();
+    const auto params =
+        cpipe::tests::gain_map_params(2, 2, 0, 1, 7.0, 7.0, {1.0F, 1.2F, 1.4F, 1.8F});
+    opcode_blob->bytes = cpipe::tests::opcode_list_2_with_gain_maps({params});
+    metadata->ext_blobs["com.cpipe.dng.opcode_list_2_bytes"] = opcode_blob;
 
     auto input = make_buffer(PixelFormat::R32_SFLOAT, input_image.width, input_image.height,
                              BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
@@ -416,6 +446,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("blacklevel.dng_levels") {
         assert_blacklevel_golden(registry);
+    }
+    SECTION("lens.shading_gainmap") {
+        assert_gainmap_golden(registry);
     }
     SECTION("demosaic.bilinear") {
         assert_demosaic_golden(registry, "com.cpipe.demosaic.bilinear", "demosaic.bilinear");
