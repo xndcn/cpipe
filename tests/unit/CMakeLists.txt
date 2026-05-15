@@ -149,6 +149,15 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_demosaic_quad_bayer_remosaic test_node_demosaic_quad_bayer_remosaic.cpp)
+target_link_libraries(
+    test_node_demosaic_quad_bayer_remosaic
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_wb test_node_wb.cpp)
 target_link_libraries(
     test_node_wb

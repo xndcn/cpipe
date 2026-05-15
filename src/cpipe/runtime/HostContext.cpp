@@ -117,6 +117,7 @@ HostContext::HostContext() {
     metadata_builder_suite_.set_tensor_quant = &HostContext::set_tensor_quant;
     metadata_builder_suite_.set_blob = &HostContext::set_blob;
     metadata_builder_suite_.merge_from = &HostContext::merge_from;
+    metadata_builder_suite_.set_cfa = &HostContext::set_cfa;
 
     compute_suite_.submit_halide = &HostContext::submit_halide;
     compute_suite_.submit_slang = &HostContext::submit_slang;
@@ -296,8 +297,7 @@ int HostContext::get_calibration(const cpipe_metadata_t* metadata, cpipe_calibra
     const auto& calibration = *impl->calibration;
     if (calibration.cfa) {
         out->has_cfa = 1;
-        out->cfa_repeat[0] = 2;
-        out->cfa_repeat[1] = 2;
+        std::copy(calibration.cfa->repeat.begin(), calibration.cfa->repeat.end(), out->cfa_repeat);
         std::copy(calibration.cfa->pattern.begin(), calibration.cfa->pattern.end(),
                   out->cfa_pattern);
     }
@@ -715,6 +715,20 @@ int HostContext::set_blob(cpipe_metadata_builder_t* builder, const char* key, co
     const auto* bytes = static_cast<const std::byte*>(ptr);
     blob->bytes.assign(bytes, bytes + size);
     impl->set_blob(key, std::move(blob));
+    return CPIPE_OK;
+}
+
+int HostContext::set_cfa(cpipe_metadata_builder_t* builder, const std::uint8_t repeat[2],
+                         const std::uint8_t pattern[16]) {
+    auto* impl = builder_from_handle(builder);
+    if (impl == nullptr || repeat == nullptr || pattern == nullptr) {
+        return CPIPE_BAD_INDEX;
+    }
+
+    cpipe::compute::CFADescriptor cfa{};
+    std::copy_n(repeat, cfa.repeat.size(), cfa.repeat.begin());
+    std::copy_n(pattern, cfa.pattern.size(), cfa.pattern.begin());
+    impl->set_cfa(cfa);
     return CPIPE_OK;
 }
 

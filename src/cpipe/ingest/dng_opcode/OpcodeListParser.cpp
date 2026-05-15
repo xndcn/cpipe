@@ -401,12 +401,22 @@ ParseResult OpcodeListParser::parse(const std::filesystem::path& path) {
     }
 
     if (const auto entry = find_entry(*entries, kTagCfaRepeatPatternDim)) {
-        const auto repeat = shorts(bytes, *entry);
-        if (repeat.size() != 2 || repeat[0] != 2 || repeat[1] != 2) {
+        const auto repeat_values = shorts(bytes, *entry);
+        if (repeat_values.size() != 2) {
             return ParseResult{.status = CPIPE_UNSUPPORTED,
                                .metadata = std::move(out),
-                               .message = "only 2x2 Bayer DNG is supported in P1"};
+                               .message = "only 2x2 Bayer or 4x4 Quad Bayer DNG is supported"};
         }
+        const auto supported_repeat = repeat_values[0] == repeat_values[1] &&
+                                      (repeat_values[0] == 2 || repeat_values[0] == 4);
+        if (!supported_repeat) {
+            return ParseResult{.status = CPIPE_UNSUPPORTED,
+                               .metadata = std::move(out),
+                               .message = "only 2x2 Bayer or 4x4 Quad Bayer DNG is supported"};
+        }
+        out.calibration.cfa = compute::CFADescriptor{};
+        out.calibration.cfa->repeat = {static_cast<std::uint8_t>(repeat_values[0]),
+                                       static_cast<std::uint8_t>(repeat_values[1])};
     } else {
         return ParseResult{.status = CPIPE_UNSUPPORTED,
                            .metadata = std::move(out),
@@ -415,18 +425,25 @@ ParseResult OpcodeListParser::parse(const std::filesystem::path& path) {
 
     if (const auto entry = find_entry(*entries, kTagCfaPattern)) {
         const auto data = entry_data(bytes, *entry);
-        if (data.size() == 4) {
-            compute::CFADescriptor cfa{};
-            for (std::size_t i = 0; i < cfa.pattern.size(); ++i) {
-                cfa.pattern[i] = std::to_integer<std::uint8_t>(data[i]);
+        if (out.calibration.cfa) {
+            const auto expected_count = static_cast<std::size_t>(out.calibration.cfa->repeat[0]) *
+                                        out.calibration.cfa->repeat[1];
+            if (data.size() == expected_count &&
+                expected_count <= out.calibration.cfa->pattern.size()) {
+                for (std::size_t i = 0; i < expected_count; ++i) {
+                    out.calibration.cfa->pattern[i] = std::to_integer<std::uint8_t>(data[i]);
+                }
+            } else {
+                out.calibration.cfa.reset();
             }
-            out.calibration.cfa = cfa;
         }
+    } else {
+        out.calibration.cfa.reset();
     }
     if (!out.calibration.cfa) {
         return ParseResult{.status = CPIPE_UNSUPPORTED,
                            .metadata = std::move(out),
-                           .message = "DNG is missing a 2x2 CFA pattern"};
+                           .message = "DNG is missing a supported CFA pattern"};
     }
 
     if (const auto entry = find_entry(*entries, kTagBlackLevel)) {

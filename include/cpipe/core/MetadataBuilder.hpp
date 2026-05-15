@@ -29,6 +29,7 @@ public:
     void set_cs_role(std::string role);
     void set_active_area(std::optional<Rect2u> area);
     void clear_cfa();
+    void set_cfa(CFADescriptor cfa);
     void add_applied_step(std::string step);
     void remove_applied_step(std::string_view step);
     void set_exif_blob(std::shared_ptr<const ByteBlob> blob);

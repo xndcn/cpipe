@@ -1,0 +1,52 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.demosaic.quad_bayer_remosaic",
+  "version": "1.0.0",
+  "label": "Quad Bayer Remosaic",
+  "category": "raw",
+  "doc": "Converts Sony-style 4x4 Quad Bayer data to regular 2x2 Bayer data.",
+  "ports": [
+    {
+      "name": "qbc",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_fields": ["calibration.cfa"]
+      }
+    },
+    {
+      "name": "bayer",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r"],
+        "precision": ["u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "qbc",
+        "writes_fields": ["calibration.cfa"],
+        "sets_steps_applied": ["quad_bayer_remosaic"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "halide_aot": ["demosaic_quad_bayer_remosaic"],
+    "in_pixel_bytes": 2,
+    "out_pixel_bytes": 2,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
+    "respects_chromaticity": false
+  }
+}

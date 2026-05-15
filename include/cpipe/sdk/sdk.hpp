@@ -240,6 +240,19 @@ public:
         return {};
     }
 
+    Result<void> set_cfa(const std::array<std::uint8_t, 2>& repeat,
+                         const std::array<std::uint8_t, 16>& pattern) {
+        if (suite_ == nullptr || suite_->set_cfa == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->set_cfa(impl_, repeat.data(), pattern.data()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "set_cfa failed"});
+        }
+        return {};
+    }
+
 private:
     cpipe_metadata_builder_t* impl_{nullptr};
     const cpipe_metadata_builder_suite_v1* suite_{nullptr};

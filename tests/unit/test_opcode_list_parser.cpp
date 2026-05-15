@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <array>
 #include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -21,7 +22,10 @@ TEST_CASE("OpcodeListParser reads DNG metadata and preserves opcode bytes") {
     REQUIRE(parsed.metadata.bits_per_sample == 16);
 
     REQUIRE(parsed.metadata.calibration.cfa.has_value());
-    REQUIRE(parsed.metadata.calibration.cfa->pattern == std::array<std::uint8_t, 4>{0, 1, 1, 2});
+    constexpr std::array<std::uint8_t, 4> kRggb{0, 1, 1, 2};
+    REQUIRE(parsed.metadata.calibration.cfa->repeat == std::array<std::uint8_t, 2>{2, 2});
+    REQUIRE(
+        std::equal(kRggb.begin(), kRggb.end(), parsed.metadata.calibration.cfa->pattern.begin()));
     REQUIRE(parsed.metadata.linearization_table == std::vector<std::uint16_t>{0, 128, 1024, 4095});
     REQUIRE(parsed.metadata.calibration.linearization_table.has_value());
     REQUIRE(parsed.metadata.calibration.black_level[0] == Catch::Approx(64.0F));
@@ -54,11 +58,11 @@ TEST_CASE("OpcodeListParser reads DNG metadata and preserves opcode bytes") {
                                    std::byte{9}, std::byte{10}, std::byte{11}, std::byte{12}});
 }
 
-TEST_CASE("OpcodeListParser rejects non-2x2 Bayer CFA") {
+TEST_CASE("OpcodeListParser rejects unsupported CFA repeat") {
     cpipe::tests::SyntheticDngOptions options;
-    options.cfa_repeat = {4, 4};
-    options.cfa_pattern = {0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 2, 2, 1, 1, 2, 2};
-    const auto path = cpipe::tests::write_synthetic_dng("quad_bayer", options);
+    options.cfa_repeat = {3, 3};
+    options.cfa_pattern = {0, 1, 2, 1, 0, 2, 2, 1, 0};
+    const auto path = cpipe::tests::write_synthetic_dng("unsupported_cfa", options);
 
     const auto parsed = cpipe::ingest::dng_opcode::OpcodeListParser::parse(path);
     REQUIRE(parsed.status == CPIPE_UNSUPPORTED);

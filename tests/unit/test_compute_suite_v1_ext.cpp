@@ -113,7 +113,7 @@ TEST_CASE("Host exposes compute suite v1 tail extensions") {
     cpipe::runtime::HostContext host_context;
     auto* host = host_context.host();
     REQUIRE(host->abi_minor == CPIPE_ABI_MINOR);
-    REQUIRE(host->abi_minor == 3);
+    REQUIRE(host->abi_minor >= 3);
 
     const auto* suite =
         static_cast<const cpipe_compute_suite_v1*>(host->get_suite(host, "compute", 1));

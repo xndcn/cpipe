@@ -76,6 +76,15 @@ void MetadataBuilder::clear_cfa() {
     metadata_.calibration = std::move(mutable_calibration);
 }
 
+void MetadataBuilder::set_cfa(CFADescriptor cfa) {
+    ensure_mutable();
+    auto mutable_calibration = metadata_.calibration
+                                   ? std::make_shared<CalibrationBlock>(*metadata_.calibration)
+                                   : std::make_shared<CalibrationBlock>();
+    mutable_calibration->cfa = cfa;
+    metadata_.calibration = std::move(mutable_calibration);
+}
+
 void MetadataBuilder::add_applied_step(std::string step) {
     ensure_mutable();
     metadata_.applied_steps.push_back(std::move(step));

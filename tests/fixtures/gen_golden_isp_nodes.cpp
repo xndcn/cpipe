@@ -364,6 +364,74 @@ Image demosaic_amaze_output(const Image& input) {
     return image;
 }
 
+Image quad_bayer_remosaic_input() {
+    Image image{8, 8, 1, {}};
+    image.pixels.reserve(64);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(static_cast<float>(100 + (y * 23) + (x * 11)));
+        }
+    }
+    return image;
+}
+
+int qbc_color(int x, int y) {
+    const auto mx = ((x % 4) + 4) % 4;
+    const auto my = ((y % 4) + 4) % 4;
+    if (my < 2 && mx < 2) {
+        return 0;
+    }
+    if (my >= 2 && mx >= 2) {
+        return 2;
+    }
+    return 1;
+}
+
+int rggb_color(int x, int y) {
+    if ((y & 1) == 0 && (x & 1) == 0) {
+        return 0;
+    }
+    if ((y & 1) != 0 && (x & 1) != 0) {
+        return 2;
+    }
+    return 1;
+}
+
+float qbc_remosaic_sample(const Image& input, int x, int y) {
+    const auto target = rggb_color(x, y);
+    std::uint32_t weighted_sum = 0;
+    std::uint32_t weight_sum = 0;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            const auto sx = std::clamp(x + dx, 0, input.width - 1);
+            const auto sy = std::clamp(y + dy, 0, input.height - 1);
+            if (qbc_color(sx, sy) != target) {
+                continue;
+            }
+            const auto grad_x = std::abs(static_cast<int>(bayer_sample(input, sx - 1, sy)) -
+                                         static_cast<int>(bayer_sample(input, sx + 1, sy)));
+            const auto grad_y = std::abs(static_cast<int>(bayer_sample(input, sx, sy - 1)) -
+                                         static_cast<int>(bayer_sample(input, sx, sy + 1)));
+            const auto penalty = 64 + grad_x + grad_y + ((std::abs(dx) + std::abs(dy)) * 16);
+            const auto weight = static_cast<std::uint32_t>(std::max(1, 65536 / penalty));
+            weighted_sum += weight * static_cast<std::uint32_t>(bayer_sample(input, sx, sy));
+            weight_sum += weight;
+        }
+    }
+    return static_cast<float>((weighted_sum + (weight_sum / 2U)) / weight_sum);
+}
+
+Image quad_bayer_remosaic_output(const Image& input) {
+    Image image{input.width, input.height, 1, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            image.pixels.push_back(qbc_remosaic_sample(input, x, y));
+        }
+    }
+    return image;
+}
+
 Image demosaic_output(const Image& input) {
     Image image{input.width, input.height, 4, {}};
     image.pixels.reserve(input.pixels.size() * 4U);
@@ -476,6 +544,7 @@ int main(int argc, char** argv) {
     const auto demosaic_in = demosaic_input();
     const auto rcd_in = demosaic_rcd_input();
     const auto amaze_in = demosaic_amaze_input();
+    const auto qbc_in = quad_bayer_remosaic_input();
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
 
@@ -485,6 +554,8 @@ int main(int argc, char** argv) {
         write_pair(root, "demosaic.bilinear", demosaic_in, demosaic_output(demosaic_in)) &&
         write_pair(root, "demosaic.rcd", rcd_in, demosaic_rcd_output(rcd_in)) &&
         write_pair(root, "demosaic.amaze", amaze_in, demosaic_amaze_output(amaze_in)) &&
+        write_pair(root, "demosaic.quad_bayer_remosaic", qbc_in,
+                   quad_bayer_remosaic_output(qbc_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
     return ok ? 0 : 1;

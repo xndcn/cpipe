@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <optional>
@@ -12,7 +13,18 @@
 namespace cpipe::compute {
 
 struct CFADescriptor {
-    std::array<std::uint8_t, 4> pattern{};
+    std::array<std::uint8_t, 2> repeat{2, 2};
+    std::array<std::uint8_t, 16> pattern{};
+
+    constexpr CFADescriptor() = default;
+
+    constexpr explicit CFADescriptor(const std::array<std::uint8_t, 4>& bayer_pattern) {
+        std::copy(bayer_pattern.begin(), bayer_pattern.end(), pattern.begin());
+    }
+
+    constexpr CFADescriptor(std::array<std::uint8_t, 2> repeat_dims,
+                            std::array<std::uint8_t, 16> cfa_pattern)
+        : repeat(repeat_dims), pattern(cfa_pattern) {}
 };
 
 struct LinearizationTable {

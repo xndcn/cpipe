@@ -73,6 +73,8 @@ private:
     static int set_blob(cpipe_metadata_builder_t* builder, const char* key, const void* ptr,
                         std::size_t size);
     static int merge_from(cpipe_metadata_builder_t* builder, std::size_t input_idx, int policy);
+    static int set_cfa(cpipe_metadata_builder_t* builder, const std::uint8_t repeat[2],
+                       const std::uint8_t pattern[16]);
     static int get_param_double(const cpipe_props_t* props, const char* key, double* out);
     static int get_param_int(const cpipe_props_t* props, const char* key, std::int64_t* out);
     static int get_param_bool(const cpipe_props_t* props, const char* key, int* out);

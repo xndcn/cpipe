@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #define CPIPE_ABI_MAJOR 0
-#define CPIPE_ABI_MINOR 3
+#define CPIPE_ABI_MINOR 4
 
 typedef enum {
     CPIPE_OK = 0,
@@ -139,6 +139,7 @@ typedef struct {
                             size_t n_zp);
     int (*set_blob)(cpipe_metadata_builder_t*, const char* key, const void* ptr, size_t size);
     int (*merge_from)(cpipe_metadata_builder_t*, size_t input_idx, int policy);
+    int (*set_cfa)(cpipe_metadata_builder_t*, const uint8_t repeat[2], const uint8_t pattern[16]);
 } cpipe_metadata_builder_suite_v1;
 
 typedef struct {

@@ -28,6 +28,7 @@ void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
+void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
 void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_wb_dual_illuminant();
@@ -141,6 +142,17 @@ void write_r16(CpuBuffer& buffer, const FloatImage& image) {
     buffer.flush_cpu_writes();
 }
 
+FloatImage read_r16(CpuBuffer& buffer, const int width, const int height) {
+    FloatImage image{width, height, 1, {}};
+    image.pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height));
+    const auto* in = static_cast<const std::uint16_t*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
+    for (std::size_t i = 0; i < image.pixels.size(); ++i) {
+        image.pixels[i] = static_cast<float>(in[i]);
+    }
+    buffer.unlock_cpu();
+    return image;
+}
+
 void write_f32(CpuBuffer& buffer, const FloatImage& image) {
     auto* out = static_cast<float*>(buffer.lock_cpu(IBuffer::CpuAccess::Write));
     std::copy(image.pixels.begin(), image.pixels.end(), out);
@@ -232,11 +244,25 @@ std::shared_ptr<BufferMetadata> metadata_with_cfa() {
     return metadata;
 }
 
+std::shared_ptr<BufferMetadata> metadata_with_quad_bayer_cfa() {
+    constexpr std::array<std::uint8_t, 16> kSonyQbc{
+        0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 2, 2, 1, 1, 2, 2,
+    };
+    auto calibration = std::make_shared<CalibrationBlock>();
+    calibration->cfa = CFADescriptor{{4, 4}, kSonyQbc};
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->calibration = calibration;
+    metadata->cs_role = "raw_camera";
+    return metadata;
+}
+
 void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_linearize_dng_lut();
     cpipe_link_builtin_blacklevel_dng_levels();
     cpipe_link_builtin_demosaic_amaze();
     cpipe_link_builtin_demosaic_bilinear();
+    cpipe_link_builtin_demosaic_quad_bayer_remosaic();
     cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();
@@ -312,6 +338,24 @@ void assert_demosaic_golden(cpipe::runtime::Registry& registry, const char* node
     require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_quad_bayer_remosaic_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.demosaic.quad_bayer_remosaic";
+    constexpr auto kFixture = "demosaic.quad_bayer_remosaic";
+    const auto input_image = read_fixture(kFixture, "in.exr", 1);
+
+    auto metadata = metadata_with_quad_bayer_cfa();
+    auto input = make_buffer(PixelFormat::R16_UINT, input_image.width, input_image.height,
+                             BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_r16(*input, input_image);
+    auto output = make_buffer(PixelFormat::R16_UINT, input_image.width, input_image.height,
+                              BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    cpipe::runtime::ComputeContext compute;
+    process_single_input_node(require_node(registry, kNode), input, output, &compute);
+    require_psnr_at_least(kFixture, read_r16(*output, input_image.width, input_image.height));
+}
+
 void assert_wb_golden(cpipe::runtime::Registry& registry) {
     constexpr auto kNode = "com.cpipe.wb.dual_illuminant";
     constexpr auto kFixture = "wb.dual_illuminant";
@@ -381,6 +425,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("demosaic.amaze") {
         assert_demosaic_golden(registry, "com.cpipe.demosaic.amaze", "demosaic.amaze");
+    }
+    SECTION("demosaic.quad_bayer_remosaic") {
+        assert_quad_bayer_remosaic_golden(registry);
     }
     SECTION("wb.dual_illuminant") {
         assert_wb_golden(registry);

@@ -7,6 +7,7 @@ void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
+void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
 void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_colormatrix_dng_to_working();
@@ -20,6 +21,7 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_blacklevel_dng_levels();
     cpipe_link_builtin_demosaic_amaze();
     cpipe_link_builtin_demosaic_bilinear();
+    cpipe_link_builtin_demosaic_quad_bayer_remosaic();
     cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();

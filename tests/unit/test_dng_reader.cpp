@@ -123,7 +123,9 @@ TEST_CASE("DngReader decodes the cropped Pixel 8 Pro corpus DNG") {
     REQUIRE(metadata->applied_steps.empty());
     REQUIRE(metadata->calibration != nullptr);
     REQUIRE(metadata->calibration->cfa.has_value());
-    REQUIRE(metadata->calibration->cfa->pattern == std::array<std::uint8_t, 4>{0, 1, 1, 2});
+    constexpr std::array<std::uint8_t, 4> kRggb{0, 1, 1, 2};
+    REQUIRE(metadata->calibration->cfa->repeat == std::array<std::uint8_t, 2>{2, 2});
+    REQUIRE(std::equal(kRggb.begin(), kRggb.end(), metadata->calibration->cfa->pattern.begin()));
     REQUIRE(metadata->calibration->linearization_table.has_value());
     REQUIRE(metadata->calibration->linearization_table->values.size() == 16369);
     REQUIRE(metadata->calibration->black_level[0] > 1024.0F);
@@ -149,13 +151,27 @@ TEST_CASE("DngReader rejects non-Bayer DNG input") {
 
     const auto read = cpipe::ingest::dng::DngReader::read(path);
     REQUIRE(read.status == CPIPE_FAILED);
+}
 
+TEST_CASE("DngReader preserves synthetic 4x4 Quad Bayer CFA metadata") {
     cpipe::tests::SyntheticDngOptions quad_options;
+    quad_options.width = 8;
+    quad_options.height = 8;
     quad_options.cfa_repeat = {4, 4};
     quad_options.cfa_pattern = {0, 0, 1, 1, 0, 0, 1, 1, 1, 1, 2, 2, 1, 1, 2, 2};
     const auto quad_path = cpipe::tests::write_synthetic_dng("quad_reader", quad_options);
     const auto quad_read = cpipe::ingest::dng::DngReader::read(quad_path);
-    REQUIRE(quad_read.status == CPIPE_FAILED);
+    INFO(quad_read.message);
+    REQUIRE(quad_read.status == CPIPE_OK);
+    REQUIRE(quad_read.buffer != nullptr);
+
+    const auto metadata = quad_read.buffer->metadata();
+    REQUIRE(metadata != nullptr);
+    REQUIRE(metadata->calibration != nullptr);
+    REQUIRE(metadata->calibration->cfa.has_value());
+    REQUIRE(metadata->calibration->cfa->repeat == std::array<std::uint8_t, 2>{4, 4});
+    REQUIRE(std::equal(quad_options.cfa_pattern.begin(), quad_options.cfa_pattern.end(),
+                       metadata->calibration->cfa->pattern.begin()));
 }
 
 TEST_CASE("dng_input plugin is registered and reads its path parameter") {
