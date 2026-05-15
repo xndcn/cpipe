@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.denoise.guided_filter",
+  "version": "1.0.0",
+  "label": "Guided Filter Denoise",
+  "category": "denoise",
+  "doc": "Fast edge-preserving guided-filter denoise for scene-linear RGBA.",
+  "ports": [
+    {
+      "name": "rgb",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["color_matrix"]
+      }
+    },
+    {
+      "name": "rgb",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "rgb",
+        "sets_steps_applied": ["denoise.guided_filter"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "in_pixel_bytes": 8,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0,
+    "halide_aot": ["denoise_guided_filter"]
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "scene_linear_rec2020",
+    "respects_chromaticity": true
+  }
+}

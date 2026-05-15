@@ -12,6 +12,8 @@ void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_wb_greyworld_auto();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_denoise_guided_filter();
+void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_lens_dng_opcode_list_3();
 void cpipe_link_builtin_precision_convert();
@@ -29,6 +31,8 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_wb_greyworld_auto();
     cpipe_link_builtin_colormatrix_dng_to_working();
+    cpipe_link_builtin_denoise_guided_filter();
+    cpipe_link_builtin_denoise_wavelet_bayes_shrink();
     cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_lens_dng_opcode_list_3();
     cpipe_link_builtin_precision_convert();

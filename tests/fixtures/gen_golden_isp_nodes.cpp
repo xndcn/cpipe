@@ -549,6 +549,167 @@ Image colormatrix_output(const Image& input) {
     return image;
 }
 
+float denoise_sample(const Image& input, int x, int y, int c) {
+    x = std::clamp(x, 0, input.width - 1);
+    y = std::clamp(y, 0, input.height - 1);
+    const auto offset = ((static_cast<std::size_t>(y) * static_cast<std::size_t>(input.width)) +
+                         static_cast<std::size_t>(x)) *
+                            4U +
+                        static_cast<std::size_t>(c);
+    return half_roundtrip(input.pixels[offset]);
+}
+
+float guided_mean3x3(const Image& input, int x, int y, int c) {
+    auto sum = 0.0F;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            sum += denoise_sample(input, x + dx, y + dy, c);
+        }
+    }
+    return sum / 9.0F;
+}
+
+float guided_corr3x3(const Image& input, int x, int y, int c) {
+    auto sum = 0.0F;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            const auto value = denoise_sample(input, x + dx, y + dy, c);
+            sum += value * value;
+        }
+    }
+    return sum / 9.0F;
+}
+
+float guided_a(const Image& input, int x, int y, int c) {
+    constexpr float epsilon = 0.015F;
+    const auto mean = guided_mean3x3(input, x, y, c);
+    const auto variance = std::max(0.0F, guided_corr3x3(input, x, y, c) - (mean * mean));
+    return variance / (variance + epsilon);
+}
+
+float guided_b(const Image& input, int x, int y, int c) {
+    const auto mean = guided_mean3x3(input, x, y, c);
+    return mean - (guided_a(input, x, y, c) * mean);
+}
+
+float guided_mean_a(const Image& input, int x, int y, int c) {
+    auto sum = 0.0F;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            sum += guided_a(input, x + dx, y + dy, c);
+        }
+    }
+    return sum / 9.0F;
+}
+
+float guided_mean_b(const Image& input, int x, int y, int c) {
+    auto sum = 0.0F;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            sum += guided_b(input, x + dx, y + dy, c);
+        }
+    }
+    return sum / 9.0F;
+}
+
+Image denoise_input() {
+    Image image{8, 8, 4, {}};
+    image.pixels.reserve(256);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            const auto base =
+                0.08F + (0.018F * static_cast<float>(x)) + (0.014F * static_cast<float>(y));
+            const auto chroma_noise = ((x + y) & 1) == 0 ? 0.035F : -0.035F;
+            const auto luma_noise = static_cast<float>(((x * 3 + y * 5) % 5) - 2) * 0.006F;
+            image.pixels.push_back(base + luma_noise + chroma_noise);
+            image.pixels.push_back(base + (0.5F * luma_noise));
+            image.pixels.push_back(base + luma_noise - chroma_noise);
+            image.pixels.push_back(1.0F);
+        }
+    }
+    return image;
+}
+
+Image guided_filter_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            for (int c = 0; c < 4; ++c) {
+                if (c == 3) {
+                    image.pixels.push_back(half_roundtrip(denoise_sample(input, x, y, c)));
+                    continue;
+                }
+                const auto filtered =
+                    (guided_mean_a(input, x, y, c) * denoise_sample(input, x, y, c)) +
+                    guided_mean_b(input, x, y, c);
+                image.pixels.push_back(half_roundtrip(std::max(0.0F, filtered)));
+            }
+        }
+    }
+    return image;
+}
+
+std::array<float, 3> ycocg_at(const Image& input, int x, int y) {
+    const auto r = denoise_sample(input, x, y, 0);
+    const auto g = denoise_sample(input, x, y, 1);
+    const auto b = denoise_sample(input, x, y, 2);
+    return {(r + (2.0F * g) + b) * 0.25F, r - b, g - ((r + b) * 0.5F)};
+}
+
+float soft_threshold(float value) {
+    constexpr float threshold = 0.035F;
+    if (value > threshold) {
+        return value - threshold;
+    }
+    if (value < -threshold) {
+        return value + threshold;
+    }
+    return 0.0F;
+}
+
+float wavelet_chroma(const Image& input, int x, int y, int component) {
+    const auto bx = (x / 2) * 2;
+    const auto by = (y / 2) * 2;
+    const auto p00 = ycocg_at(input, bx, by)[static_cast<std::size_t>(component)];
+    const auto p10 = ycocg_at(input, bx + 1, by)[static_cast<std::size_t>(component)];
+    const auto p01 = ycocg_at(input, bx, by + 1)[static_cast<std::size_t>(component)];
+    const auto p11 = ycocg_at(input, bx + 1, by + 1)[static_cast<std::size_t>(component)];
+    const auto ll = 0.25F * (p00 + p10 + p01 + p11);
+    const auto h = soft_threshold(0.25F * (p00 - p10 + p01 - p11));
+    const auto v = soft_threshold(0.25F * (p00 + p10 - p01 - p11));
+    const auto d = soft_threshold(0.25F * (p00 - p10 - p01 + p11));
+
+    if ((x & 1) == 0 && (y & 1) == 0) {
+        return ll + h + v + d;
+    }
+    if ((x & 1) != 0 && (y & 1) == 0) {
+        return ll - h + v - d;
+    }
+    if ((x & 1) == 0) {
+        return ll + h - v - d;
+    }
+    return ll - h - v + d;
+}
+
+Image wavelet_bayes_shrink_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            const auto ycc = ycocg_at(input, x, y);
+            const auto co = wavelet_chroma(input, x, y, 1);
+            const auto cg = wavelet_chroma(input, x, y, 2);
+            const auto t = ycc[0] - (0.5F * cg);
+            image.pixels.push_back(half_roundtrip(std::max(0.0F, t + (0.5F * co))));
+            image.pixels.push_back(half_roundtrip(std::max(0.0F, t + cg)));
+            image.pixels.push_back(half_roundtrip(std::max(0.0F, t - (0.5F * co))));
+            image.pixels.push_back(half_roundtrip(denoise_sample(input, x, y, 3)));
+        }
+    }
+    return image;
+}
+
 Image opcode_list_3_input() {
     Image image{8, 8, 4, {}};
     image.pixels.reserve(256);
@@ -640,6 +801,7 @@ int main(int argc, char** argv) {
     const auto opcode3_in = opcode_list_3_input();
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
+    const auto denoise_in = denoise_input();
 
     const bool ok =
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
@@ -653,6 +815,9 @@ int main(int argc, char** argv) {
         write_pair(root, "lens.dng_opcode_list_3", opcode3_in, opcode_list_3_output(opcode3_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "wb.greyworld_auto", wb_in, greyworld_output(wb_in)) &&
-        write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
+        write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in)) &&
+        write_pair(root, "denoise.guided_filter", denoise_in, guided_filter_output(denoise_in)) &&
+        write_pair(root, "denoise.wavelet_bayes_shrink", denoise_in,
+                   wavelet_bayes_shrink_output(denoise_in));
     return ok ? 0 : 1;
 }

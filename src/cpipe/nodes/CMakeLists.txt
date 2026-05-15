@@ -9,6 +9,8 @@ add_halide_generator(
         demosaic/demosaic_bilinear_generator.cpp
         demosaic/demosaic_quad_bayer_remosaic_generator.cpp
         demosaic/demosaic_rcd_generator.cpp
+        denoise/guided_filter_generator.cpp
+        denoise/wavelet_bayes_shrink_generator.cpp
         precision/precision_convert_generator.cpp
 )
 cpipe_add_halide_library(
@@ -67,6 +69,28 @@ cpipe_add_halide_library(
     TARGETS
         x86-64-linux
         ${Halide_HOST_TARGET}-vulkan-vk_float16
+)
+cpipe_add_halide_library(
+    denoise_guided_filter
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        denoise_guided_filter
+    FUNCTION_NAME
+        denoise_guided_filter
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    denoise_wavelet_bayes_shrink
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        denoise_wavelet_bayes_shrink
+    FUNCTION_NAME
+        denoise_wavelet_bayes_shrink
+    TARGETS
+        x86-64-linux
 )
 cpipe_add_halide_library(
     precision_convert_r16u_to_f32
@@ -253,6 +277,34 @@ add_custom_command(
             "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(denoise_guided_filter_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/denoise_guided_filter_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${denoise_guided_filter_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/denoise/guided_filter.json"
+        -DOUTPUT_CPP="${denoise_guided_filter_manifest_cpp}"
+        -DSYMBOL_NAME=DENOISE_GUIDED_FILTER_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS denoise/guided_filter.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
+set(denoise_wavelet_bayes_shrink_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/denoise_wavelet_bayes_shrink_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${denoise_wavelet_bayes_shrink_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/denoise/wavelet_bayes_shrink.json"
+        -DOUTPUT_CPP="${denoise_wavelet_bayes_shrink_manifest_cpp}"
+        -DSYMBOL_NAME=DENOISE_WAVELET_BAYES_SHRINK_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS denoise/wavelet_bayes_shrink.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(output_heif_sdr_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/output_heif_sdr_manifest.cpp")
 add_custom_command(
     OUTPUT "${output_heif_sdr_manifest_cpp}"
@@ -329,6 +381,10 @@ add_library(
         wb/greyworld_auto.cpp
         colormatrix/colormatrix_dng_to_working.cpp
         colormatrix/colormatrix_dng_to_working_dispatch.cpp
+        denoise/guided_filter.cpp
+        denoise/guided_filter_dispatch.cpp
+        denoise/wavelet_bayes_shrink.cpp
+        denoise/wavelet_bayes_shrink_dispatch.cpp
         lens/shading_gainmap.cpp
         lens/shading_gainmap_dispatch.cpp
         lens/dng_opcode_list_3.cpp
@@ -347,6 +403,8 @@ add_library(
         "${wb_dual_illuminant_manifest_cpp}"
         "${wb_greyworld_auto_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
+        "${denoise_guided_filter_manifest_cpp}"
+        "${denoise_wavelet_bayes_shrink_manifest_cpp}"
         "${lens_shading_gainmap_manifest_cpp}"
         "${lens_dng_opcode_list_3_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
@@ -373,6 +431,8 @@ target_link_libraries(
         demosaic_bilinear
         demosaic_quad_bayer_remosaic
         demosaic_rcd
+        denoise_guided_filter
+        denoise_wavelet_bayes_shrink
         precision_convert_r16u_to_f32
         precision_convert_f32_to_rgba16f
         precision_convert_rgba16f_to_rgba8

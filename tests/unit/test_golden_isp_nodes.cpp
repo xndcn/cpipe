@@ -30,6 +30,8 @@
 
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_denoise_guided_filter();
+void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
 void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
@@ -278,6 +280,8 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_wb_greyworld_auto();
     cpipe_link_builtin_colormatrix_dng_to_working();
+    cpipe_link_builtin_denoise_guided_filter();
+    cpipe_link_builtin_denoise_wavelet_bayes_shrink();
     registry.load_builtin_nodes();
 }
 
@@ -511,6 +515,27 @@ void assert_colormatrix_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_denoise_golden(cpipe::runtime::Registry& registry, const char* node,
+                           const char* fixture, std::vector<std::string> steps) {
+    const auto input_image = read_fixture(fixture, "in.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = std::move(steps);
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node(require_node(registry, node), input, output);
+    require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
+}
+
 }  // namespace
 
 TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
@@ -549,5 +574,14 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("colormatrix.dng_to_working") {
         assert_colormatrix_golden(registry);
+    }
+    SECTION("denoise.guided_filter") {
+        assert_denoise_golden(registry, "com.cpipe.denoise.guided_filter", "denoise.guided_filter",
+                              {"color_matrix"});
+    }
+    SECTION("denoise.wavelet_bayes_shrink") {
+        assert_denoise_golden(registry, "com.cpipe.denoise.wavelet_bayes_shrink",
+                              "denoise.wavelet_bayes_shrink",
+                              {"color_matrix", "denoise.guided_filter"});
     }
 }

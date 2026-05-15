@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.denoise.wavelet_bayes_shrink",
+  "version": "1.0.0",
+  "label": "Wavelet BayesShrink Denoise",
+  "category": "denoise",
+  "doc": "Single-level Haar chroma denoise with BayesShrink-style soft thresholding.",
+  "ports": [
+    {
+      "name": "rgb",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["color_matrix"]
+      }
+    },
+    {
+      "name": "rgb",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "rgb",
+        "sets_steps_applied": ["denoise.wavelet_bayes_shrink"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "in_pixel_bytes": 8,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0,
+    "halide_aot": ["denoise_wavelet_bayes_shrink"]
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "scene_linear_rec2020",
+    "respects_chromaticity": true
+  }
+}

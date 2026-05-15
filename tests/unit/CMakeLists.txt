@@ -207,6 +207,26 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_denoise_guided_filter test_node_denoise_guided_filter.cpp)
+target_link_libraries(
+    test_node_denoise_guided_filter
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(
+    test_node_denoise_wavelet_bayes_shrink test_node_denoise_wavelet_bayes_shrink.cpp
+)
+target_link_libraries(
+    test_node_denoise_wavelet_bayes_shrink
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
 target_link_libraries(
     test_node_precision_convert
