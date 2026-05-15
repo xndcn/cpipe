@@ -18,12 +18,15 @@
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
+#include <cpipe/runtime/ParamHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <memory>
+#include <nlohmann/json.hpp>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "gainmap_test_fixture.hpp"
@@ -31,6 +34,7 @@
 
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_color_3d_lut();
 void cpipe_link_builtin_denoise_bm3d();
 void cpipe_link_builtin_denoise_guided_filter();
 void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
@@ -252,6 +256,44 @@ void process_single_input_node(const cpipe_plugin_desc_t& desc,
     output->set_metadata(cpipe::runtime::freeze_metadata_builder(builder.get()));
 }
 
+void process_single_input_node_with_params(const cpipe_plugin_desc_t& desc,
+                                           const std::shared_ptr<CpuBuffer>& input,
+                                           const std::shared_ptr<CpuBuffer>& output,
+                                           nlohmann::json params_json) {
+    cpipe::runtime::ComputeContext compute;
+    cpipe::runtime::HostContext host_context;
+    auto params = cpipe::runtime::make_param_handle(std::move(params_json));
+    void* instance = nullptr;
+    REQUIRE(desc.main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, params.get(),
+                            nullptr, &instance) == CPIPE_OK);
+
+    auto input_handle = cpipe::runtime::make_buffer_handle(input);
+    auto output_handle = cpipe::runtime::make_buffer_handle(output);
+    auto builder =
+        cpipe::runtime::make_metadata_builder_handle(input->metadata(), {input->metadata()});
+    const cpipe_buffer_t* inputs[] = {input_handle.get()};
+    cpipe_buffer_t* outputs[] = {output_handle.get()};
+    cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
+    cpipe_process_ctx process{
+        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
+        .inference = nullptr,
+        .inputs = inputs,
+        .n_in = 1,
+        .outputs = outputs,
+        .n_out = 1,
+        .out_metadata = out_metadata,
+    };
+
+    const auto status =
+        desc.main_entry(CPIPE_ACTION_PROCESS, host_context.host(),
+                        reinterpret_cast<cpipe_node_t*>(instance), params.get(), &process, nullptr);
+    CAPTURE(desc.node_id, status);
+    REQUIRE(status == CPIPE_OK);
+    REQUIRE(desc.main_entry(CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance,
+                            nullptr) == CPIPE_OK);
+    output->set_metadata(cpipe::runtime::freeze_metadata_builder(builder.get()));
+}
+
 void process_three_input_node(const cpipe_plugin_desc_t& desc,
                               const std::array<std::shared_ptr<CpuBuffer>, 3>& inputs,
                               const std::shared_ptr<CpuBuffer>& output) {
@@ -331,6 +373,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_denoise_bm3d();
     cpipe_link_builtin_denoise_guided_filter();
     cpipe_link_builtin_denoise_wavelet_bayes_shrink();
+    cpipe_link_builtin_color_3d_lut();
     cpipe_link_builtin_sharpen_edge_aware_usm();
     cpipe_link_builtin_tone_aces_filmic();
     cpipe_link_builtin_tone_filmic_rgb();
@@ -643,6 +686,30 @@ void assert_mertens_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_rgba16(*output, normal_image.width, normal_image.height));
 }
 
+void assert_color_lut_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.color.3d_lut";
+    constexpr auto kFixture = "color.3d_lut";
+    const auto input_image = read_fixture(kFixture, "in.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = {"tone.filmic_rgb"};
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node_with_params(
+        require_node(registry, kNode), input, output,
+        nlohmann::json{{"lut_path", golden_path(kFixture, "look.cube").string()}});
+    require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
+}
+
 }  // namespace
 
 TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
@@ -705,6 +772,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("tone.reinhard") {
         assert_tone_golden(registry, "com.cpipe.tone.reinhard", "tone.reinhard");
+    }
+    SECTION("color.3d_lut") {
+        assert_color_lut_golden(registry);
     }
     SECTION("sharpen.edge_aware_usm") {
         assert_denoise_golden(registry, "com.cpipe.sharpen.edge_aware_usm",

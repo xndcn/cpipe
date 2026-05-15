@@ -281,6 +281,19 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_cube_3d_lut_loader test_cube_3d_lut_loader.cpp)
+target_link_libraries(test_cube_3d_lut_loader PRIVATE cpipe::color)
+cpipe_add_unit_test(test_node_color_3d_lut test_node_color_3d_lut.cpp)
+target_compile_definitions(test_node_color_3d_lut PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_link_libraries(
+    test_node_color_3d_lut
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+        nlohmann_json_schema_validator::validator
+)
 cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
 target_link_libraries(
     test_node_precision_convert

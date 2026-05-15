@@ -7,6 +7,7 @@ find_package(yaml-cpp CONFIG REQUIRED)
 add_library(
     cpipe-color
     STATIC
+        Cube3dLutLoader.cpp
         HeifReader.cpp
         HeifWriter.cpp
 )

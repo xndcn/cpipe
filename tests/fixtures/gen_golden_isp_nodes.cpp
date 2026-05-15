@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
+#include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -834,6 +836,132 @@ Image tone_output(const Image& input, ToneCurve curve) {
     return image;
 }
 
+constexpr int kColorLutSize = 17;
+
+std::array<float, 3> color_lut_value(float r, float g, float b) {
+    return {
+        std::clamp(0.02F + (0.65F * r) + (0.15F * g * g) + (0.08F * b), 0.0F, 1.0F),
+        std::clamp(0.05F + (0.70F * g) + (0.10F * r * b) + (0.04F * r), 0.0F, 1.0F),
+        std::clamp(0.03F + (0.75F * b) + (0.12F * r * g) + (0.03F * g), 0.0F, 1.0F),
+    };
+}
+
+std::size_t color_lut_offset(int size, int r, int g, int b) {
+    return ((static_cast<std::size_t>(r) * static_cast<std::size_t>(size) *
+             static_cast<std::size_t>(size)) +
+            (static_cast<std::size_t>(g) * static_cast<std::size_t>(size)) +
+            static_cast<std::size_t>(b)) *
+           3U;
+}
+
+std::vector<float> color_lut_values() {
+    std::vector<float> values(static_cast<std::size_t>(kColorLutSize) * kColorLutSize *
+                              kColorLutSize * 3U);
+    for (int r = 0; r < kColorLutSize; ++r) {
+        for (int g = 0; g < kColorLutSize; ++g) {
+            for (int b = 0; b < kColorLutSize; ++b) {
+                const auto rgb = color_lut_value(static_cast<float>(r) / (kColorLutSize - 1),
+                                                 static_cast<float>(g) / (kColorLutSize - 1),
+                                                 static_cast<float>(b) / (kColorLutSize - 1));
+                const auto offset = color_lut_offset(kColorLutSize, r, g, b);
+                values[offset + 0U] = rgb[0];
+                values[offset + 1U] = rgb[1];
+                values[offset + 2U] = rgb[2];
+            }
+        }
+    }
+    return values;
+}
+
+std::array<float, 3> color_lut_at(const std::vector<float>& values, int r, int g, int b) {
+    const auto offset = color_lut_offset(kColorLutSize, r, g, b);
+    return {values[offset + 0U], values[offset + 1U], values[offset + 2U]};
+}
+
+std::array<float, 3> add_lut_delta(const std::array<float, 3>& base,
+                                   const std::array<float, 3>& from, const std::array<float, 3>& to,
+                                   float weight) {
+    return {base[0] + ((to[0] - from[0]) * weight), base[1] + ((to[1] - from[1]) * weight),
+            base[2] + ((to[2] - from[2]) * weight)};
+}
+
+std::array<float, 3> color_lut_tetrahedral(const std::vector<float>& values,
+                                           const std::array<float, 3>& rgb) {
+    constexpr auto max_index = kColorLutSize - 1;
+    const auto rx = std::clamp(rgb[0], 0.0F, 1.0F) * static_cast<float>(max_index);
+    const auto gx = std::clamp(rgb[1], 0.0F, 1.0F) * static_cast<float>(max_index);
+    const auto bx = std::clamp(rgb[2], 0.0F, 1.0F) * static_cast<float>(max_index);
+    const auto r0 = std::min(static_cast<int>(std::floor(rx)), max_index - 1);
+    const auto g0 = std::min(static_cast<int>(std::floor(gx)), max_index - 1);
+    const auto b0 = std::min(static_cast<int>(std::floor(bx)), max_index - 1);
+    const auto dr = rx - static_cast<float>(r0);
+    const auto dg = gx - static_cast<float>(g0);
+    const auto db = bx - static_cast<float>(b0);
+
+    const auto c000 = color_lut_at(values, r0, g0, b0);
+    const auto c100 = color_lut_at(values, r0 + 1, g0, b0);
+    const auto c010 = color_lut_at(values, r0, g0 + 1, b0);
+    const auto c001 = color_lut_at(values, r0, g0, b0 + 1);
+    const auto c110 = color_lut_at(values, r0 + 1, g0 + 1, b0);
+    const auto c101 = color_lut_at(values, r0 + 1, g0, b0 + 1);
+    const auto c011 = color_lut_at(values, r0, g0 + 1, b0 + 1);
+    const auto c111 = color_lut_at(values, r0 + 1, g0 + 1, b0 + 1);
+
+    if (dr >= dg && dg >= db) {
+        return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c100, dr), c100, c110, dg),
+                             c110, c111, db);
+    }
+    if (dr >= db && db >= dg) {
+        return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c100, dr), c100, c101, db),
+                             c101, c111, dg);
+    }
+    if (db >= dr && dr >= dg) {
+        return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c001, db), c001, c101, dr),
+                             c101, c111, dg);
+    }
+    if (dg >= dr && dr >= db) {
+        return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c010, dg), c010, c110, dr),
+                             c110, c111, db);
+    }
+    if (dg >= db && db >= dr) {
+        return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c010, dg), c010, c011, db),
+                             c011, c111, dr);
+    }
+    return add_lut_delta(add_lut_delta(add_lut_delta(c000, c000, c001, db), c001, c011, dg), c011,
+                         c111, dr);
+}
+
+Image color_lut_input() {
+    Image image{8, 4, 4, {}};
+    image.pixels.reserve(128);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(static_cast<float>(x) / static_cast<float>(image.width - 1));
+            image.pixels.push_back(static_cast<float>(y) / static_cast<float>(image.height - 1));
+            image.pixels.push_back(static_cast<float>((x * 3 + y * 5) % 16) / 15.0F);
+            image.pixels.push_back(0.5F + (0.5F * static_cast<float>(x & 1)));
+        }
+    }
+    return image;
+}
+
+Image color_lut_output(const Image& input) {
+    const auto values = color_lut_values();
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (std::size_t i = 0; i < input.pixels.size(); i += 4U) {
+        const std::array<float, 3> rgb{half_roundtrip(input.pixels[i + 0U]),
+                                       half_roundtrip(input.pixels[i + 1U]),
+                                       half_roundtrip(input.pixels[i + 2U])};
+        const auto mapped = color_lut_tetrahedral(values, rgb);
+        image.pixels.push_back(half_roundtrip(mapped[0]));
+        image.pixels.push_back(half_roundtrip(mapped[1]));
+        image.pixels.push_back(half_roundtrip(mapped[2]));
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 3U])));
+    }
+    return image;
+}
+
 Image mertens_exposure(const Image& normal, float scale) {
     Image image{normal.width, normal.height, 4, {}};
     image.pixels.reserve(normal.pixels.size());
@@ -958,6 +1086,28 @@ bool write_pair(const std::filesystem::path& root, const std::string& node, cons
            write_image(root / node / "out.exr", output);
 }
 
+bool write_color_lut_fixture(const std::filesystem::path& root, const Image& input,
+                             const Image& output) {
+    const auto dir = root / "color.3d_lut";
+    std::filesystem::create_directories(dir);
+    std::ofstream cube{dir / "look.cube"};
+    if (!cube) {
+        std::cerr << "failed to write " << (dir / "look.cube") << '\n';
+        return false;
+    }
+    cube << std::setprecision(9);
+    cube << "TITLE \"cpipe synthetic color 3D LUT\"\n";
+    cube << "LUT_3D_SIZE " << kColorLutSize << "\n";
+    cube << "DOMAIN_MIN 0 0 0\n";
+    cube << "DOMAIN_MAX 1 1 1\n";
+    const auto values = color_lut_values();
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        cube << values[i] << ((i % 3U) == 2U ? '\n' : ' ');
+    }
+    return cube.good() && write_image(dir / "in.exr", input) &&
+           write_image(dir / "out.exr", output);
+}
+
 bool write_mertens_stack(const std::filesystem::path& root, const Image& under, const Image& normal,
                          const Image& over, const Image& output) {
     const auto dir = root / "tone.mertens_local";
@@ -987,6 +1137,7 @@ int main(int argc, char** argv) {
     const auto denoise_in = denoise_input();
     const auto sharpen_in = sharpen_input();
     const auto tone_in = tone_input();
+    const auto color_lut_in = color_lut_input();
     const auto mertens_under = mertens_exposure(tone_in, 0.25F);
     const auto mertens_normal = tone_in;
     const auto mertens_over = mertens_exposure(tone_in, 4.0F);
@@ -1013,6 +1164,7 @@ int main(int argc, char** argv) {
         write_mertens_stack(root, mertens_under, mertens_normal, mertens_over,
                             mertens_output(mertens_under, mertens_normal, mertens_over)) &&
         write_pair(root, "tone.reinhard", tone_in, tone_output(tone_in, reinhard)) &&
+        write_color_lut_fixture(root, color_lut_in, color_lut_output(color_lut_in)) &&
         write_pair(root, "sharpen.edge_aware_usm", sharpen_in, sharpen_output(sharpen_in));
     return ok ? 0 : 1;
 }

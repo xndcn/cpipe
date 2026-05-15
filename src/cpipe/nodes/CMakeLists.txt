@@ -13,6 +13,7 @@ add_halide_generator(
         denoise/bm3d_step2_generator.cpp
         denoise/guided_filter_generator.cpp
         denoise/wavelet_bayes_shrink_generator.cpp
+        color/lut3d_generator.cpp
         precision/precision_convert_generator.cpp
         sharpen/edge_aware_usm_generator.cpp
         tone/aces_filmic_generator.cpp
@@ -118,6 +119,17 @@ cpipe_add_halide_library(
         denoise_wavelet_bayes_shrink
     FUNCTION_NAME
         denoise_wavelet_bayes_shrink
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    color_3d_lut
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        color_3d_lut
+    FUNCTION_NAME
+        color_3d_lut
     TARGETS
         x86-64-linux
 )
@@ -415,6 +427,18 @@ add_custom_command(
     DEPENDS sharpen/edge_aware_usm.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(color_3d_lut_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/color_3d_lut_manifest.cpp")
+add_custom_command(
+    OUTPUT "${color_3d_lut_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/color/lut3d.json"
+        -DOUTPUT_CPP="${color_3d_lut_manifest_cpp}"
+        -DSYMBOL_NAME=COLOR_3D_LUT_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS color/lut3d.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(tone_aces_filmic_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_aces_filmic_manifest.cpp")
 add_custom_command(
     OUTPUT "${tone_aces_filmic_manifest_cpp}"
@@ -545,6 +569,8 @@ add_library(
         denoise/guided_filter_dispatch.cpp
         denoise/wavelet_bayes_shrink.cpp
         denoise/wavelet_bayes_shrink_dispatch.cpp
+        color/lut3d.cpp
+        color/lut3d_dispatch.cpp
         sharpen/edge_aware_usm.cpp
         sharpen/edge_aware_usm_dispatch.cpp
         tone/aces_filmic.cpp
@@ -576,6 +602,7 @@ add_library(
         "${denoise_bm3d_manifest_cpp}"
         "${denoise_guided_filter_manifest_cpp}"
         "${denoise_wavelet_bayes_shrink_manifest_cpp}"
+        "${color_3d_lut_manifest_cpp}"
         "${sharpen_edge_aware_usm_manifest_cpp}"
         "${tone_aces_filmic_manifest_cpp}"
         "${tone_filmic_rgb_manifest_cpp}"
@@ -611,6 +638,7 @@ target_link_libraries(
         denoise_bm3d_step2
         denoise_guided_filter
         denoise_wavelet_bayes_shrink
+        color_3d_lut
         sharpen_edge_aware_usm
         tone_aces_filmic
         tone_filmic_rgb

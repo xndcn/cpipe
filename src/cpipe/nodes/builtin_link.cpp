@@ -15,6 +15,7 @@ void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_denoise_bm3d();
 void cpipe_link_builtin_denoise_guided_filter();
 void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
+void cpipe_link_builtin_color_3d_lut();
 void cpipe_link_builtin_sharpen_edge_aware_usm();
 void cpipe_link_builtin_tone_aces_filmic();
 void cpipe_link_builtin_tone_filmic_rgb();
@@ -40,6 +41,7 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_denoise_bm3d();
     cpipe_link_builtin_denoise_guided_filter();
     cpipe_link_builtin_denoise_wavelet_bayes_shrink();
+    cpipe_link_builtin_color_3d_lut();
     cpipe_link_builtin_sharpen_edge_aware_usm();
     cpipe_link_builtin_tone_aces_filmic();
     cpipe_link_builtin_tone_filmic_rgb();
