@@ -145,7 +145,7 @@ TEST_CASE("Host exposes metadata ABI suites") {
     cpipe::runtime::HostContext host_context;
     auto* host = host_context.host();
 
-    REQUIRE(host->abi_minor == 2);
+    REQUIRE(host->abi_minor == 3);
     REQUIRE(host->get_suite(host, "metadata", 1) != nullptr);
     REQUIRE(host->get_suite(host, "metadata_builder", 1) != nullptr);
 }

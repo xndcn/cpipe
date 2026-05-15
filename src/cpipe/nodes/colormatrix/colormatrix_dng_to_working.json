@@ -39,10 +39,11 @@
   "params": [],
   "compute": {
     "device": "CPU",
-    "engine": "Host",
+    "engine": "Halide",
     "in_pixel_bytes": 8,
     "out_pixel_bytes": 8,
-    "scratch_pixel_bytes": 0
+    "scratch_pixel_bytes": 0,
+    "halide_aot": ["colormatrix_dng_to_working"]
   },
   "color": {
     "input_role": "raw_camera",

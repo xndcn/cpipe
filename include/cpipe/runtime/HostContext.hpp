@@ -7,12 +7,15 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <memory>
+#include <vector>
 
 namespace cpipe::runtime {
 
 class HostContext {
 public:
     HostContext();
+    ~HostContext();
 
     [[nodiscard]] cpipe_host_t* host() noexcept;
 
@@ -80,6 +83,12 @@ private:
     static int submit_halide(cpipe_compute_t* compute, const char* aot_id,
                              const cpipe_buffer_t* const* inputs, std::size_t n_in,
                              cpipe_buffer_t* const* outputs, std::size_t n_out);
+    static int submit_halide_with_params(cpipe_compute_t* compute, const char* aot_id,
+                                         const cpipe_buffer_t* const* inputs, std::size_t n_in,
+                                         cpipe_buffer_t* const* outputs, std::size_t n_out,
+                                         const void* param_blob, std::size_t param_blob_size);
+    static int submit_ocio_processor(cpipe_compute_t*, cpipe_ocio_processor_t* processor,
+                                     const cpipe_buffer_t* input, cpipe_buffer_t* output);
     static int submit_slang(cpipe_compute_t*, const char*, const char*,
                             const cpipe_buffer_t* const*, std::size_t, cpipe_buffer_t* const*,
                             std::size_t, const void*, std::size_t);
@@ -87,6 +96,8 @@ private:
     static void record_marker(cpipe_compute_t*, const char*);
     static int submit_inference(cpipe_inference_t*, const char*, const cpipe_buffer_t* const*,
                                 std::size_t, cpipe_buffer_t* const*, std::size_t);
+    static cpipe_ocio_processor_t* get_ocio_processor(cpipe_host_t* self, const char* config_path,
+                                                      const char* src_cs, const char* dst_cs);
 
     cpipe_host_t host_{};
     cpipe_buffer_suite_v1 buffer_suite_{};
@@ -95,6 +106,7 @@ private:
     cpipe_compute_suite_v1 compute_suite_{};
     cpipe_param_suite_v1 param_suite_{};
     cpipe_inference_suite_v1 inference_suite_{};
+    std::vector<std::unique_ptr<cpipe_ocio_processor_t>> ocio_processors_;
 };
 
 }  // namespace cpipe::runtime

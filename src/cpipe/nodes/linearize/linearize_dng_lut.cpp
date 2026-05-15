@@ -5,8 +5,13 @@
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <span>
+#include <vector>
+
+#include "../detail/P1ParamDispatch.hpp"
 
 namespace cpipe::nodes {
 
@@ -17,8 +22,9 @@ public:
 
     /// Applies the DNG raw-domain linearization stage described with black/white
     /// normalization in docs/research/07-classic-isp-algorithms.md §3.9.
-    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*, const sdk::ParamView&,
-                              std::span<const sdk::Buffer*> inputs, std::span<sdk::Buffer*> outputs,
+    sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
+                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
             outputs[0] == nullptr || out_metadata.empty() || out_metadata[0] == nullptr) {
@@ -56,29 +62,18 @@ public:
                 sdk::Error{CPIPE_NEED_METADATA, "linearize missing LinearizationTable"});
         }
 
-        const auto input_lock = inputs[0]->lock_cpu(sdk::CpuAccess::Read);
-        if (!input_lock) {
-            return tl::unexpected(input_lock.error());
+        const detail::LinearizeParamsHeader header{
+            static_cast<std::uint32_t>(calibration->linearization_table.size())};
+        std::vector<std::byte> param_blob{
+            sizeof(header) + (calibration->linearization_table.size() * sizeof(std::uint16_t))};
+        std::memcpy(param_blob.data(), &header, sizeof(header));
+        std::memcpy(param_blob.data() + sizeof(header), calibration->linearization_table.data(),
+                    calibration->linearization_table.size() * sizeof(std::uint16_t));
+        const auto submitted =
+            compute.submit_halide_with_params("linearize_dng_lut", inputs, outputs, param_blob);
+        if (!submitted) {
+            return tl::unexpected(submitted.error());
         }
-        const auto output_lock = outputs[0]->lock_cpu(sdk::CpuAccess::Write);
-        if (!output_lock) {
-            (void)inputs[0]->unlock_cpu();
-            return tl::unexpected(output_lock.error());
-        }
-
-        const auto* in = static_cast<const std::uint16_t*>(*input_lock);
-        auto* out = static_cast<float*>(*output_lock);
-        const auto pixel_count =
-            static_cast<std::size_t>((*dims)[0]) * static_cast<std::size_t>((*dims)[1]);
-        const auto last = calibration->linearization_table.size() - 1U;
-        for (std::size_t i = 0; i < pixel_count; ++i) {
-            const auto index = std::min<std::size_t>(in[i], last);
-            out[i] = static_cast<float>(calibration->linearization_table[index]);
-        }
-
-        (void)outputs[0]->unlock_cpu();
-        (void)outputs[0]->flush_cpu_writes();
-        (void)inputs[0]->unlock_cpu();
 
         return out_metadata[0]->add_applied_step("linearization");
     }
@@ -90,4 +85,8 @@ extern const char LINEARIZE_DNG_LUT_MANIFEST_JSON[];
 
 CPIPE_REGISTER_NODE(cpipe::nodes::LinearizeDngLut, LINEARIZE_DNG_LUT_MANIFEST_JSON)
 
-void cpipe_link_builtin_linearize_dng_lut() {}
+void cpipe_link_builtin_linearize_dng_lut_halide();
+
+void cpipe_link_builtin_linearize_dng_lut() {
+    cpipe_link_builtin_linearize_dng_lut_halide();
+}

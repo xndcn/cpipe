@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <span>
 
+#include "../detail/P1ParamDispatch.hpp"
+
 namespace cpipe::nodes {
 
 class BlacklevelDngLevels final : public sdk::Node {
@@ -17,8 +19,9 @@ public:
 
     /// Performs the DNG black/white linear scale from
     /// docs/research/07-classic-isp-algorithms.md §3.9.
-    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*, const sdk::ParamView&,
-                              std::span<const sdk::Buffer*> inputs, std::span<sdk::Buffer*> outputs,
+    sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
+                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
             outputs[0] == nullptr || out_metadata.empty() || out_metadata[0] == nullptr) {
@@ -56,41 +59,17 @@ public:
             return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "blacklevel missing DNG levels"});
         }
 
-        const auto input_lock = inputs[0]->lock_cpu(sdk::CpuAccess::Read);
-        if (!input_lock) {
-            return tl::unexpected(input_lock.error());
+        detail::BlacklevelParams params{};
+        std::copy(std::begin(calibration->black_level), std::end(calibration->black_level),
+                  std::begin(params.black_level));
+        params.white_level = calibration->white_level;
+        std::copy_n(calibration->cfa_pattern.begin(), 4U, params.cfa_pattern);
+        const auto param_blob = std::as_bytes(std::span{&params, 1});
+        const auto submitted =
+            compute.submit_halide_with_params("blacklevel_dng_levels", inputs, outputs, param_blob);
+        if (!submitted) {
+            return tl::unexpected(submitted.error());
         }
-        const auto output_lock = outputs[0]->lock_cpu(sdk::CpuAccess::Write);
-        if (!output_lock) {
-            (void)inputs[0]->unlock_cpu();
-            return tl::unexpected(output_lock.error());
-        }
-
-        const auto* in = static_cast<const float*>(*input_lock);
-        auto* out = static_cast<float*>(*output_lock);
-        const auto width = (*dims)[0];
-        const auto height = (*dims)[1];
-        for (std::uint32_t y = 0; y < height; ++y) {
-            for (std::uint32_t x = 0; x < width; ++x) {
-                const auto cfa_index = ((y & 1U) * 2U) + (x & 1U);
-                const auto channel =
-                    std::min<std::uint8_t>(calibration->cfa_pattern[cfa_index], 3U);
-                const auto black = calibration->black_level[channel];
-                const auto denominator = static_cast<float>(calibration->white_level) - black;
-                if (denominator <= 0.0F) {
-                    (void)outputs[0]->unlock_cpu();
-                    (void)inputs[0]->unlock_cpu();
-                    return tl::unexpected(
-                        sdk::Error{CPIPE_NEED_METADATA, "blacklevel invalid DNG levels"});
-                }
-                const auto offset = static_cast<std::size_t>(y) * width + x;
-                out[offset] = std::clamp((in[offset] - black) / denominator, 0.0F, 1.0F);
-            }
-        }
-
-        (void)outputs[0]->unlock_cpu();
-        (void)outputs[0]->flush_cpu_writes();
-        (void)inputs[0]->unlock_cpu();
 
         return out_metadata[0]->add_applied_step("black_white_scaling");
     }
@@ -102,4 +81,8 @@ extern const char BLACKLEVEL_DNG_LEVELS_MANIFEST_JSON[];
 
 CPIPE_REGISTER_NODE(cpipe::nodes::BlacklevelDngLevels, BLACKLEVEL_DNG_LEVELS_MANIFEST_JSON)
 
-void cpipe_link_builtin_blacklevel_dng_levels() {}
+void cpipe_link_builtin_blacklevel_dng_levels_halide();
+
+void cpipe_link_builtin_blacklevel_dng_levels() {
+    cpipe_link_builtin_blacklevel_dng_levels_halide();
+}

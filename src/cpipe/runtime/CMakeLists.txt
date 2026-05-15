@@ -3,9 +3,11 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 find_package(libraw CONFIG REQUIRED)
+find_package(OpenColorIO CONFIG REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
 find_package(VulkanLoader CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
+find_package(yaml-cpp CONFIG REQUIRED)
 if(CPIPE_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
 endif()
@@ -70,8 +72,10 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
         libraw::raw_r
+        OpenColorIO::OpenColorIO
         Taskflow::Taskflow
         Vulkan::Loader
+        yaml-cpp::yaml-cpp
         spdlog::spdlog
 )
 

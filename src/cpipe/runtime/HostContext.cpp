@@ -1,7 +1,12 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <OpenColorIO/OpenColorIO.h>
+
 #include <algorithm>
+#include <array>
+#include <cmath>
+#include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/runtime/BufferHandle.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
@@ -11,9 +16,71 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <span>
 #include <string_view>
 #include <utility>
 #include <vector>
+
+namespace OCIO = OCIO_NAMESPACE;
+
+struct cpipe_ocio_processor_s {
+    OCIO::ConstCPUProcessorRcPtr cpu_processor;
+};
+
+namespace {
+
+std::uint32_t half_to_bits(std::uint16_t bits) {
+    const auto sign = static_cast<std::uint32_t>(bits & 0x8000U) << 16U;
+    auto exponent = static_cast<std::uint32_t>((bits >> 10U) & 0x1fU);
+    auto mantissa = static_cast<std::uint32_t>(bits & 0x03ffU);
+    if (exponent == 0) {
+        if (mantissa == 0) {
+            return sign;
+        }
+        exponent = 1;
+        while ((mantissa & 0x0400U) == 0U) {
+            mantissa <<= 1U;
+            --exponent;
+        }
+        mantissa &= 0x03ffU;
+        return sign | ((exponent + 112U) << 23U) | (mantissa << 13U);
+    }
+    if (exponent == 31U) {
+        return sign | 0x7f800000U | (mantissa << 13U);
+    }
+    return sign | ((exponent + 112U) << 23U) | (mantissa << 13U);
+}
+
+float half_to_float(std::uint16_t bits) {
+    const auto out = half_to_bits(bits);
+    float value = 0.0F;
+    std::memcpy(&value, &out, sizeof(value));
+    return value;
+}
+
+std::uint16_t float_to_half(float value) {
+    std::uint32_t bits = 0;
+    std::memcpy(&bits, &value, sizeof(bits));
+    const auto sign = static_cast<std::uint16_t>((bits >> 16U) & 0x8000U);
+    auto exponent = static_cast<int>((bits >> 23U) & 0xffU) - 127 + 15;
+    auto mantissa = bits & 0x7fffffU;
+    if (exponent <= 0) {
+        if (exponent < -10) {
+            return sign;
+        }
+        mantissa |= 0x800000U;
+        const auto shifted = mantissa >> static_cast<unsigned>(1 - exponent + 13);
+        return static_cast<std::uint16_t>(sign | shifted);
+    }
+    if (exponent >= 31) {
+        return static_cast<std::uint16_t>(sign | 0x7c00U);
+    }
+    return static_cast<std::uint16_t>(static_cast<std::uint32_t>(sign) |
+                                      (static_cast<std::uint32_t>(exponent) << 10U) |
+                                      (mantissa >> 13U));
+}
+
+}  // namespace
 
 namespace cpipe::runtime {
 
@@ -55,6 +122,8 @@ HostContext::HostContext() {
     compute_suite_.submit_slang = &HostContext::submit_slang;
     compute_suite_.request_scratch = &HostContext::request_scratch;
     compute_suite_.record_marker = &HostContext::record_marker;
+    compute_suite_.submit_halide_with_params = &HostContext::submit_halide_with_params;
+    compute_suite_.submit_ocio_processor = &HostContext::submit_ocio_processor;
 
     param_suite_.get_double = &HostContext::get_param_double;
     param_suite_.get_int = &HostContext::get_param_int;
@@ -71,7 +140,10 @@ HostContext::HostContext() {
     host_.log = &HostContext::log;
     host_.alloc = &HostContext::alloc;
     host_.free = &HostContext::free;
+    host_.get_ocio_processor = &HostContext::get_ocio_processor;
 }
+
+HostContext::~HostContext() = default;
 
 cpipe_host_t* HostContext::host() noexcept {
     return &host_;
@@ -734,6 +806,92 @@ int HostContext::submit_halide(cpipe_compute_t* compute_handle, const char* aot_
     return context->submit_halide(std::string_view{aot_id}, input_buffers, output_buffers);
 }
 
+int HostContext::submit_halide_with_params(cpipe_compute_t* compute_handle, const char* aot_id,
+                                           const cpipe_buffer_t* const* inputs, std::size_t n_in,
+                                           cpipe_buffer_t* const* outputs, std::size_t n_out,
+                                           const void* param_blob, std::size_t param_blob_size) {
+    if (compute_handle == nullptr || aot_id == nullptr ||
+        (param_blob == nullptr && param_blob_size != 0)) {
+        return CPIPE_BAD_INDEX;
+    }
+
+    std::vector<std::shared_ptr<compute::IBuffer>> input_buffers;
+    input_buffers.reserve(n_in);
+    for (std::size_t i = 0; i < n_in; ++i) {
+        input_buffers.push_back(buffer_from_handle(inputs[i]));
+    }
+
+    std::vector<std::shared_ptr<compute::IBuffer>> output_buffers;
+    output_buffers.reserve(n_out);
+    for (std::size_t i = 0; i < n_out; ++i) {
+        output_buffers.push_back(buffer_from_handle(outputs[i]));
+    }
+
+    const auto* bytes = static_cast<const std::byte*>(param_blob);
+    const auto params = bytes == nullptr ? std::span<const std::byte>{}
+                                         : std::span<const std::byte>{bytes, param_blob_size};
+    auto* context = reinterpret_cast<ComputeContext*>(compute_handle);
+    return context->submit_halide_with_params(std::string_view{aot_id}, input_buffers,
+                                              output_buffers, params);
+}
+
+int HostContext::submit_ocio_processor(cpipe_compute_t*, cpipe_ocio_processor_t* processor,
+                                       const cpipe_buffer_t* input_handle,
+                                       cpipe_buffer_t* output_handle) {
+    if (processor == nullptr || processor->cpu_processor == nullptr || input_handle == nullptr ||
+        output_handle == nullptr) {
+        return CPIPE_BAD_INDEX;
+    }
+    auto input = buffer_from_handle(input_handle);
+    auto output = buffer_from_handle(output_handle);
+    if (input == nullptr || output == nullptr) {
+        return CPIPE_BAD_INDEX;
+    }
+    const auto& layout = input->layout();
+    if (layout.kind != compute::BufferKind::Image2D || layout.ndim != 2 ||
+        output->layout().dims[0] != layout.dims[0] || output->layout().dims[1] != layout.dims[1] ||
+        output->layout().format != layout.format) {
+        return CPIPE_BAD_INDEX;
+    }
+
+    const auto pixel_count =
+        static_cast<std::size_t>(layout.dims[0]) * static_cast<std::size_t>(layout.dims[1]);
+    if (layout.format == compute::PixelFormat::R32G32B32A32_SFLOAT) {
+        const auto* in =
+            static_cast<const float*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
+        auto* out = static_cast<float*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
+        std::copy_n(in, pixel_count * 4U, out);
+        OCIO::PackedImageDesc desc{out, static_cast<long>(layout.dims[0]),
+                                   static_cast<long>(layout.dims[1]), 4};
+        processor->cpu_processor->apply(desc);
+        output->unlock_cpu();
+        output->flush_cpu_writes();
+        input->unlock_cpu();
+        return CPIPE_OK;
+    }
+    if (layout.format == compute::PixelFormat::R16G16B16A16_SFLOAT) {
+        const auto* in =
+            static_cast<const std::uint16_t*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
+        auto* out =
+            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
+        std::vector<float> rgba(pixel_count * 4U);
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            rgba[i] = half_to_float(in[i]);
+        }
+        OCIO::PackedImageDesc desc{rgba.data(), static_cast<long>(layout.dims[0]),
+                                   static_cast<long>(layout.dims[1]), 4};
+        processor->cpu_processor->apply(desc);
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_half(rgba[i]);
+        }
+        output->unlock_cpu();
+        output->flush_cpu_writes();
+        input->unlock_cpu();
+        return CPIPE_OK;
+    }
+    return CPIPE_BAD_PRECISION;
+}
+
 int HostContext::submit_slang(cpipe_compute_t*, const char*, const char*,
                               const cpipe_buffer_t* const*, std::size_t, cpipe_buffer_t* const*,
                               std::size_t, const void*, std::size_t) {
@@ -749,6 +907,27 @@ void HostContext::record_marker(cpipe_compute_t*, const char*) {}
 int HostContext::submit_inference(cpipe_inference_t*, const char*, const cpipe_buffer_t* const*,
                                   std::size_t, cpipe_buffer_t* const*, std::size_t) {
     return CPIPE_UNSUPPORTED;
+}
+
+cpipe_ocio_processor_t* HostContext::get_ocio_processor(cpipe_host_t* self, const char* config_path,
+                                                        const char* src_cs, const char* dst_cs) {
+    if (self == nullptr || config_path == nullptr || src_cs == nullptr || dst_cs == nullptr) {
+        return nullptr;
+    }
+    try {
+        auto* context = reinterpret_cast<HostContext*>(reinterpret_cast<char*>(self) -
+                                                       offsetof(HostContext, host_));
+        const auto config = OCIO::Config::CreateFromFile(config_path);
+        const auto processor = config->getProcessor(src_cs, dst_cs)->getDefaultCPUProcessor();
+        auto handle = std::make_unique<cpipe_ocio_processor_t>();
+        handle->cpu_processor = processor;
+        auto* out = handle.get();
+        context->ocio_processors_.push_back(std::move(handle));
+        return out;
+    } catch (const std::exception& e) {
+        log(self, 3, e.what());
+        return nullptr;
+    }
 }
 
 }  // namespace cpipe::runtime
