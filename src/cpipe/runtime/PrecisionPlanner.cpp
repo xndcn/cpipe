@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cpipe/runtime/PrecisionPlanner.hpp>
+#include <cpipe/runtime/Trace.hpp>
 #include <nlohmann/json.hpp>
 #include <optional>
 #include <utility>
@@ -130,6 +131,8 @@ cpipe_status_t PrecisionPlanner::auto_insert(std::span<const PrecisionGraphNode>
                                              std::span<const PrecisionGraphEdge> edges,
                                              const cpipe_plugin_desc_t* precision_convert,
                                              PrecisionPlan* out, std::string* error) {
+    CPIPE_TRACE_SCOPE("PrecisionPlanner::auto_insert");
+
     if (out == nullptr) {
         set_error(error, "precision plan output pointer is null");
         return CPIPE_BAD_INDEX;

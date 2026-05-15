@@ -8,6 +8,7 @@
 #include <cpipe/sdk/sdk.hpp>
 #include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <span>
 #include <string_view>
 #include <vector>
@@ -43,6 +44,32 @@ sdk::Result<void> checked_rgba16_pair(const sdk::Buffer& input, const sdk::Buffe
         return tl::unexpected(sdk::Error{CPIPE_BAD_INDEX, "OpcodeList3 needs Image2D input"});
     }
     return {};
+}
+
+sdk::Result<void> copy_rgba16_image(const sdk::Buffer& input, const sdk::Buffer& output) {
+    const auto dims = input.dims();
+    if (!dims) {
+        return tl::unexpected(dims.error());
+    }
+    const auto input_lock = input.lock_cpu(sdk::CpuAccess::Read);
+    if (!input_lock) {
+        return tl::unexpected(input_lock.error());
+    }
+    const auto output_lock = output.lock_cpu(sdk::CpuAccess::Write);
+    if (!output_lock) {
+        (void)input.unlock_cpu();
+        return tl::unexpected(output_lock.error());
+    }
+
+    const auto byte_count = static_cast<std::size_t>((*dims)[0]) *
+                            static_cast<std::size_t>((*dims)[1]) * 4U * sizeof(std::uint16_t);
+    std::memcpy(*output_lock, *input_lock, byte_count);
+    (void)input.unlock_cpu();
+    auto unlock_status = output.unlock_cpu();
+    if (!unlock_status) {
+        return unlock_status;
+    }
+    return output.flush_cpu_writes();
 }
 
 void pack_warp(const ingest::dng_opcode::OpcodeList3::WarpRectilinear& warp,
@@ -168,11 +195,20 @@ public:
         }
         const auto opcode_list_3 = metadata->blob(kOpcodeList3BlobKey);
         if (!opcode_list_3) {
-            return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "OpcodeList3 blob missing"});
+            if (auto copied = copy_rgba16_image(*inputs[0], *outputs[0]); !copied) {
+                return copied;
+            }
+            return out_metadata[0]->add_applied_step("opcode_list_3");
         }
         auto parsed = ingest::dng_opcode::OpcodeList3::parse(*opcode_list_3);
         if (parsed.status != CPIPE_OK) {
             return tl::unexpected(sdk::Error{parsed.status, parsed.message});
+        }
+        if (parsed.opcodes.empty()) {
+            if (auto copied = copy_rgba16_image(*inputs[0], *outputs[0]); !copied) {
+                return copied;
+            }
+            return out_metadata[0]->add_applied_step("opcode_list_3");
         }
 
         const auto param_blob = pack_opcode_list_3(parsed.opcodes);

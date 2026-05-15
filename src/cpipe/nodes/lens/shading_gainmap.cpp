@@ -47,6 +47,32 @@ sdk::Result<void> checked_r32_pair(const sdk::Buffer& input, const sdk::Buffer& 
     return {};
 }
 
+sdk::Result<void> copy_r32_image(const sdk::Buffer& input, const sdk::Buffer& output) {
+    const auto dims = input.dims();
+    if (!dims) {
+        return tl::unexpected(dims.error());
+    }
+    const auto input_lock = input.lock_cpu(sdk::CpuAccess::Read);
+    if (!input_lock) {
+        return tl::unexpected(input_lock.error());
+    }
+    const auto output_lock = output.lock_cpu(sdk::CpuAccess::Write);
+    if (!output_lock) {
+        (void)input.unlock_cpu();
+        return tl::unexpected(output_lock.error());
+    }
+
+    const auto byte_count =
+        static_cast<std::size_t>((*dims)[0]) * static_cast<std::size_t>((*dims)[1]) * sizeof(float);
+    std::memcpy(*output_lock, *input_lock, byte_count);
+    (void)input.unlock_cpu();
+    auto unlock_status = output.unlock_cpu();
+    if (!unlock_status) {
+        return unlock_status;
+    }
+    return output.flush_cpu_writes();
+}
+
 sdk::Result<void> validate_gain_maps(const std::vector<ingest::dng_opcode::GainMap>& gain_maps) {
     if (gain_maps.empty()) {
         return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "GainMap opcode missing"});
@@ -145,11 +171,20 @@ public:
         }
         const auto opcode_list_2 = metadata->blob(kOpcodeList2BlobKey);
         if (!opcode_list_2) {
-            return tl::unexpected(sdk::Error{CPIPE_NEED_METADATA, "OpcodeList2 blob missing"});
+            if (auto copied = copy_r32_image(*inputs[0], *outputs[0]); !copied) {
+                return copied;
+            }
+            return out_metadata[0]->add_applied_step("lens_shading_gainmap");
         }
         auto parsed = ingest::dng_opcode::OpcodeList2::parse_gain_maps(*opcode_list_2);
         if (parsed.status != CPIPE_OK) {
             return tl::unexpected(sdk::Error{parsed.status, parsed.message});
+        }
+        if (parsed.gain_maps.empty()) {
+            if (auto copied = copy_r32_image(*inputs[0], *outputs[0]); !copied) {
+                return copied;
+            }
+            return out_metadata[0]->add_applied_step("lens_shading_gainmap");
         }
         if (auto valid = validate_gain_maps(parsed.gain_maps); !valid) {
             return valid;

@@ -340,6 +340,17 @@ bool contains_step(const std::vector<std::string>& steps, const std::string& ste
     return std::find(steps.begin(), steps.end(), step) != steps.end();
 }
 
+void append_unique_steps(std::vector<std::string>* out, const std::vector<std::string>& steps) {
+    if (out == nullptr) {
+        return;
+    }
+    for (const auto& step : steps) {
+        if (!contains_step(*out, step)) {
+            out->push_back(step);
+        }
+    }
+}
+
 bool color_roles_compatible(const std::string& produced, const std::string& required) {
     return produced.empty() || required.empty() || produced == "any" || required == "any" ||
            produced == required;
@@ -437,11 +448,14 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     }
 
     std::vector<NodeInstance> sorted;
+    std::vector<std::size_t> sorted_indices;
     sorted.reserve(nodes.size());
+    sorted_indices.reserve(nodes.size());
     while (!ready.empty()) {
         const auto current = ready.front();
         ready.pop();
         sorted.push_back(nodes[current]);
+        sorted_indices.push_back(current);
         for (const auto next : adjacency[current]) {
             --indegree[next];
             if (indegree[next] == 0) {
@@ -455,13 +469,27 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         return CPIPE_FAILED;
     }
 
+    std::vector<std::vector<std::string>> cumulative_steps(nodes.size());
+    for (const auto index : sorted_indices) {
+        for (const auto& edge : graph_edges) {
+            if (edge.to == index) {
+                append_unique_steps(&cumulative_steps[index], cumulative_steps[edge.from]);
+            }
+        }
+        for (const auto& edge : graph_edges) {
+            if (edge.from == index) {
+                append_unique_steps(&cumulative_steps[index],
+                                    manifest_metadata_steps(nodes[index].descriptor, "out",
+                                                            edge.from_port, "sets_steps_applied"));
+            }
+        }
+    }
+
     for (const auto& edge : graph_edges) {
-        const auto produced = manifest_metadata_steps(nodes[edge.from].descriptor, "out",
-                                                      edge.from_port, "sets_steps_applied");
         const auto required = manifest_metadata_steps(nodes[edge.to].descriptor, "in", edge.to_port,
                                                       "requires_steps_applied");
         for (const auto& step : required) {
-            if (!contains_step(produced, step)) {
+            if (!contains_step(cumulative_steps[edge.from], step)) {
                 set_error(error,
                           "metadata step required by pipeline edge is not produced: " + step);
                 return CPIPE_NEED_METADATA;

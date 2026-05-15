@@ -44,8 +44,8 @@
     "scratch_pixel_bytes": 8
   },
   "color": {
-    "input_role": "scene_linear_rec2020",
-    "output_role": "scene_linear_rec2020",
+    "input_role": "raw_camera",
+    "output_role": "raw_camera",
     "respects_chromaticity": true
   }
 }

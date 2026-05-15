@@ -144,7 +144,7 @@ Each subsequent section follows the same template:
 
 ## 5. Phase 2 — Classic Nodes + HDR (tag `v0.3`)
 
-**Status.** In flight; detailed plan is in [`phase-02-classic-nodes-hdr.md`](phase-02-classic-nodes-hdr.md). Compute suite tail-extension (`submit_halide_with_params` + `submit_ocio_processor`), cpipe-owned Vulkan dispatch (retires [P1-PD-71](phase-01-walking-skeleton.md#4-phase-decisions-pd-n)), interference-graph memory planner, auto-insert precision planner, and the full 18-classic-node + Quad Bayer remosaic + HDR (PQ) HEIF + OCIO Looks v0.2 surface land across 21 T-tasks in three checkpoints; Architecture §17 Q6 (Quad Bayer GainMap multi-plane) resolves in P2.
+**Status.** Shipped in the `v0.3` release; detailed evidence is in [`phase-02-classic-nodes-hdr.md`](phase-02-classic-nodes-hdr.md). Compute suite tail-extension (`submit_halide_with_params` + `submit_ocio_processor`), cpipe-owned Vulkan dispatch (retires [P1-PD-71](phase-01-walking-skeleton.md#4-phase-decisions-pd-n)), interference-graph memory planner, auto-insert precision planner, and the full classic-node + Quad Bayer remosaic + HDR (PQ) HEIF + OCIO Looks v0.2 surface landed across 21 T-tasks. Architecture §17 Q6 (Quad Bayer GainMap multi-plane) is resolved in P2.
 
 **Objective.** All 18 classic nodes from [Research 07](research/07-classic-isp-algorithms.md) ship; SDR + HDR (PQ) HEIF output is fully wired; OCIO Looks menu is operational; Quad Bayer remosaic path lands.
 
@@ -155,7 +155,7 @@ Each subsequent section follows the same template:
 - **Tone mapping**: `tone.filmic_rgb` (primary global), `tone.mertens_local` (Laplacian exposure-fusion local tone), `tone.aces_filmic` (ICC-friendly alternate), `tone.reinhard` (debug fallback).
 - **Denoise**: `denoise.bm3d` (re-implemented from primary paper — primary high-quality), `denoise.guided_filter` (fast preview), `denoise.wavelet_bayes_shrink` (chroma).
 - **Sharpen**: `sharpen.edge_aware_usm` (guided-filter-based USM).
-- **Lens correction**: `lens.dng_opcode_list_3` (full OpcodeList3 dispatcher: GainMap, WarpRectilinear, FixVignetteRadial, FixBadPixelsConstant, FixBadPixelsList, TrimBounds).
+- **Lens correction**: `lens.shading_gainmap` (OpcodeList2 GainMap) + `lens.dng_opcode_list_3` (WarpRectilinear, FixVignetteRadial, FixBadPixelsConstant, FixBadPixelsList, TrimBounds).
 - **Color**: `color.3d_lut` (3D-LUT applier; works with OCIO Looks).
 - **Multi-frame fusion (single-input variant only in P2)**: `fusion.hdr_plus_derivative` placeholder (architecture present; full burst processing waits for P4 multi-frame `BatchedBuffer`).
 - **Quad Bayer**: `demosaic.quad_bayer_remosaic` (4×4 → 2×2 Bayer remosaic-then-RCD path).
@@ -379,7 +379,7 @@ v1.1 = **Android + remaining HDR + remaining editor-connectivity tiers** (RD-27)
 - **Multi-camera burst** ([Q13](research/00-summary.md#9-consolidated-open-questions)) — decide entering v1.1.
 - **Adobe DCP profile writer** ([Q4](research/00-summary.md#9-consolidated-open-questions)) — decide entering v1.1.
 
-Open questions to resolve **before** entering v1.1 (per [Research 00 §9](research/00-summary.md#9-consolidated-open-questions)): Q2 (Qualcomm Vulkan-HTP interop), Q3 (HTP context-binary cache invalidation), Q6 (Quad Bayer GainMap multi-plane), Q9 (Apple Adaptive HDR validation strategy), Q13 (multi-camera burst v1 vs v2).
+Open questions to resolve **before** entering v1.1 (per [Research 00 §9](research/00-summary.md#9-consolidated-open-questions)): Q2 (Qualcomm Vulkan-HTP interop), Q3 (HTP context-binary cache invalidation), Q9 (Apple Adaptive HDR validation strategy), Q13 (multi-camera burst v1 vs v2).
 
 ---
 

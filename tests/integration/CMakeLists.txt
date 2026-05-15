@@ -52,3 +52,61 @@ target_link_libraries(
 )
 add_test(NAME test_min_pipeline_dng_to_heif COMMAND test_min_pipeline_dng_to_heif)
 set_tests_properties(test_min_pipeline_dng_to_heif PROPERTIES LABELS integration)
+
+add_executable(
+    test_full_classic_pipeline_dng_to_heif_sdr
+    test_full_classic_pipeline_dng_to_heif_sdr.cpp
+)
+add_dependencies(test_full_classic_pipeline_dng_to_heif_sdr cpipe)
+cpipe_target_warning_flags(test_full_classic_pipeline_dng_to_heif_sdr)
+target_compile_definitions(
+    test_full_classic_pipeline_dng_to_heif_sdr
+    PRIVATE
+        CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>"
+)
+target_link_libraries(
+    test_full_classic_pipeline_dng_to_heif_sdr
+    PRIVATE
+        Catch2::Catch2WithMain
+        cpipe::color
+)
+add_test(
+    NAME test_full_classic_pipeline_dng_to_heif_sdr
+    COMMAND test_full_classic_pipeline_dng_to_heif_sdr
+)
+set_tests_properties(
+    test_full_classic_pipeline_dng_to_heif_sdr
+    PROPERTIES
+        LABELS integration
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)
+
+add_executable(
+    test_full_classic_pipeline_dng_to_heif_hdr
+    test_full_classic_pipeline_dng_to_heif_hdr.cpp
+)
+add_dependencies(test_full_classic_pipeline_dng_to_heif_hdr cpipe)
+cpipe_target_warning_flags(test_full_classic_pipeline_dng_to_heif_hdr)
+target_compile_definitions(
+    test_full_classic_pipeline_dng_to_heif_hdr
+    PRIVATE
+        CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+        CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>"
+)
+target_link_libraries(
+    test_full_classic_pipeline_dng_to_heif_hdr
+    PRIVATE
+        Catch2::Catch2WithMain
+        cpipe::color
+)
+add_test(
+    NAME test_full_classic_pipeline_dng_to_heif_hdr
+    COMMAND test_full_classic_pipeline_dng_to_heif_hdr
+)
+set_tests_properties(
+    test_full_classic_pipeline_dng_to_heif_hdr
+    PROPERTIES
+        LABELS integration
+        WORKING_DIRECTORY "${PROJECT_SOURCE_DIR}"
+)

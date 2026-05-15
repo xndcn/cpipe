@@ -1,0 +1,151 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.3.json",
+  "version": "0.3",
+  "id": "full-classic-dng-to-heif-hdr-pq",
+  "inputs": [
+    {
+      "port": "raw",
+      "kind": "Image2D",
+      "format": "R16_UINT"
+    }
+  ],
+  "nodes": [
+    {
+      "id": "qbc",
+      "type": "com.cpipe.demosaic.quad_bayer_remosaic",
+      "params": {}
+    },
+    {
+      "id": "lin",
+      "type": "com.cpipe.linearize.dng_lut",
+      "params": {}
+    },
+    {
+      "id": "gain",
+      "type": "com.cpipe.lens.shading_gainmap",
+      "params": {}
+    },
+    {
+      "id": "bl",
+      "type": "com.cpipe.blacklevel.dng_levels",
+      "params": {}
+    },
+    {
+      "id": "dem",
+      "type": "com.cpipe.demosaic.rcd",
+      "params": {}
+    },
+    {
+      "id": "op3",
+      "type": "com.cpipe.lens.dng_opcode_list_3",
+      "params": {}
+    },
+    {
+      "id": "wb",
+      "type": "com.cpipe.wb.dual_illuminant",
+      "params": {}
+    },
+    {
+      "id": "cm",
+      "type": "com.cpipe.colormatrix.dng_to_working",
+      "params": {}
+    },
+    {
+      "id": "bm3d",
+      "type": "com.cpipe.denoise.bm3d",
+      "params": {}
+    },
+    {
+      "id": "wavelet",
+      "type": "com.cpipe.denoise.wavelet_bayes_shrink",
+      "params": {}
+    },
+    {
+      "id": "tone",
+      "type": "com.cpipe.tone.filmic_rgb",
+      "params": {}
+    },
+    {
+      "id": "lut",
+      "type": "com.cpipe.color.3d_lut",
+      "params": {
+        "lut_path": "examples/pipelines/full-classic-identity.cube"
+      }
+    },
+    {
+      "id": "sharp",
+      "type": "com.cpipe.sharpen.edge_aware_usm",
+      "params": {}
+    },
+    {
+      "id": "display",
+      "type": "com.cpipe.color.scene_linear_to_display",
+      "params": {
+        "target": "BT2020-PQ"
+      }
+    },
+    {
+      "id": "out",
+      "type": "com.cpipe.output.heif_hdr_pq",
+      "params": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "qbc.bayer",
+      "to": "lin.raw"
+    },
+    {
+      "from": "lin.bayer",
+      "to": "gain.linear_bayer"
+    },
+    {
+      "from": "gain.corrected_bayer",
+      "to": "bl.bayer"
+    },
+    {
+      "from": "bl.bayer",
+      "to": "dem.bayer"
+    },
+    {
+      "from": "dem.rgba",
+      "to": "op3.scene_rgb"
+    },
+    {
+      "from": "op3.corrected_rgb",
+      "to": "wb.rgb"
+    },
+    {
+      "from": "wb.rgb",
+      "to": "cm.rgb"
+    },
+    {
+      "from": "cm.rgb",
+      "to": "bm3d.rgb"
+    },
+    {
+      "from": "bm3d.rgb",
+      "to": "wavelet.rgb"
+    },
+    {
+      "from": "wavelet.rgb",
+      "to": "tone.rgb"
+    },
+    {
+      "from": "tone.rgb",
+      "to": "lut.rgb"
+    },
+    {
+      "from": "lut.rgb",
+      "to": "sharp.rgb"
+    },
+    {
+      "from": "sharp.rgb",
+      "to": "display.rgb"
+    },
+    {
+      "from": "display.display",
+      "to": "out.rgb"
+    }
+  ]
+}
