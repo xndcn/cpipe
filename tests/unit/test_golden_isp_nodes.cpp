@@ -30,6 +30,7 @@
 
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_denoise_bm3d();
 void cpipe_link_builtin_denoise_guided_filter();
 void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
 void cpipe_link_builtin_demosaic_amaze();
@@ -39,6 +40,7 @@ void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_lens_dng_opcode_list_3();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_linearize_dng_lut();
+void cpipe_link_builtin_sharpen_edge_aware_usm();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_wb_greyworld_auto();
 
@@ -280,8 +282,10 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_wb_greyworld_auto();
     cpipe_link_builtin_colormatrix_dng_to_working();
+    cpipe_link_builtin_denoise_bm3d();
     cpipe_link_builtin_denoise_guided_filter();
     cpipe_link_builtin_denoise_wavelet_bayes_shrink();
+    cpipe_link_builtin_sharpen_edge_aware_usm();
     registry.load_builtin_nodes();
 }
 
@@ -575,6 +579,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     SECTION("colormatrix.dng_to_working") {
         assert_colormatrix_golden(registry);
     }
+    SECTION("denoise.bm3d") {
+        assert_denoise_golden(registry, "com.cpipe.denoise.bm3d", "denoise.bm3d", {"color_matrix"});
+    }
     SECTION("denoise.guided_filter") {
         assert_denoise_golden(registry, "com.cpipe.denoise.guided_filter", "denoise.guided_filter",
                               {"color_matrix"});
@@ -583,5 +590,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
         assert_denoise_golden(registry, "com.cpipe.denoise.wavelet_bayes_shrink",
                               "denoise.wavelet_bayes_shrink",
                               {"color_matrix", "denoise.guided_filter"});
+    }
+    SECTION("sharpen.edge_aware_usm") {
+        assert_denoise_golden(registry, "com.cpipe.sharpen.edge_aware_usm",
+                              "sharpen.edge_aware_usm", {"tone.filmic_rgb", "color.3d_lut"});
     }
 }

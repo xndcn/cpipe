@@ -227,6 +227,24 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_denoise_bm3d test_node_denoise_bm3d.cpp)
+target_link_libraries(
+    test_node_denoise_bm3d
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_sharpen_edge_aware_usm test_node_sharpen_edge_aware_usm.cpp)
+target_link_libraries(
+    test_node_sharpen_edge_aware_usm
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
 target_link_libraries(
     test_node_precision_convert

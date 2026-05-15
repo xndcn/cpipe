@@ -1,0 +1,61 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
+  "id": "com.cpipe.denoise.bm3d",
+  "version": "1.0.0",
+  "label": "BM3D Denoise",
+  "category": "denoise",
+  "doc": "Single-frame BM3D-style denoise for scene-linear RGBA.",
+  "ports": [
+    {
+      "name": "rgb",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["color_matrix"],
+        "requires_fields": ["calibration.noise_profile"]
+      }
+    },
+    {
+      "name": "rgb",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "rgb",
+        "sets_steps_applied": ["denoise.bm3d"]
+      }
+    }
+  ],
+  "params": [
+    {
+      "name": "sigma_override",
+      "type": "number",
+      "range": {
+        "min": 0
+      },
+      "default": 0
+    }
+  ],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "in_pixel_bytes": 8,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 8,
+    "halide_aot": ["denoise_bm3d_step1", "denoise_bm3d_step2"]
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "scene_linear_rec2020",
+    "respects_chromaticity": true
+  }
+}

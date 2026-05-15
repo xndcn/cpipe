@@ -15,6 +15,7 @@
 #include <string>
 #include <string_view>
 #include <tl/expected.hpp>
+#include <utility>
 #include <vector>
 
 namespace cpipe::sdk {
@@ -53,6 +54,7 @@ struct CalibrationView {
     std::optional<std::array<float, 9>> forward_matrix2;
     std::uint16_t calibration_illuminant1{0};
     std::uint16_t calibration_illuminant2{0};
+    std::vector<std::pair<float, float>> noise_profile;
 };
 
 struct CaptureView {
@@ -103,6 +105,9 @@ public:
         }
         out.calibration_illuminant1 = raw.calibration_illuminant1;
         out.calibration_illuminant2 = raw.calibration_illuminant2;
+        if (const auto noise_profile = fill_noise_profile(raw, out); !noise_profile) {
+            return tl::unexpected(noise_profile.error());
+        }
         if (raw.has_linearization_table != 0 && raw.get_linearization_table != nullptr) {
             std::size_t total = 0;
             const auto count_status =
@@ -214,6 +219,36 @@ public:
     }
 
 private:
+    [[nodiscard]] Result<void> fill_noise_profile(const cpipe_calibration_view& raw,
+                                                  CalibrationView& out) const {
+        if (raw.get_noise_profile == nullptr) {
+            return {};
+        }
+
+        std::size_t total = 0;
+        const auto count_status =
+            static_cast<cpipe_status_t>(raw.get_noise_profile(impl_, 0, &total, nullptr, nullptr));
+        if (count_status != CPIPE_OK) {
+            return tl::unexpected(Error{count_status, "get_noise_profile count failed"});
+        }
+
+        std::vector<float> a(total);
+        std::vector<float> b(total);
+        if (total > 0) {
+            const auto read_status = static_cast<cpipe_status_t>(
+                raw.get_noise_profile(impl_, total, &total, a.data(), b.data()));
+            if (read_status != CPIPE_OK) {
+                return tl::unexpected(Error{read_status, "get_noise_profile read failed"});
+            }
+        }
+
+        out.noise_profile.reserve(total);
+        for (std::size_t i = 0; i < total; ++i) {
+            out.noise_profile.emplace_back(a[i], b[i]);
+        }
+        return {};
+    }
+
     const cpipe_metadata_t* impl_{nullptr};
     const cpipe_metadata_suite_v1* suite_{nullptr};
 };

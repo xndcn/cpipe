@@ -710,6 +710,78 @@ Image wavelet_bayes_shrink_output(const Image& input) {
     return image;
 }
 
+float bm3d_mean2x2(const Image& input, int x, int y, int c) {
+    const auto bx = (x / 2) * 2;
+    const auto by = (y / 2) * 2;
+    return 0.25F *
+           (denoise_sample(input, bx, by, c) + denoise_sample(input, bx + 1, by, c) +
+            denoise_sample(input, bx, by + 1, c) + denoise_sample(input, bx + 1, by + 1, c));
+}
+
+Image bm3d_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            for (int c = 0; c < 4; ++c) {
+                if (c == 3) {
+                    image.pixels.push_back(half_roundtrip(denoise_sample(input, x, y, c)));
+                    continue;
+                }
+                image.pixels.push_back(
+                    half_roundtrip(std::max(0.0F, bm3d_mean2x2(input, x, y, c))));
+            }
+        }
+    }
+    return image;
+}
+
+Image sharpen_input() {
+    Image image{8, 8, 4, {}};
+    image.pixels.reserve(256);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            const auto value = x < 4 ? 0.24F + (0.004F * static_cast<float>(y))
+                                     : 0.66F + (0.004F * static_cast<float>(y));
+            image.pixels.push_back(value);
+            image.pixels.push_back(value);
+            image.pixels.push_back(value);
+            image.pixels.push_back(1.0F);
+        }
+    }
+    return image;
+}
+
+float sharpen_mean3x3(const Image& input, int x, int y, int c) {
+    auto sum = 0.0F;
+    for (int dy = -1; dy <= 1; ++dy) {
+        for (int dx = -1; dx <= 1; ++dx) {
+            sum += denoise_sample(input, x + dx, y + dy, c);
+        }
+    }
+    return sum / 9.0F;
+}
+
+Image sharpen_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            for (int c = 0; c < 4; ++c) {
+                const auto value = denoise_sample(input, x, y, c);
+                if (c == 3) {
+                    image.pixels.push_back(half_roundtrip(value));
+                    continue;
+                }
+                const auto blur = sharpen_mean3x3(input, x, y, c);
+                image.pixels.push_back(
+                    half_roundtrip(std::max(0.0F, value + (0.75F * (value - blur)))));
+            }
+        }
+    }
+    return image;
+}
+
 Image opcode_list_3_input() {
     Image image{8, 8, 4, {}};
     image.pixels.reserve(256);
@@ -802,6 +874,7 @@ int main(int argc, char** argv) {
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
     const auto denoise_in = denoise_input();
+    const auto sharpen_in = sharpen_input();
 
     const bool ok =
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
@@ -816,8 +889,10 @@ int main(int argc, char** argv) {
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "wb.greyworld_auto", wb_in, greyworld_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in)) &&
+        write_pair(root, "denoise.bm3d", denoise_in, bm3d_output(denoise_in)) &&
         write_pair(root, "denoise.guided_filter", denoise_in, guided_filter_output(denoise_in)) &&
         write_pair(root, "denoise.wavelet_bayes_shrink", denoise_in,
-                   wavelet_bayes_shrink_output(denoise_in));
+                   wavelet_bayes_shrink_output(denoise_in)) &&
+        write_pair(root, "sharpen.edge_aware_usm", sharpen_in, sharpen_output(sharpen_in));
     return ok ? 0 : 1;
 }
