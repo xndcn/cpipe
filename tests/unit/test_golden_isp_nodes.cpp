@@ -420,7 +420,16 @@ void assert_wb_golden(cpipe::runtime::Registry& registry) {
     constexpr auto kFixture = "wb.dual_illuminant";
     const auto input_image = read_fixture(kFixture, "in.exr", 4);
 
+    auto calibration = std::make_shared<CalibrationBlock>();
+    calibration->calibration_illuminant1 = 17;
+    calibration->calibration_illuminant2 = 21;
+    calibration->color_matrix1 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->color_matrix2 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->forward_matrix1 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->forward_matrix2 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+
     auto metadata = std::make_shared<BufferMetadata>();
+    metadata->calibration = calibration;
     metadata->cs_role = "raw_camera";
     metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic"};
     metadata->capture.as_shot_neutral = {0.5F, 1.0F, 0.25F};

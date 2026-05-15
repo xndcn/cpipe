@@ -23,6 +23,9 @@ struct DemosaicParams {
 
 struct WbParams {
     float as_shot_neutral[3];
+    float camera_to_xyz_d50[9];
+    float scene_cct;
+    float dual_illuminant_weight;
 };
 
 struct ColormatrixParams {

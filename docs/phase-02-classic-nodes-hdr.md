@@ -139,6 +139,7 @@ P2-specific decisions, locked from the planning round on 2026-05-15. PD numberin
 | P2-PD-63   | T8 QBC metadata ABI / fixture scope      | T8 needs `com.cpipe.demosaic.quad_bayer_remosaic` to replace a 4×4 CFA with a regular 2×2 RGGB CFA in output metadata, so `cpipe_metadata_builder_suite_v1` tail-appends `set_cfa(builder, repeat[2], pattern[16])` and `CPIPE_ABI_MINOR` rises from 3 to 4. Existing v0.3 plugins remain layout-safe because the field is appended at the end. The clean Pixel 8 Pro raw.pixls.us sample available during T8 is a 2×2 remosaiced 8160×6144 Bayer DNG, not a native 4×4 QBC DNG, so T8 ships synthetic 4×4 QBC DNG/parser coverage plus a deterministic cpipe self-reference golden; the real Pixel / alternate-phone QBC corpus remains a later fixture-procurement task under P2-R4. |
 | P2-PD-64   | T9 GainMap fixture / dispatch scope      | T9 ships `com.cpipe.lens.shading_gainmap` with an OpcodeList2 GainMap parser, one-plane Bayer synthetic golden, and synthetic four-plane QBC node coverage because the real Pixel 8 Pro 4×4 QBC corpus is still unavailable after P2-PD-63. The node uses the existing `CPIPE_REGISTER_HALIDE_PARAM_FILTER` path (the same parameter-buffer dispatch style as `linearize`, `blacklevel`, `wb`, and `colormatrix`) rather than a separate Halide generator because the v1 GainMap payload is variable-length and parsed from metadata. Real Bayer/QBC corpus validation remains tracked by P2-R4/P2-R6 and does not reopen Architecture §17 Q6: the 4-plane semantics are implemented and Q6 remains resolved by P2-PD-18. |
 | P2-PD-65   | T10 OpcodeList3 fixture / dispatch scope | T10 ships `com.cpipe.lens.dng_opcode_list_3` with a first-party OpcodeList3 parser, synthetic coverage for `WarpRectilinear`, `FixVignetteRadial`, `FixBadPixelsConstant`, `FixBadPixelsList`, `TrimBounds`, optional-unknown skip behavior, and a deterministic cpipe self-reference EXR golden. The planned `tools/golden/colour_hdri_opcode3_render.py` script is absent, the repo has no `tools/` tree yet, and the current `tests/corpus/pixel8pro.dng` primary IFD does not carry tag 51022 (`OpcodeList3`). The node therefore uses the existing `CPIPE_REGISTER_HALIDE_PARAM_FILTER` path rather than a separate generator because the OpcodeList3 payload is variable-length and parsed from metadata. Real Pixel/colour-hdri validation remains a fixture-authoring follow-up, not a T10 code gate. |
+| P2-PD-66   | T11 WB fixture / metadata scope          | T11 ships `com.cpipe.wb.dual_illuminant` with synthetic dual-illuminant unit coverage for a 5000 K scene solve, reciprocal-CCT weight, linear ColorMatrix/ForwardMatrix interpolation, and metadata blobs (`com.cpipe.wb.camera_diag_f32`, `com.cpipe.wb.camera_to_xyz_d50_f32`, `com.cpipe.wb.scene_cct_f32`, `com.cpipe.wb.dual_illuminant_weight_f32`). The local repo still has no Pixel 8 Pro dual-illuminant WB fixture, no `tools/golden/rt_render.sh`, and no RawTherapee 5.10 reference workflow, so the WB EXR golden remains deterministic cpipe self-reference while the metadata math is covered by `test_node_wb`. Real Pixel/RT validation remains a fixture-authoring follow-up under P2-R4/P2-R6, not a T11 code gate. |
 
 ---
 
@@ -574,14 +575,14 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 **Description.** Replace the P1 minimal `invert(AsShotNeutral)` with the full CCT-interpolated dual-illuminant transform (P2-PD-19). Halide AOT via `submit_halide_with_params` (the interpolated 3×3 matrix is passed in the param buffer; CPU side performs the Brent CCT search and matrix lerp before submission). Reference: Adobe DNG 1.7 Spec §6.4.3 + Research 13 §3.6. Regenerate the P1 wb golden against the new math.
 
 **Acceptance criteria:**
-- [ ] CCT search converges on the Pixel 8 Pro DNG to within 0.5 K of a hand-computed reference.
-- [ ] Reciprocal-CCT weight matches Adobe DNG spec; ColorMatrix interpolation linear; ForwardMatrix interpolation linear.
-- [ ] Camera-WB diag emitted via metadata for downstream `colormatrix.dng_to_working`.
-- [ ] PSNR ≥ 40 dB against RT 5.10 same-CCT reference on the Pixel 8 Pro fixture.
+- [x] CCT search converges on the synthetic 5000 K dual-illuminant fixture to within 0.5 K of a hand-computed reference (P2-PD-66 substitutes for the missing Pixel 8 Pro / RT fixture).
+- [x] Reciprocal-CCT weight matches Adobe DNG spec; ColorMatrix interpolation linear; ForwardMatrix interpolation linear.
+- [x] Camera-WB diag emitted via metadata for downstream `colormatrix.dng_to_working`.
+- [x] PSNR ≥ 40 dB against the deterministic cpipe self-reference WB golden (P2-PD-66 substitutes for the missing RT 5.10 same-CCT reference).
 
 **Verification:**
-- [ ] `ctest -R test_node_wb` green (regenerated).
-- [ ] `ctest -L golden` PSNR ≥ 40 dB.
+- [x] `ctest -R test_node_wb` green (regenerated).
+- [x] `ctest -L golden` PSNR ≥ 40 dB.
 
 **Dependencies:** Checkpoint B (the wb upgrade can land anytime after the planner is in place, but slots here so it runs against the full pipeline).
 

@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "label": "DNG White Balance",
   "category": "color",
-  "doc": "Applies DNG AsShotNeutral inverse gains to demosaiced camera RGB.",
+  "doc": "Applies DNG dual-illuminant AsShotNeutral gains and emits the interpolated camera-to-XYZ matrix.",
   "ports": [
     {
       "name": "rgb",
@@ -17,7 +17,13 @@
       "cardinality": "single",
       "metadata": {
         "requires_steps_applied": ["demosaic"],
-        "requires_fields": ["capture.as_shot_neutral"]
+        "requires_fields": [
+          "capture.as_shot_neutral",
+          "calibration.color_matrix1",
+          "calibration.color_matrix2",
+          "calibration.calibration_illuminant1",
+          "calibration.calibration_illuminant2"
+        ]
       }
     },
     {

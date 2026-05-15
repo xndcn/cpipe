@@ -51,6 +51,8 @@ struct CalibrationView {
     std::optional<std::array<float, 9>> color_matrix2;
     std::optional<std::array<float, 9>> forward_matrix1;
     std::optional<std::array<float, 9>> forward_matrix2;
+    std::uint16_t calibration_illuminant1{0};
+    std::uint16_t calibration_illuminant2{0};
 };
 
 struct CaptureView {
@@ -99,6 +101,8 @@ public:
             std::copy(std::begin(raw.forward_matrix2), std::end(raw.forward_matrix2),
                       out.forward_matrix2->begin());
         }
+        out.calibration_illuminant1 = raw.calibration_illuminant1;
+        out.calibration_illuminant2 = raw.calibration_illuminant2;
         if (raw.has_linearization_table != 0 && raw.get_linearization_table != nullptr) {
             std::size_t total = 0;
             const auto count_status =
@@ -240,6 +244,19 @@ public:
             static_cast<cpipe_status_t>(suite_->add_applied_step(impl_, value.c_str()));
         if (status != CPIPE_OK) {
             return tl::unexpected(Error{status, "add_applied_step failed"});
+        }
+        return {};
+    }
+
+    Result<void> set_blob(std::string_view key, std::span<const std::byte> bytes) {
+        if (suite_ == nullptr || suite_->set_blob == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const std::string value{key};
+        const auto status = static_cast<cpipe_status_t>(
+            suite_->set_blob(impl_, value.c_str(), bytes.data(), bytes.size()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "set_blob failed"});
         }
         return {};
     }
