@@ -48,6 +48,7 @@ add_library(
         Sync.cpp
         stub.cpp
         VulkanBuffer.cpp
+        VulkanCommandBuffer.cpp
         VulkanDevicePlane.cpp
         VulkanImage.cpp
 )

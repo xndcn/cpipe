@@ -54,6 +54,9 @@ target_link_libraries(
 cpipe_add_unit_test(test_vulkan_device_plane test_vulkan_device_plane.cpp)
 target_link_libraries(test_vulkan_device_plane PRIVATE cpipe::runtime)
 set_tests_properties(test_vulkan_device_plane PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
+cpipe_add_unit_test(test_vulkan_command_buffer test_vulkan_command_buffer.cpp)
+target_link_libraries(test_vulkan_command_buffer PRIVATE cpipe::runtime)
+set_tests_properties(test_vulkan_command_buffer PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
 cpipe_add_unit_test(test_passthrough_node test_passthrough_node.cpp)
 target_compile_definitions(test_passthrough_node PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(
