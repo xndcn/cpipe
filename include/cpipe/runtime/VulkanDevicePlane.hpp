@@ -6,6 +6,7 @@
 #include <vk_mem_alloc.h>
 #include <vulkan/vulkan.h>
 
+#include <chrono>
 #include <cpipe/core/Status.hpp>
 #include <cpipe/runtime/DevicePlane.hpp>
 #include <cstdint>
@@ -19,6 +20,8 @@
 namespace cpipe::runtime {
 
 class VulkanDevicePlane;
+class VulkanTimelineSemaphore;
+class VulkanCommandBuffer;
 
 struct VulkanDevicePlaneCreateResult {
     cpipe::compute::StatusCode status{cpipe::compute::StatusCode::Failed};
@@ -51,8 +54,12 @@ public:
     [[nodiscard]] bool validation_enabled() const noexcept;
 
     void submit_immediate(const std::function<void(VkCommandBuffer)>& record) const;
+    [[nodiscard]] bool wait_timeline(const VulkanTimelineSemaphore& timeline, std::uint64_t value,
+                                     std::chrono::nanoseconds timeout) const;
 
 private:
+    friend class VulkanCommandBuffer;
+
     VulkanDevicePlane(VkInstance instance, VkPhysicalDevice physical_device, VkDevice device,
                       VmaAllocator allocator, VkQueue queue, std::uint32_t queue_family_index,
                       std::uint32_t api_version, std::uint64_t memory_budget_bytes,

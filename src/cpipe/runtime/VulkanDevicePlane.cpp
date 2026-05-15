@@ -7,6 +7,8 @@
 
 #include <algorithm>
 #include <charconv>
+#include <cpipe/runtime/Sync.hpp>
+#include <cpipe/runtime/Trace.hpp>
 #include <cpipe/runtime/VulkanDevicePlane.hpp>
 #include <cstdlib>
 #include <cstring>
@@ -424,6 +426,12 @@ void VulkanDevicePlane::submit_immediate(const std::function<void(VkCommandBuffe
 
     vkDestroyFence(device_, fence, nullptr);
     vkFreeCommandBuffers(device_, pool, 1, &command_buffer);
+}
+
+bool VulkanDevicePlane::wait_timeline(const VulkanTimelineSemaphore& timeline, std::uint64_t value,
+                                      std::chrono::nanoseconds timeout) const {
+    CPIPE_TRACE_SCOPE("VulkanDevicePlane::wait_timeline");
+    return timeline.wait_value(value, timeout);
 }
 
 VkCommandPool VulkanDevicePlane::command_pool_for_current_thread() const {
