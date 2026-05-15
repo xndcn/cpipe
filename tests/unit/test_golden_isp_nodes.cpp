@@ -5,6 +5,7 @@
 #include <OpenImageIO/imagebufalgo.h>
 
 #include <algorithm>
+#include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cmath>
 #include <cpipe/core/BufferMetadata.hpp>
@@ -43,6 +44,7 @@ void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_sharpen_edge_aware_usm();
 void cpipe_link_builtin_tone_aces_filmic();
 void cpipe_link_builtin_tone_filmic_rgb();
+void cpipe_link_builtin_tone_mertens_local();
 void cpipe_link_builtin_tone_reinhard();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_wb_greyworld_auto();
@@ -250,6 +252,47 @@ void process_single_input_node(const cpipe_plugin_desc_t& desc,
     output->set_metadata(cpipe::runtime::freeze_metadata_builder(builder.get()));
 }
 
+void process_three_input_node(const cpipe_plugin_desc_t& desc,
+                              const std::array<std::shared_ptr<CpuBuffer>, 3>& inputs,
+                              const std::shared_ptr<CpuBuffer>& output) {
+    cpipe::runtime::ComputeContext compute;
+    cpipe::runtime::HostContext host_context;
+    void* instance = nullptr;
+    REQUIRE(desc.main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, nullptr, nullptr,
+                            &instance) == CPIPE_OK);
+
+    auto input0_handle = cpipe::runtime::make_buffer_handle(inputs[0]);
+    auto input1_handle = cpipe::runtime::make_buffer_handle(inputs[1]);
+    auto input2_handle = cpipe::runtime::make_buffer_handle(inputs[2]);
+    auto output_handle = cpipe::runtime::make_buffer_handle(output);
+    std::vector<std::shared_ptr<const BufferMetadata>> source_metadata{
+        inputs[0]->metadata(), inputs[1]->metadata(), inputs[2]->metadata()};
+    auto builder =
+        cpipe::runtime::make_metadata_builder_handle(inputs[1]->metadata(), source_metadata);
+    const cpipe_buffer_t* process_inputs[] = {input0_handle.get(), input1_handle.get(),
+                                              input2_handle.get()};
+    cpipe_buffer_t* process_outputs[] = {output_handle.get()};
+    cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
+    cpipe_process_ctx process{
+        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
+        .inference = nullptr,
+        .inputs = process_inputs,
+        .n_in = 3,
+        .outputs = process_outputs,
+        .n_out = 1,
+        .out_metadata = out_metadata,
+    };
+
+    const auto status =
+        desc.main_entry(CPIPE_ACTION_PROCESS, host_context.host(),
+                        reinterpret_cast<cpipe_node_t*>(instance), nullptr, &process, nullptr);
+    CAPTURE(desc.node_id, status);
+    REQUIRE(status == CPIPE_OK);
+    REQUIRE(desc.main_entry(CPIPE_ACTION_DESTROY, host_context.host(), nullptr, nullptr, instance,
+                            nullptr) == CPIPE_OK);
+    output->set_metadata(cpipe::runtime::freeze_metadata_builder(builder.get()));
+}
+
 std::shared_ptr<BufferMetadata> metadata_with_cfa() {
     auto calibration = std::make_shared<CalibrationBlock>();
     calibration->cfa = CFADescriptor{{0, 1, 1, 2}};
@@ -291,6 +334,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_sharpen_edge_aware_usm();
     cpipe_link_builtin_tone_aces_filmic();
     cpipe_link_builtin_tone_filmic_rgb();
+    cpipe_link_builtin_tone_mertens_local();
     cpipe_link_builtin_tone_reinhard();
     registry.load_builtin_nodes();
 }
@@ -566,6 +610,39 @@ void assert_tone_golden(cpipe::runtime::Registry& registry, const char* node, co
     require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_mertens_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.tone.mertens_local";
+    constexpr auto kFixture = "tone.mertens_local";
+    const auto under_image = read_fixture(kFixture, "under.exr", 4);
+    const auto normal_image = read_fixture(kFixture, "normal.exr", 4);
+    const auto over_image = read_fixture(kFixture, "over.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = {"denoise.bm3d", "denoise.wavelet_bayes_shrink"};
+
+    std::array<std::shared_ptr<CpuBuffer>, 3> inputs{
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, under_image.width, under_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite),
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, normal_image.width, normal_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite),
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, over_image.width, over_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite),
+    };
+    for (const auto& input : inputs) {
+        input->set_metadata(metadata);
+    }
+    write_rgba16(*inputs[0], under_image);
+    write_rgba16(*inputs[1], normal_image);
+    write_rgba16(*inputs[2], over_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, normal_image.width, normal_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_three_input_node(require_node(registry, kNode), inputs, output);
+    require_psnr_at_least(kFixture, read_rgba16(*output, normal_image.width, normal_image.height));
+}
+
 }  // namespace
 
 TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
@@ -622,6 +699,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("tone.filmic_rgb") {
         assert_tone_golden(registry, "com.cpipe.tone.filmic_rgb", "tone.filmic_rgb");
+    }
+    SECTION("tone.mertens_local") {
+        assert_mertens_golden(registry);
     }
     SECTION("tone.reinhard") {
         assert_tone_golden(registry, "com.cpipe.tone.reinhard", "tone.reinhard");

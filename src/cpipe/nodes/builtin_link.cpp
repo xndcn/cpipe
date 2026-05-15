@@ -18,6 +18,7 @@ void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
 void cpipe_link_builtin_sharpen_edge_aware_usm();
 void cpipe_link_builtin_tone_aces_filmic();
 void cpipe_link_builtin_tone_filmic_rgb();
+void cpipe_link_builtin_tone_mertens_local();
 void cpipe_link_builtin_tone_reinhard();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_lens_dng_opcode_list_3();
@@ -42,6 +43,7 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_sharpen_edge_aware_usm();
     cpipe_link_builtin_tone_aces_filmic();
     cpipe_link_builtin_tone_filmic_rgb();
+    cpipe_link_builtin_tone_mertens_local();
     cpipe_link_builtin_tone_reinhard();
     cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_lens_dng_opcode_list_3();

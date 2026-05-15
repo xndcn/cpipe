@@ -272,6 +272,15 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_tone_mertens_local test_node_tone_mertens_local.cpp)
+target_link_libraries(
+    test_node_tone_mertens_local
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
 target_link_libraries(
     test_node_precision_convert

@@ -834,6 +834,58 @@ Image tone_output(const Image& input, ToneCurve curve) {
     return image;
 }
 
+Image mertens_exposure(const Image& normal, float scale) {
+    Image image{normal.width, normal.height, 4, {}};
+    image.pixels.reserve(normal.pixels.size());
+    for (std::size_t i = 0; i < normal.pixels.size(); i += 4U) {
+        image.pixels.push_back(normal.pixels[i + 0U] * scale);
+        image.pixels.push_back(normal.pixels[i + 1U] * scale);
+        image.pixels.push_back(normal.pixels[i + 2U] * scale);
+        image.pixels.push_back(normal.pixels[i + 3U]);
+    }
+    return image;
+}
+
+float mertens_channel_weight(float value) {
+    constexpr float sigma = 0.20F;
+    const auto distance = value - 0.5F;
+    return std::exp(-(distance * distance) / (2.0F * sigma * sigma));
+}
+
+float mertens_weight(const Image& input, std::size_t offset) {
+    const auto red = std::max(0.0F, half_roundtrip(input.pixels[offset + 0U]));
+    const auto green = std::max(0.0F, half_roundtrip(input.pixels[offset + 1U]));
+    const auto blue = std::max(0.0F, half_roundtrip(input.pixels[offset + 2U]));
+    const auto mean = (red + green + blue) / 3.0F;
+    const auto saturation =
+        std::sqrt((((red - mean) * (red - mean)) + ((green - mean) * (green - mean)) +
+                   ((blue - mean) * (blue - mean))) /
+                      3.0F +
+                  0.0001F);
+    return (saturation + 0.01F) * mertens_channel_weight(red) * mertens_channel_weight(green) *
+           mertens_channel_weight(blue);
+}
+
+Image mertens_output(const Image& under, const Image& normal, const Image& over) {
+    Image image{normal.width, normal.height, 4, {}};
+    image.pixels.reserve(normal.pixels.size());
+    for (std::size_t i = 0; i < normal.pixels.size(); i += 4U) {
+        const auto under_weight = mertens_weight(under, i);
+        const auto normal_weight = mertens_weight(normal, i);
+        const auto over_weight = mertens_weight(over, i);
+        const auto total_weight = std::max(under_weight + normal_weight + over_weight, 0.000001F);
+        for (std::size_t c = 0; c < 3U; ++c) {
+            const auto fused = ((under_weight * half_roundtrip(under.pixels[i + c])) +
+                                (normal_weight * half_roundtrip(normal.pixels[i + c])) +
+                                (over_weight * half_roundtrip(over.pixels[i + c]))) /
+                               total_weight;
+            image.pixels.push_back(half_roundtrip(std::clamp(fused, 0.0F, 1.0F)));
+        }
+        image.pixels.push_back(half_roundtrip(half_roundtrip(normal.pixels[i + 3U])));
+    }
+    return image;
+}
+
 Image opcode_list_3_input() {
     Image image{8, 8, 4, {}};
     image.pixels.reserve(256);
@@ -906,6 +958,13 @@ bool write_pair(const std::filesystem::path& root, const std::string& node, cons
            write_image(root / node / "out.exr", output);
 }
 
+bool write_mertens_stack(const std::filesystem::path& root, const Image& under, const Image& normal,
+                         const Image& over, const Image& output) {
+    const auto dir = root / "tone.mertens_local";
+    return write_image(dir / "under.exr", under) && write_image(dir / "normal.exr", normal) &&
+           write_image(dir / "over.exr", over) && write_image(dir / "out.exr", output);
+}
+
 }  // namespace
 
 int main(int argc, char** argv) {
@@ -928,6 +987,9 @@ int main(int argc, char** argv) {
     const auto denoise_in = denoise_input();
     const auto sharpen_in = sharpen_input();
     const auto tone_in = tone_input();
+    const auto mertens_under = mertens_exposure(tone_in, 0.25F);
+    const auto mertens_normal = tone_in;
+    const auto mertens_over = mertens_exposure(tone_in, 4.0F);
 
     const bool ok =
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
@@ -948,6 +1010,8 @@ int main(int argc, char** argv) {
                    wavelet_bayes_shrink_output(denoise_in)) &&
         write_pair(root, "tone.aces_filmic", tone_in, tone_output(tone_in, aces_fit)) &&
         write_pair(root, "tone.filmic_rgb", tone_in, tone_output(tone_in, filmic_curve)) &&
+        write_mertens_stack(root, mertens_under, mertens_normal, mertens_over,
+                            mertens_output(mertens_under, mertens_normal, mertens_over)) &&
         write_pair(root, "tone.reinhard", tone_in, tone_output(tone_in, reinhard)) &&
         write_pair(root, "sharpen.edge_aware_usm", sharpen_in, sharpen_output(sharpen_in));
     return ok ? 0 : 1;

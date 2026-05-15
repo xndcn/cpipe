@@ -1,0 +1,77 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
+  "id": "com.cpipe.tone.mertens_local",
+  "version": "1.0.0",
+  "label": "Mertens Local Tone",
+  "category": "tone",
+  "doc": "SDR Mertens exposure fusion for three scene-linear RGBA exposures.",
+  "ports": [
+    {
+      "name": "under",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["denoise.wavelet_bayes_shrink"]
+      }
+    },
+    {
+      "name": "normal",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["denoise.wavelet_bayes_shrink"]
+      }
+    },
+    {
+      "name": "over",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_steps_applied": ["denoise.wavelet_bayes_shrink"]
+      }
+    },
+    {
+      "name": "rgb",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "normal",
+        "sets_steps_applied": ["tone_mertens_local"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "in_pixel_bytes": 24,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0,
+    "halide_aot": ["tone_mertens_local"]
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "scene_linear_rec2020",
+    "respects_chromaticity": true
+  }
+}

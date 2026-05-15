@@ -17,6 +17,7 @@ add_halide_generator(
         sharpen/edge_aware_usm_generator.cpp
         tone/aces_filmic_generator.cpp
         tone/filmic_rgb_generator.cpp
+        tone/mertens_local_generator.cpp
         tone/reinhard_generator.cpp
 )
 cpipe_add_halide_library(
@@ -150,6 +151,17 @@ cpipe_add_halide_library(
         tone_filmic_rgb
     FUNCTION_NAME
         tone_filmic_rgb
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    tone_mertens_local
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        tone_mertens_local
+    FUNCTION_NAME
+        tone_mertens_local
     TARGETS
         x86-64-linux
 )
@@ -427,6 +439,18 @@ add_custom_command(
     DEPENDS tone/filmic_rgb.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(tone_mertens_local_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_mertens_local_manifest.cpp")
+add_custom_command(
+    OUTPUT "${tone_mertens_local_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tone/mertens_local.json"
+        -DOUTPUT_CPP="${tone_mertens_local_manifest_cpp}"
+        -DSYMBOL_NAME=TONE_MERTENS_LOCAL_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS tone/mertens_local.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(tone_reinhard_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_reinhard_manifest.cpp")
 add_custom_command(
     OUTPUT "${tone_reinhard_manifest_cpp}"
@@ -527,6 +551,8 @@ add_library(
         tone/aces_filmic_dispatch.cpp
         tone/filmic_rgb.cpp
         tone/filmic_rgb_dispatch.cpp
+        tone/mertens_local.cpp
+        tone/mertens_local_dispatch.cpp
         tone/reinhard.cpp
         tone/reinhard_dispatch.cpp
         lens/shading_gainmap.cpp
@@ -553,6 +579,7 @@ add_library(
         "${sharpen_edge_aware_usm_manifest_cpp}"
         "${tone_aces_filmic_manifest_cpp}"
         "${tone_filmic_rgb_manifest_cpp}"
+        "${tone_mertens_local_manifest_cpp}"
         "${tone_reinhard_manifest_cpp}"
         "${lens_shading_gainmap_manifest_cpp}"
         "${lens_dng_opcode_list_3_manifest_cpp}"
@@ -587,6 +614,7 @@ target_link_libraries(
         sharpen_edge_aware_usm
         tone_aces_filmic
         tone_filmic_rgb
+        tone_mertens_local
         tone_reinhard
         precision_convert_r16u_to_f32
         precision_convert_f32_to_rgba16f
