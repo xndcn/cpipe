@@ -12,7 +12,7 @@ extern "C" {
 #endif
 
 #define CPIPE_ABI_MAJOR 0
-#define CPIPE_ABI_MINOR 2
+#define CPIPE_ABI_MINOR 3
 
 typedef enum {
     CPIPE_OK = 0,
@@ -41,6 +41,7 @@ typedef struct cpipe_metadata_s cpipe_metadata_t;
 typedef struct cpipe_metadata_builder_s cpipe_metadata_builder_t;
 typedef struct cpipe_compute_s cpipe_compute_t;
 typedef struct cpipe_inference_s cpipe_inference_t;
+typedef struct cpipe_ocio_processor_s cpipe_ocio_processor_t;
 
 typedef enum {
     CPIPE_CPU_ACCESS_READ = 0,
@@ -149,6 +150,12 @@ typedef struct {
                         size_t pc_size);
     int (*request_scratch)(cpipe_compute_t*, uint64_t bytes, int kind, cpipe_buffer_t** out);
     void (*record_marker)(cpipe_compute_t*, const char* label);
+    int (*submit_halide_with_params)(cpipe_compute_t*, const char* aot_id,
+                                     const cpipe_buffer_t* const* inputs, size_t n_in,
+                                     cpipe_buffer_t* const* outputs, size_t n_out,
+                                     const void* param_blob, size_t param_blob_size);
+    int (*submit_ocio_processor)(cpipe_compute_t*, cpipe_ocio_processor_t* processor,
+                                 const cpipe_buffer_t* input, cpipe_buffer_t* output);
 } cpipe_compute_suite_v1;
 
 typedef struct {
@@ -174,6 +181,8 @@ struct cpipe_host_s {
     void (*log)(cpipe_host_t* self, int level, const char* msg);
     void* (*alloc)(cpipe_host_t*, size_t);
     void (*free)(cpipe_host_t*, void*);
+    cpipe_ocio_processor_t* (*get_ocio_processor)(cpipe_host_t*, const char* config_path,
+                                                  const char* src_cs, const char* dst_cs);
 };
 
 typedef struct {

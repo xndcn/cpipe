@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cpipe/core/PixelFormat.hpp>
@@ -9,7 +10,7 @@
 #include <cstdint>
 #include <span>
 
-#include "../detail/Float16.hpp"
+#include "../detail/P1ParamDispatch.hpp"
 
 namespace cpipe::nodes {
 namespace {
@@ -60,12 +61,6 @@ std::array<float, 9> mul3(const std::array<float, 9>& lhs, const std::array<floa
     };
 }
 
-std::array<float, 3> mul3(const std::array<float, 9>& matrix, const std::array<float, 3>& value) {
-    return {matrix[0] * value[0] + matrix[1] * value[1] + matrix[2] * value[2],
-            matrix[3] * value[0] + matrix[4] * value[1] + matrix[5] * value[2],
-            matrix[6] * value[0] + matrix[7] * value[1] + matrix[8] * value[2]};
-}
-
 std::optional<std::array<float, 9>> inverse3(const std::array<float, 9>& m) {
     const auto det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) +
                      m[2] * (m[3] * m[7] - m[4] * m[6]);
@@ -92,8 +87,9 @@ public:
     /// Applies the P1 ColorMatrix1 → Bradford D50-to-D65 → Rec.2020 chain from
     /// docs/research/07-classic-isp-algorithms.md §3.3 and
     /// docs/research/13-color-management.md §3.6.
-    sdk::Result<void> process(sdk::ComputeContext&, sdk::InferenceContext*, const sdk::ParamView&,
-                              std::span<const sdk::Buffer*> inputs, std::span<sdk::Buffer*> outputs,
+    sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
+                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
             outputs[0] == nullptr || out_metadata.empty() || out_metadata[0] == nullptr) {
@@ -129,35 +125,14 @@ public:
         }
         const auto transform = mul3(kXyzD65ToRec2020, mul3(kD50ToD65, *camera_to_xyz_d50));
 
-        const auto input_lock = inputs[0]->lock_cpu(sdk::CpuAccess::Read);
-        if (!input_lock) {
-            return tl::unexpected(input_lock.error());
+        detail::ColormatrixParams params{};
+        std::copy(transform.begin(), transform.end(), std::begin(params.transform));
+        const auto param_blob = std::as_bytes(std::span{&params, 1});
+        const auto submitted = compute.submit_halide_with_params("colormatrix_dng_to_working",
+                                                                 inputs, outputs, param_blob);
+        if (!submitted) {
+            return tl::unexpected(submitted.error());
         }
-        const auto output_lock = outputs[0]->lock_cpu(sdk::CpuAccess::Write);
-        if (!output_lock) {
-            (void)inputs[0]->unlock_cpu();
-            return tl::unexpected(output_lock.error());
-        }
-
-        const auto* in = static_cast<const std::uint16_t*>(*input_lock);
-        auto* out = static_cast<std::uint16_t*>(*output_lock);
-        const auto pixel_count =
-            static_cast<std::size_t>((*dims)[0]) * static_cast<std::size_t>((*dims)[1]);
-        for (std::size_t i = 0; i < pixel_count; ++i) {
-            const auto base = i * 4U;
-            const std::array<float, 3> rgb{detail::half_to_float(in[base + 0U]),
-                                           detail::half_to_float(in[base + 1U]),
-                                           detail::half_to_float(in[base + 2U])};
-            const auto mapped = mul3(transform, rgb);
-            out[base + 0U] = detail::float_to_half(mapped[0]);
-            out[base + 1U] = detail::float_to_half(mapped[1]);
-            out[base + 2U] = detail::float_to_half(mapped[2]);
-            out[base + 3U] = in[base + 3U];
-        }
-
-        (void)outputs[0]->unlock_cpu();
-        (void)outputs[0]->flush_cpu_writes();
-        (void)inputs[0]->unlock_cpu();
 
         if (auto role = out_metadata[0]->set_cs_role("scene_linear_rec2020"); !role) {
             return role;
@@ -172,4 +147,8 @@ extern const char COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON[];
 
 CPIPE_REGISTER_NODE(cpipe::nodes::ColormatrixDngToWorking, COLORMATRIX_DNG_TO_WORKING_MANIFEST_JSON)
 
-void cpipe_link_builtin_colormatrix_dng_to_working() {}
+void cpipe_link_builtin_colormatrix_dng_to_working_halide();
+
+void cpipe_link_builtin_colormatrix_dng_to_working() {
+    cpipe_link_builtin_colormatrix_dng_to_working_halide();
+}

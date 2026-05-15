@@ -376,6 +376,35 @@ public:
         return {};
     }
 
+    Result<void> submit_halide_with_params(std::string_view aot_id, std::span<const Buffer*> inputs,
+                                           std::span<Buffer*> outputs,
+                                           std::span<const std::byte> param_blob) {
+        if (suite_ == nullptr || suite_->submit_halide_with_params == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "compute suite params unavailable"});
+        }
+
+        std::vector<const cpipe_buffer_t*> raw_inputs;
+        raw_inputs.reserve(inputs.size());
+        for (const auto* input : inputs) {
+            raw_inputs.push_back(input->impl());
+        }
+
+        std::vector<cpipe_buffer_t*> raw_outputs;
+        raw_outputs.reserve(outputs.size());
+        for (const auto* output : outputs) {
+            raw_outputs.push_back(output->impl());
+        }
+
+        const std::string id{aot_id};
+        const auto status = static_cast<cpipe_status_t>(suite_->submit_halide_with_params(
+            impl_, id.c_str(), raw_inputs.data(), raw_inputs.size(), raw_outputs.data(),
+            raw_outputs.size(), param_blob.data(), param_blob.size()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "submit_halide_with_params failed"});
+        }
+        return {};
+    }
+
 private:
     cpipe_compute_t* impl_{nullptr};
     const cpipe_compute_suite_v1* suite_{nullptr};

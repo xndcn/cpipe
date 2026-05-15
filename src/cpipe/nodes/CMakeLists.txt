@@ -140,11 +140,15 @@ add_library(
         passthrough_copy_dispatch.cpp
         dng_input/dng_input.cpp
         linearize/linearize_dng_lut.cpp
+        linearize/linearize_dng_lut_dispatch.cpp
         blacklevel/blacklevel_dng_levels.cpp
+        blacklevel/blacklevel_dng_levels_dispatch.cpp
         demosaic/demosaic_bilinear.cpp
         demosaic/demosaic_bilinear_dispatch.cpp
         wb/wb_dual_illuminant.cpp
+        wb/wb_dual_illuminant_dispatch.cpp
         colormatrix/colormatrix_dng_to_working.cpp
+        colormatrix/colormatrix_dng_to_working_dispatch.cpp
         output/heif_sdr.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"

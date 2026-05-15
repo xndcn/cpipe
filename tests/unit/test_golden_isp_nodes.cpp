@@ -187,6 +187,8 @@ void process_single_input_node(const cpipe_plugin_desc_t& desc,
                                const std::shared_ptr<CpuBuffer>& output,
                                cpipe::runtime::ComputeContext* compute = nullptr) {
     cpipe::runtime::HostContext host_context;
+    cpipe::runtime::ComputeContext local_compute;
+    auto* active_compute = compute == nullptr ? &local_compute : compute;
     void* instance = nullptr;
     REQUIRE(desc.main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, nullptr, nullptr,
                             &instance) == CPIPE_OK);
@@ -199,7 +201,7 @@ void process_single_input_node(const cpipe_plugin_desc_t& desc,
     cpipe_buffer_t* outputs[] = {output_handle.get()};
     cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
     cpipe_process_ctx process{
-        .compute = reinterpret_cast<cpipe_compute_t*>(compute),
+        .compute = reinterpret_cast<cpipe_compute_t*>(active_compute),
         .inference = nullptr,
         .inputs = inputs,
         .n_in = 1,

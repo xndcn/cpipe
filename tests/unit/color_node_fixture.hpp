@@ -12,6 +12,7 @@
 #include <cpipe/core/CalibrationBlock.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/runtime/BufferHandle.hpp>
+#include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cstdint>
@@ -81,6 +82,7 @@ inline std::vector<std::array<float, 4>> read_rgba16(CpuBuffer& buffer, std::siz
 inline cpipe_status_t process_single_input_node(const cpipe_plugin_desc_t& desc,
                                                 const std::shared_ptr<CpuBuffer>& input,
                                                 const std::shared_ptr<CpuBuffer>& output) {
+    cpipe::runtime::ComputeContext compute;
     cpipe::runtime::HostContext host_context;
     void* instance = nullptr;
     REQUIRE(desc.main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, nullptr, nullptr,
@@ -94,7 +96,7 @@ inline cpipe_status_t process_single_input_node(const cpipe_plugin_desc_t& desc,
     cpipe_buffer_t* outputs[] = {output_handle.get()};
     cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
     cpipe_process_ctx process{
-        .compute = nullptr,
+        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
         .inference = nullptr,
         .inputs = inputs,
         .n_in = 1,

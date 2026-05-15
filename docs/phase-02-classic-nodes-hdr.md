@@ -321,15 +321,15 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 
 
 **Acceptance criteria:**
-- [ ] `host->get_suite("compute", 1)` returns a suite vtable whose declared size matches the new struct; `submit_halide_with_params` and `submit_ocio_processor` are non-null on supported hosts.
-- [ ] P0 passthrough plugin still loads (probes only the original suite entries).
-- [ ] `linearize.dng_lut`, `blacklevel.dng_levels`, `wb.dual_illuminant` (P1 math), `colormatrix.dng_to_working` (P1 math) all run via `submit_halide_with_params`; manifests say `engine: Halide`.
-- [ ] `host->get_ocio_processor("share/cpipe/ocio/v0.1/config.ocio", "scene_linear_rec2020", "output_srgb")` returns a non-null opaque handle on the development machine.
-- [ ] `ctest -R "test_(compute_suite_v1_ext|metadata_suite|registry|passthrough_node)"` green.
+- [x] `host->get_suite("compute", 1)` returns a suite vtable whose declared size matches the new struct; `submit_halide_with_params` and `submit_ocio_processor` are non-null on supported hosts.
+- [x] P0 passthrough plugin still loads (probes only the original suite entries).
+- [x] `linearize.dng_lut`, `blacklevel.dng_levels`, `wb.dual_illuminant` (P1 math), `colormatrix.dng_to_working` (P1 math) all run via `submit_halide_with_params`; manifests say `engine: Halide`.
+- [x] `host->get_ocio_processor("share/cpipe/ocio/v0.1/config.ocio", "scene_linear_rec2020", "output_srgb")` returns a non-null opaque handle on the development machine.
+- [x] `ctest -R "test_(compute_suite_v1_ext|metadata_suite|registry|passthrough_node)"` green.
 
 **Verification:**
-- [ ] `ctest --preset linux-debug -L unit` green.
-- [ ] All P1 integration smokes (`test_min_pipeline_dng_to_heif`) still green.
+- [x] `ctest --preset linux-debug -L unit` green.
+- [x] All P1 integration smokes (`test_min_pipeline_dng_to_heif`) still green.
 
 **Dependencies:** None (after P1 closes).
 

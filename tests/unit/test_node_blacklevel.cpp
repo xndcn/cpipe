@@ -9,6 +9,7 @@
 #include <cpipe/core/CalibrationBlock.hpp>
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/runtime/BufferHandle.hpp>
+#include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
@@ -77,6 +78,7 @@ TEST_CASE("blacklevel.dng_levels subtracts per-CFA black and normalizes by white
     input->unlock_cpu();
     input->flush_cpu_writes();
 
+    cpipe::runtime::ComputeContext compute;
     cpipe::runtime::HostContext host_context;
     void* instance = nullptr;
     REQUIRE(desc->main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, nullptr, nullptr,
@@ -90,7 +92,7 @@ TEST_CASE("blacklevel.dng_levels subtracts per-CFA black and normalizes by white
     cpipe_buffer_t* outputs[] = {output_handle.get()};
     cpipe_metadata_builder_t* out_metadata[] = {builder.get()};
     cpipe_process_ctx process{
-        .compute = nullptr,
+        .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
         .inference = nullptr,
         .inputs = inputs,
         .n_in = 1,
