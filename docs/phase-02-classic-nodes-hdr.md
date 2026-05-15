@@ -367,14 +367,14 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 **Description.** Replace the linear-lifetime planner with an interference-graph coloring planner per P2-PD-9. Topo-order liveness analysis → build interference graph → greedy coloring → emit `buffer_id → physical_slot` mapping. Preserve the peak-vs-cap pre-check. Add three new fan-out / fan-in tests that exercise overlapping lifetimes.
 
 **Acceptance criteria:**
-- [ ] On the P1 linear pipeline, the new planner produces an identical allocation count (regression).
-- [ ] On a synthetic fan-out DAG (source → {A, B} → sink), the planner allocates exactly 2 physical slots (one each for branches A and B).
-- [ ] On a synthetic diamond DAG (source → {A, B} → fuse → sink), the planner reuses the source slot for the sink output.
-- [ ] `Pipeline::set_device_memory_cap(small)` aborts with `CPIPE_OOM` when peak exceeds.
+- [x] On the P1 linear pipeline, the new planner produces an identical allocation count (regression).
+- [x] On a synthetic fan-out DAG (source → {A, B} → sink), the planner allocates exactly 2 physical slots (one each for branches A and B).
+- [x] On a synthetic diamond DAG (source → {A, B} → fuse → sink), the planner reuses the source slot for the sink output.
+- [x] `Pipeline::set_device_memory_cap(small)` aborts with `CPIPE_OOM` when peak exceeds.
 
 **Verification:**
-- [ ] `ctest -R test_memory_planner` green (extended).
-- [ ] `ctest -R test_diamond_dag_parallel` still green.
+- [x] `ctest -R test_memory_planner` green (extended).
+- [x] `ctest -R test_diamond_dag_parallel` still green.
 
 **Dependencies:** T1 (compute suite changes do not block, but tests do).
 

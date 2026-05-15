@@ -246,6 +246,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     std::vector<std::vector<std::size_t>> adjacency(nodes.size());
     std::vector<std::size_t> indegree(nodes.size(), 0);
     std::vector<GraphEdge> graph_edges;
+    std::vector<MemoryGraphEdge> memory_edges;
     std::vector<PrecisionEdge> precision_edges;
     for (const auto& edge : document.at("edges")) {
         const auto from_endpoint = split_endpoint(edge.at("from").get<std::string>());
@@ -262,6 +263,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
                                         .to = to->second,
                                         .from_port = from_endpoint.port,
                                         .to_port = to_endpoint.port});
+        memory_edges.push_back(MemoryGraphEdge{.from = from->second, .to = to->second});
         precision_edges.push_back(PrecisionEdge{.from = nodes[from->second].descriptor,
                                                 .from_port = from_endpoint.port,
                                                 .to = nodes[to->second].descriptor,
@@ -331,7 +333,8 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
                                    .layout = layout_from_json(input_json)});
     }
     const auto primary_layout = inputs.empty() ? BufferLayout{} : inputs.front().layout;
-    const auto memory_plan = MemoryPlanner::plan(primary_layout, node_descriptors);
+    const auto memory_plan =
+        MemoryPlanner::plan_graph(primary_layout, node_descriptors, memory_edges);
     if (memory_plan.peak_bytes > out->device_memory_cap_bytes_) {
         set_error(error, "memory peak exceeds device cap");
         return CPIPE_OOM;
