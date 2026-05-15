@@ -22,6 +22,7 @@ halide_type_t halide_type_for(cpipe::compute::PixelFormat format) {
             return halide_type_t{halide_type_float, 32};
         case PixelFormat::I8:
             return halide_type_t{halide_type_int, 8};
+        case PixelFormat::R16G16B16A16_UNORM:
         case PixelFormat::R16_UINT:
             return halide_type_t{halide_type_uint, 16};
         default:

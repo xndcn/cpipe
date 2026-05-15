@@ -133,6 +133,7 @@ P2-specific decisions, locked from the planning round on 2026-05-15. PD numberin
 | P2-PD-57   | Compute-suite tail-extension probe      | `cpipe_compute_suite_v1` and `cpipe_host_v1` grow at the tail (P2-PD-5 / P2-PD-6); the host always populates the full struct; plugins compiled against the v0.2 header read only the original entries via layout-stable tail-append. New plugins probe `host->abi_minor >= 3` (one-line guard) before touching `submit_halide_with_params` / `submit_ocio_processor` / `get_ocio_processor`. There is no separate size field on the suite — the ABI minor is the version cursor. |
 | P2-PD-58   | OCIO CPU fallback in T1                 | `submit_ocio_processor` ships with a CPU-processor fallback in T1 (FP32 / FP16 RGBA via `OCIO::PackedImageDesc`). The Vulkan-backed path (P2-PD-6 / `OcioVulkanProcessor`) lands in T19 once T2 (cpipe-owned Vulkan dispatch) is available. T1 satisfies the acceptance bullet "`get_ocio_processor` returns a non-null opaque handle" and the round-trip semantics; GPU dispatch is T19's gate. The opaque handle type stays stable across the upgrade because `cpipe_ocio_processor_s` holds both a `ConstCPUProcessorRcPtr` and (in T19) a Vulkan companion. |
 | P2-PD-59   | Halide Vulkan AOT handoff scope         | T2 lands the cpipe-owned Vulkan dispatch primitive (`VulkanCommandBuffer` records `vkCmdBindPipeline` / `vkCmdBindDescriptorSets` / `vkCmdDispatch`, submits to the cpipe-owned queue, and signals a timeline semaphore). Local Halide v21 evidence shows `add_halide_library()` already appends `-no_runtime`, but the generated Vulkan object still calls the overrideable Halide entry points (`halide_vulkan_initialize_kernels`, `halide_vulkan_run`, `halide_vulkan_finalize_kernels`, `halide_vulkan_device_interface`) and the shipped CMake/docs expose no `HL_VULKAN_NO_HOST_RUNTIME` switch or stable AOT descriptor handoff for cpipe to bind `demosaic.bilinear` SPIR-V directly without reimplementing Halide's private Vulkan runtime sidecar decoder. Therefore T2 does **not** claim that `demosaic.bilinear` has moved to cpipe-owned command-buffer dispatch; that narrower Halide handoff remains a carry item. OCIO Vulkan in T19 is still unblocked because it supplies its own SPIR-V + descriptor layout and can use `VulkanCommandBuffer` directly. |
+| P2-PD-60   | `precision_convert` schema timing       | T4 lands before T5's `pipeline-v0.3.json`, so the "not addressable from pipeline-v0.3.json" rule is implemented as a loader-level reserved-node rejection in the current v0.2 loader. T5 carries that same reserved-node rule forward when it introduces `pipeline-v0.3.json`; user-authored `com.cpipe.precision_convert` fails with `CPIPE_BAD_INDEX`, while planner-inserted instances remain internal. |
 
 ---
 
@@ -389,13 +390,13 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 **Description.** Implement `com.cpipe.precision_convert` built-in node (P2-PD-32) with Halide AOT generators for the four supported conversions. Implement `PrecisionPlanner::auto_insert(graph)` (P2-PD-10) that splices `precision_convert` at producer/consumer port mismatches. Scheduler diagnostics log the inserted nodes via spdlog. `CPIPE_BAD_PRECISION` fires only when no conversion path exists.
 
 **Acceptance criteria:**
-- [ ] Pipeline with `node_A.output = R16G16B16A16_SFLOAT → node_B.input = R8G8B8A8_UNORM` loads, scheduler trace shows the implicit `precision_convert`, and round-trip is within 1 LSB.
-- [ ] Pipeline with `R16_UINT → R8G8B8A8_UNORM` aborts with `CPIPE_BAD_PRECISION` (demosaic required).
-- [ ] `precision_convert` is not addressable from `pipeline-v0.3.json` (parser rejects).
+- [x] Pipeline with `node_A.output = R16G16B16A16_SFLOAT → node_B.input = R8G8B8A8_UNORM` loads, scheduler trace shows the implicit `precision_convert`, and round-trip is within 1 LSB.
+- [x] Pipeline with `R16_UINT → R8G8B8A8_UNORM` aborts with `CPIPE_BAD_PRECISION` (demosaic required).
+- [x] `precision_convert` is not addressable from `pipeline-v0.3.json` (parser rejects).
 
 **Verification:**
-- [ ] `ctest -R test_precision_planner` green.
-- [ ] `ctest -R test_node_precision_convert` green.
+- [x] `ctest -R test_precision_planner` green.
+- [x] `ctest -R test_node_precision_convert` green.
 
 **Dependencies:** T1.
 

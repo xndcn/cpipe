@@ -6,6 +6,7 @@ add_halide_generator(
     SOURCES
         passthrough_copy_generator.cpp
         demosaic/demosaic_bilinear_generator.cpp
+        precision/precision_convert_generator.cpp
 )
 cpipe_add_halide_library(
     passthrough_copy
@@ -29,6 +30,50 @@ cpipe_add_halide_library(
     TARGETS
         x86-64-linux
         ${Halide_HOST_TARGET}-vulkan-vk_float16
+)
+cpipe_add_halide_library(
+    precision_convert_r16u_to_f32
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        precision_convert_r16u_to_f32
+    FUNCTION_NAME
+        precision_convert_r16u_to_f32
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    precision_convert_f32_to_rgba16f
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        precision_convert_f32_to_rgba16f
+    FUNCTION_NAME
+        precision_convert_f32_to_rgba16f
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    precision_convert_rgba16f_to_rgba8
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        precision_convert_rgba16f_to_rgba8
+    FUNCTION_NAME
+        precision_convert_rgba16f_to_rgba8
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    precision_convert_rgba16f_to_rgba16u
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        precision_convert_rgba16f_to_rgba16u
+    FUNCTION_NAME
+        precision_convert_rgba16f_to_rgba16u
+    TARGETS
+        x86-64-linux
 )
 
 set(passthrough_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/passthrough_manifest.cpp")
@@ -132,6 +177,18 @@ add_custom_command(
     DEPENDS output/heif_sdr.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(precision_convert_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/precision_convert_manifest.cpp")
+add_custom_command(
+    OUTPUT "${precision_convert_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/precision/precision_convert.json"
+        -DOUTPUT_CPP="${precision_convert_manifest_cpp}"
+        -DSYMBOL_NAME=PRECISION_CONVERT_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS precision/precision_convert.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 add_library(
     cpipe-builtin-nodes
     STATIC
@@ -149,6 +206,8 @@ add_library(
         wb/wb_dual_illuminant_dispatch.cpp
         colormatrix/colormatrix_dng_to_working.cpp
         colormatrix/colormatrix_dng_to_working_dispatch.cpp
+        precision/precision_convert.cpp
+        precision/precision_convert_dispatch.cpp
         output/heif_sdr.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"
@@ -157,6 +216,7 @@ add_library(
         "${demosaic_bilinear_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
+        "${precision_convert_manifest_cpp}"
         "${output_heif_sdr_manifest_cpp}"
 )
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
@@ -177,4 +237,8 @@ target_link_libraries(
         cpipe::runtime
         passthrough_copy
         demosaic_bilinear
+        precision_convert_r16u_to_f32
+        precision_convert_f32_to_rgba16f
+        precision_convert_rgba16f_to_rgba8
+        precision_convert_rgba16f_to_rgba16u
 )

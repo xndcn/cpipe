@@ -39,6 +39,16 @@ target_compile_definitions(test_compute_suite_v1_ext PRIVATE CPIPE_SOURCE_DIR="$
 target_link_libraries(test_compute_suite_v1_ext PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_memory_planner test_memory_planner.cpp)
 target_link_libraries(test_memory_planner PRIVATE cpipe::runtime)
+cpipe_add_unit_test(test_precision_planner test_precision_planner.cpp)
+target_compile_definitions(test_precision_planner PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_link_libraries(
+    test_precision_planner
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_metadata_suite test_metadata_suite.cpp)
 target_link_libraries(test_metadata_suite PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)
 cpipe_add_unit_test(test_opcode_list_parser test_opcode_list_parser.cpp)
@@ -121,6 +131,15 @@ target_link_libraries(
 cpipe_add_unit_test(test_node_colormatrix test_node_colormatrix.cpp)
 target_link_libraries(
     test_node_colormatrix
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
+target_link_libraries(
+    test_node_precision_convert
     PRIVATE
         cpipe::runtime
         cpipe::sdk

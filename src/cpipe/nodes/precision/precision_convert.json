@@ -1,0 +1,53 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.precision_convert",
+  "version": "1.0.0",
+  "label": "Precision Convert",
+  "category": "utility",
+  "doc": "Implicit precision conversion node inserted by the precision planner.",
+  "ports": [
+    {
+      "name": "in",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r", "rgba"],
+        "precision": ["u16", "f32", "f16"]
+      },
+      "cardinality": "single"
+    },
+    {
+      "name": "out",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["r", "rgba"],
+        "precision": ["f32", "f16", "u8", "u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "in",
+        "sets_steps_applied": ["precision_convert"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "halide_aot": [
+      "precision_convert_r16u_to_f32",
+      "precision_convert_f32_to_rgba16f",
+      "precision_convert_rgba16f_to_rgba8",
+      "precision_convert_rgba16f_to_rgba16u"
+    ],
+    "in_pixel_bytes": 0,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "any",
+    "output_role": "any",
+    "respects_chromaticity": true
+  }
+}

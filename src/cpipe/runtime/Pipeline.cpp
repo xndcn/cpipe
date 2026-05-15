@@ -77,6 +77,25 @@ BufferLayout layout_from_json(const nlohmann::json& input) {
     return layout;
 }
 
+std::optional<PixelFormat> pixel_format_from_string(std::string_view format) {
+    if (format == "R16_UINT") {
+        return PixelFormat::R16_UINT;
+    }
+    if (format == "R32_SFLOAT") {
+        return PixelFormat::R32_SFLOAT;
+    }
+    if (format == "R16G16B16A16_SFLOAT") {
+        return PixelFormat::R16G16B16A16_SFLOAT;
+    }
+    if (format == "R8G8B8A8_UNORM") {
+        return PixelFormat::R8G8B8A8_UNORM;
+    }
+    if (format == "R16G16B16A16_UNORM") {
+        return PixelFormat::R16G16B16A16_UNORM;
+    }
+    return std::nullopt;
+}
+
 std::optional<PixelFormat> manifest_pixel_format(const nlohmann::json& port) {
     const auto caps = port.find("caps");
     if (caps == port.end()) {
@@ -98,14 +117,31 @@ std::optional<PixelFormat> manifest_pixel_format(const nlohmann::json& port) {
         precision == std::vector<std::string>{"u8"}) {
         return PixelFormat::R8G8B8A8_UNORM;
     }
+    if (channels == std::vector<std::string>{"rgba"} &&
+        precision == std::vector<std::string>{"u16"}) {
+        return PixelFormat::R16G16B16A16_UNORM;
+    }
     return std::nullopt;
 }
 
 std::optional<BufferLayout> output_layout_for_node(const cpipe_plugin_desc_t* desc,
+                                                   const nlohmann::json& params,
                                                    const BufferLayout& input, std::string* error) {
     if (desc == nullptr || desc->manifest_json == nullptr) {
         set_error(error, "missing node manifest");
         return std::nullopt;
+    }
+    if (desc->node_id != nullptr &&
+        std::string_view{desc->node_id} == "com.cpipe.precision_convert") {
+        const auto target = params.value("target_format", "");
+        const auto format = pixel_format_from_string(target);
+        if (!format) {
+            set_error(error, "unsupported precision_convert target format");
+            return std::nullopt;
+        }
+        BufferLayout layout = input;
+        layout.format = *format;
+        return layout;
     }
 
     const auto manifest = nlohmann::json::parse(desc->manifest_json);
@@ -233,6 +269,10 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     for (const auto& node : json_nodes) {
         const auto id = node.at("id").get<std::string>();
         const auto type = node.at("type").get<std::string>();
+        if (type == "com.cpipe.precision_convert") {
+            set_error(error, "reserved implicit node type: " + type);
+            return CPIPE_BAD_INDEX;
+        }
         const auto* desc = registry.find(type);
         if (desc == nullptr) {
             set_error(error, "unknown node type: " + type);
@@ -247,7 +287,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
     std::vector<std::size_t> indegree(nodes.size(), 0);
     std::vector<GraphEdge> graph_edges;
     std::vector<MemoryGraphEdge> memory_edges;
-    std::vector<PrecisionEdge> precision_edges;
+    std::vector<PrecisionGraphEdge> precision_graph_edges;
     for (const auto& edge : document.at("edges")) {
         const auto from_endpoint = split_endpoint(edge.at("from").get<std::string>());
         const auto to_endpoint = split_endpoint(edge.at("to").get<std::string>());
@@ -264,10 +304,10 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
                                         .from_port = from_endpoint.port,
                                         .to_port = to_endpoint.port});
         memory_edges.push_back(MemoryGraphEdge{.from = from->second, .to = to->second});
-        precision_edges.push_back(PrecisionEdge{.from = nodes[from->second].descriptor,
-                                                .from_port = from_endpoint.port,
-                                                .to = nodes[to->second].descriptor,
-                                                .to_port = to_endpoint.port});
+        precision_graph_edges.push_back(PrecisionGraphEdge{.from = from->second,
+                                                           .to = to->second,
+                                                           .from_port = from_endpoint.port,
+                                                           .to_port = to_endpoint.port});
     }
 
     std::queue<std::size_t> ready;
@@ -321,9 +361,69 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         }
     }
 
-    if (const auto status = PrecisionPlanner::validate(precision_edges, error);
+    std::vector<PrecisionGraphNode> precision_nodes;
+    precision_nodes.reserve(nodes.size());
+    for (const auto& node : nodes) {
+        precision_nodes.push_back(PrecisionGraphNode{.id = node.id,
+                                                     .descriptor = node.descriptor,
+                                                     .params = node.params,
+                                                     .implicit = false});
+    }
+    PrecisionPlan precision_plan;
+    if (const auto status = PrecisionPlanner::auto_insert(
+            precision_nodes, precision_graph_edges, registry.find("com.cpipe.precision_convert"),
+            &precision_plan, error);
         status != CPIPE_OK) {
         return status;
+    }
+
+    node_descriptors.clear();
+    node_descriptors.reserve(precision_plan.nodes.size());
+    for (const auto& node : precision_plan.nodes) {
+        node_descriptors.push_back(node.descriptor);
+    }
+    memory_edges.clear();
+    memory_edges.reserve(precision_plan.edges.size());
+    for (const auto& edge : precision_plan.edges) {
+        memory_edges.push_back(MemoryGraphEdge{.from = edge.from, .to = edge.to});
+    }
+
+    std::vector<std::vector<std::size_t>> precision_adjacency(precision_plan.nodes.size());
+    std::vector<std::size_t> precision_indegree(precision_plan.nodes.size(), 0);
+    for (const auto& edge : precision_plan.edges) {
+        if (edge.from >= precision_plan.nodes.size() || edge.to >= precision_plan.nodes.size()) {
+            set_error(error, "precision edge index out of range");
+            return CPIPE_BAD_INDEX;
+        }
+        precision_adjacency[edge.from].push_back(edge.to);
+        ++precision_indegree[edge.to];
+    }
+
+    std::queue<std::size_t> precision_ready;
+    for (std::size_t i = 0; i < precision_indegree.size(); ++i) {
+        if (precision_indegree[i] == 0) {
+            precision_ready.push(i);
+        }
+    }
+
+    std::vector<NodeInstance> planned_nodes;
+    planned_nodes.reserve(precision_plan.nodes.size());
+    while (!precision_ready.empty()) {
+        const auto current = precision_ready.front();
+        precision_ready.pop();
+        const auto& node = precision_plan.nodes[current];
+        planned_nodes.push_back(
+            NodeInstance{.id = node.id, .descriptor = node.descriptor, .params = node.params});
+        for (const auto next : precision_adjacency[current]) {
+            --precision_indegree[next];
+            if (precision_indegree[next] == 0) {
+                precision_ready.push(next);
+            }
+        }
+    }
+    if (planned_nodes.size() != precision_plan.nodes.size()) {
+        set_error(error, "cycle in precision-planned pipeline graph");
+        return CPIPE_FAILED;
     }
 
     std::vector<InputPort> inputs;
@@ -342,7 +442,7 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
 
     out->inputs_ = std::move(inputs);
     out->layout_ = primary_layout;
-    out->nodes_ = std::move(sorted);
+    out->nodes_ = std::move(planned_nodes);
     out->sources_.clear();
     out->registry_ = &registry;
     out->memory_peak_bytes_ = memory_plan.peak_bytes;
@@ -479,8 +579,8 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
                     cpipe_metadata_builder_t* process_out_metadata[] = {nullptr};
                     std::size_t output_count = 0;
                     if (has_output) {
-                        const auto output_layout =
-                            output_layout_for_node(node->descriptor, current->layout(), error);
+                        const auto output_layout = output_layout_for_node(
+                            node->descriptor, node->params, current->layout(), error);
                         if (!output_layout) {
                             return CPIPE_FAILED;
                         }

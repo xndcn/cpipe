@@ -8,6 +8,7 @@ void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_precision_convert();
 void cpipe_link_builtin_output_heif_sdr();
 
 void cpipe_link_all_builtin_nodes() {
@@ -18,5 +19,6 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_demosaic_bilinear();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();
+    cpipe_link_builtin_precision_convert();
     cpipe_link_builtin_output_heif_sdr();
 }

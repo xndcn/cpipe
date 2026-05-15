@@ -25,6 +25,7 @@ enum class PixelFormat : std::uint16_t {
     I8,
     U8,
     BLOB,
+    R16G16B16A16_UNORM,
 };
 
 [[nodiscard]] constexpr std::uint64_t bytes_per_pixel(PixelFormat format) noexcept {
@@ -40,6 +41,7 @@ enum class PixelFormat : std::uint16_t {
         case PixelFormat::R10G10B10A2_UNORM:
             return 4;
         case PixelFormat::R16G16B16A16_SFLOAT:
+        case PixelFormat::R16G16B16A16_UNORM:
             return 8;
         case PixelFormat::R16G16B16_SFLOAT:
             return 6;
@@ -67,6 +69,7 @@ enum class PixelFormat : std::uint16_t {
         case PixelFormat::R8G8B8A8_UNORM:
         case PixelFormat::R10G10B10A2_UNORM:
         case PixelFormat::R16G16B16A16_SFLOAT:
+        case PixelFormat::R16G16B16A16_UNORM:
         case PixelFormat::R32G32B32A32_SFLOAT:
             return 4;
         case PixelFormat::R8G8B8_UNORM:
@@ -122,6 +125,8 @@ enum class PixelFormat : std::uint16_t {
             return "U8";
         case PixelFormat::BLOB:
             return "BLOB";
+        case PixelFormat::R16G16B16A16_UNORM:
+            return "R16G16B16A16_UNORM";
     }
     return "UNKNOWN";
 }

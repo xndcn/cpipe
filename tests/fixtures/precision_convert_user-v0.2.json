@@ -1,0 +1,22 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.2.json",
+  "version": "0.2",
+  "id": "precision-convert-user",
+  "inputs": [
+    {
+      "port": "raw",
+      "kind": "Image2D",
+      "format": "R8G8B8A8_UNORM",
+      "width": 4,
+      "height": 4
+    }
+  ],
+  "nodes": [
+    {
+      "id": "convert",
+      "type": "com.cpipe.precision_convert",
+      "params": {}
+    }
+  ],
+  "edges": []
+}
