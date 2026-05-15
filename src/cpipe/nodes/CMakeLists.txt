@@ -439,6 +439,20 @@ add_custom_command(
     DEPENDS color/lut3d.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(color_scene_linear_to_display_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/color_scene_linear_to_display_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${color_scene_linear_to_display_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/color/scene_linear_to_display.json"
+        -DOUTPUT_CPP="${color_scene_linear_to_display_manifest_cpp}"
+        -DSYMBOL_NAME=COLOR_SCENE_LINEAR_TO_DISPLAY_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS color/scene_linear_to_display.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(tone_aces_filmic_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_aces_filmic_manifest.cpp")
 add_custom_command(
     OUTPUT "${tone_aces_filmic_manifest_cpp}"
@@ -585,6 +599,7 @@ add_library(
         denoise/wavelet_bayes_shrink_dispatch.cpp
         color/lut3d.cpp
         color/lut3d_dispatch.cpp
+        color/scene_linear_to_display.cpp
         sharpen/edge_aware_usm.cpp
         sharpen/edge_aware_usm_dispatch.cpp
         tone/aces_filmic.cpp
@@ -618,6 +633,7 @@ add_library(
         "${denoise_guided_filter_manifest_cpp}"
         "${denoise_wavelet_bayes_shrink_manifest_cpp}"
         "${color_3d_lut_manifest_cpp}"
+        "${color_scene_linear_to_display_manifest_cpp}"
         "${sharpen_edge_aware_usm_manifest_cpp}"
         "${tone_aces_filmic_manifest_cpp}"
         "${tone_filmic_rgb_manifest_cpp}"
@@ -636,7 +652,7 @@ cpipe_target_warning_flags(cpipe-builtin-nodes)
 target_compile_definitions(
     cpipe-builtin-nodes
     PRIVATE
-        CPIPE_DEFAULT_OCIO_CONFIG="${PROJECT_SOURCE_DIR}/share/cpipe/ocio/v0.1/config.ocio"
+        CPIPE_DEFAULT_OCIO_CONFIG="${PROJECT_SOURCE_DIR}/share/cpipe/ocio/v0.2/config.ocio"
 )
 
 target_link_libraries(

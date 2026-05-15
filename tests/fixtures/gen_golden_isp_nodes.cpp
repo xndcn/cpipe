@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
+#include <OpenColorIO/OpenColorIO.h>
 #include <OpenImageIO/imagebuf.h>
 
 #include <algorithm>
@@ -16,6 +17,7 @@
 #include <vector>
 
 namespace {
+namespace OCIO = OCIO_NAMESPACE;
 
 // Generates deterministic P1 self-referenced fixtures for the classic raw
 // stages covered by docs/research/07-classic-isp-algorithms.md §3.3 / §3.9 and
@@ -784,6 +786,42 @@ Image sharpen_output(const Image& input) {
     return image;
 }
 
+Image scene_linear_display_input() {
+    Image image{4, 4, 4, {}};
+    image.pixels.reserve(64);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            const auto t = static_cast<float>((y * image.width) + x) / 15.0F;
+            image.pixels.push_back(0.04F + (0.72F * t));
+            image.pixels.push_back(0.03F + (0.38F * static_cast<float>(x) / 3.0F));
+            image.pixels.push_back(0.02F + (0.25F * static_cast<float>(y) / 3.0F));
+            image.pixels.push_back(1.0F);
+        }
+    }
+    return image;
+}
+
+Image scene_linear_display_srgb_output(const std::filesystem::path& config_path,
+                                       const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (const auto value : input.pixels) {
+        image.pixels.push_back(half_roundtrip(value));
+    }
+
+    const auto config = OCIO::Config::CreateFromFile(config_path.string().c_str());
+    const auto processor =
+        config->getProcessor("scene_linear_rec2020", "output_srgb")->getDefaultCPUProcessor();
+    OCIO::PackedImageDesc desc{image.pixels.data(), static_cast<long>(image.width),
+                               static_cast<long>(image.height), 4};
+    processor->apply(desc);
+
+    for (auto& value : image.pixels) {
+        value = std::round(std::clamp(value, 0.0F, 1.0F) * 255.0F) / 255.0F;
+    }
+    return image;
+}
+
 Image tone_input() {
     Image image{8, 4, 4, {}};
     image.pixels.reserve(128);
@@ -1138,6 +1176,7 @@ int main(int argc, char** argv) {
     const auto sharpen_in = sharpen_input();
     const auto tone_in = tone_input();
     const auto color_lut_in = color_lut_input();
+    const auto scene_display_in = scene_linear_display_input();
     const auto mertens_under = mertens_exposure(tone_in, 0.25F);
     const auto mertens_normal = tone_in;
     const auto mertens_over = mertens_exposure(tone_in, 4.0F);
@@ -1165,6 +1204,11 @@ int main(int argc, char** argv) {
                             mertens_output(mertens_under, mertens_normal, mertens_over)) &&
         write_pair(root, "tone.reinhard", tone_in, tone_output(tone_in, reinhard)) &&
         write_color_lut_fixture(root, color_lut_in, color_lut_output(color_lut_in)) &&
+        write_pair(root, "color.scene_linear_to_display", scene_display_in,
+                   scene_linear_display_srgb_output(
+                       std::filesystem::absolute(root).parent_path().parent_path() / "share" /
+                           "cpipe" / "ocio" / "v0.2" / "config.ocio",
+                       scene_display_in)) &&
         write_pair(root, "sharpen.edge_aware_usm", sharpen_in, sharpen_output(sharpen_in));
     return ok ? 0 : 1;
 }

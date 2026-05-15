@@ -1,0 +1,54 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
+  "id": "com.cpipe.color.scene_linear_to_display",
+  "version": "1.0.0",
+  "label": "Scene Linear to Display",
+  "category": "color",
+  "doc": "OCIO scene-linear Rec.2020 to display output transform.",
+  "ports": [
+    {
+      "name": "rgb",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single"
+    },
+    {
+      "name": "display",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["u8", "u16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "rgb",
+        "sets_steps_applied": ["color.scene_linear_to_display"]
+      }
+    }
+  ],
+  "params": [
+    {
+      "name": "target",
+      "type": "enum",
+      "enum_values": ["sRGB", "BT2020-PQ", "DisplayP3", "BT2020-HLG"],
+      "default": "sRGB"
+    }
+  ],
+  "compute": {
+    "device": "CPU",
+    "engine": "OCIO",
+    "in_pixel_bytes": 8,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 0
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "display",
+    "respects_chromaticity": true
+  }
+}

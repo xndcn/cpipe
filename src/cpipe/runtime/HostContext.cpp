@@ -80,6 +80,16 @@ std::uint16_t float_to_half(float value) {
                                       (mantissa >> 13U));
 }
 
+std::uint8_t float_to_unorm8(float value) {
+    return static_cast<std::uint8_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * 255.0F));
+}
+
+std::uint16_t float_to_unorm10_top_aligned(float value) {
+    const auto quantized =
+        static_cast<std::uint16_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * 1023.0F));
+    return static_cast<std::uint16_t>(quantized << 6U);
+}
+
 }  // namespace
 
 namespace cpipe::runtime {
@@ -862,48 +872,65 @@ int HostContext::submit_ocio_processor(cpipe_compute_t*, cpipe_ocio_processor_t*
         return CPIPE_BAD_INDEX;
     }
     const auto& layout = input->layout();
+    const auto& output_layout = output->layout();
     if (layout.kind != compute::BufferKind::Image2D || layout.ndim != 2 ||
-        output->layout().dims[0] != layout.dims[0] || output->layout().dims[1] != layout.dims[1] ||
-        output->layout().format != layout.format) {
+        output_layout.kind != compute::BufferKind::Image2D || output_layout.ndim != 2 ||
+        output_layout.dims[0] != layout.dims[0] || output_layout.dims[1] != layout.dims[1]) {
         return CPIPE_BAD_INDEX;
+    }
+    if (layout.format != compute::PixelFormat::R32G32B32A32_SFLOAT &&
+        layout.format != compute::PixelFormat::R16G16B16A16_SFLOAT) {
+        return CPIPE_BAD_PRECISION;
     }
 
     const auto pixel_count =
         static_cast<std::size_t>(layout.dims[0]) * static_cast<std::size_t>(layout.dims[1]);
+    std::vector<float> rgba(pixel_count * 4U);
     if (layout.format == compute::PixelFormat::R32G32B32A32_SFLOAT) {
         const auto* in =
             static_cast<const float*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
-        auto* out = static_cast<float*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        std::copy_n(in, pixel_count * 4U, out);
-        OCIO::PackedImageDesc desc{out, static_cast<long>(layout.dims[0]),
-                                   static_cast<long>(layout.dims[1]), 4};
-        processor->cpu_processor->apply(desc);
-        output->unlock_cpu();
-        output->flush_cpu_writes();
+        std::copy_n(in, rgba.size(), rgba.data());
         input->unlock_cpu();
-        return CPIPE_OK;
-    }
-    if (layout.format == compute::PixelFormat::R16G16B16A16_SFLOAT) {
+    } else {
         const auto* in =
             static_cast<const std::uint16_t*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
-        auto* out =
-            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        std::vector<float> rgba(pixel_count * 4U);
         for (std::size_t i = 0; i < rgba.size(); ++i) {
             rgba[i] = half_to_float(in[i]);
         }
-        OCIO::PackedImageDesc desc{rgba.data(), static_cast<long>(layout.dims[0]),
-                                   static_cast<long>(layout.dims[1]), 4};
-        processor->cpu_processor->apply(desc);
+        input->unlock_cpu();
+    }
+
+    OCIO::PackedImageDesc desc{rgba.data(), static_cast<long>(layout.dims[0]),
+                               static_cast<long>(layout.dims[1]), 4};
+    processor->cpu_processor->apply(desc);
+
+    if (output_layout.format == compute::PixelFormat::R32G32B32A32_SFLOAT) {
+        auto* out = static_cast<float*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
+        std::copy(rgba.begin(), rgba.end(), out);
+    } else if (output_layout.format == compute::PixelFormat::R16G16B16A16_SFLOAT) {
+        auto* out =
+            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
         for (std::size_t i = 0; i < rgba.size(); ++i) {
             out[i] = float_to_half(rgba[i]);
         }
-        output->unlock_cpu();
-        output->flush_cpu_writes();
-        input->unlock_cpu();
-        return CPIPE_OK;
+    } else if (output_layout.format == compute::PixelFormat::R8G8B8A8_UNORM) {
+        auto* out =
+            static_cast<std::uint8_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_unorm8(rgba[i]);
+        }
+    } else if (output_layout.format == compute::PixelFormat::R16G16B16A16_UNORM) {
+        auto* out =
+            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_unorm10_top_aligned(rgba[i]);
+        }
+    } else {
+        return CPIPE_BAD_PRECISION;
     }
-    return CPIPE_BAD_PRECISION;
+    output->unlock_cpu();
+    output->flush_cpu_writes();
+    return CPIPE_OK;
 }
 
 int HostContext::submit_slang(cpipe_compute_t*, const char*, const char*,

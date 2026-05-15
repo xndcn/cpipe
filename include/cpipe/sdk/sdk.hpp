@@ -439,6 +439,8 @@ class ComputeContext {
 public:
     ComputeContext(cpipe_compute_t* impl, const cpipe_compute_suite_v1* suite)
         : impl_(impl), suite_(suite) {}
+    ComputeContext(cpipe_compute_t* impl, const cpipe_compute_suite_v1* suite, cpipe_host_t* host)
+        : impl_(impl), suite_(suite), host_(host) {}
 
     Result<void> submit_halide(std::string_view aot_id, std::span<const Buffer*> inputs,
                                std::span<Buffer*> outputs) {
@@ -497,9 +499,36 @@ public:
         return {};
     }
 
+    [[nodiscard]] cpipe_ocio_processor_t* get_ocio_processor(std::string_view config_path,
+                                                             std::string_view src_cs,
+                                                             std::string_view dst_cs) const {
+        if (host_ == nullptr || host_->get_ocio_processor == nullptr) {
+            return nullptr;
+        }
+        const std::string config{config_path};
+        const std::string src{src_cs};
+        const std::string dst{dst_cs};
+        return host_->get_ocio_processor(host_, config.c_str(), src.c_str(), dst.c_str());
+    }
+
+    Result<void> submit_ocio_processor(cpipe_ocio_processor_t* processor, const Buffer& input,
+                                       Buffer& output) {
+        if (suite_ == nullptr || suite_->submit_ocio_processor == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "compute suite OCIO unavailable"});
+        }
+
+        const auto status = static_cast<cpipe_status_t>(
+            suite_->submit_ocio_processor(impl_, processor, input.impl(), output.impl()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "submit_ocio_processor failed"});
+        }
+        return {};
+    }
+
 private:
     cpipe_compute_t* impl_{nullptr};
     const cpipe_compute_suite_v1* suite_{nullptr};
+    cpipe_host_t* host_{nullptr};
 };
 
 class InferenceContext {
@@ -619,14 +648,14 @@ int dispatch(const char* action, cpipe_host_t* host, cpipe_node_t* node, cpipe_p
         }
         if (std::strcmp(action, CPIPE_ACTION_PREPARE) == 0) {
             auto* instance = reinterpret_cast<T*>(node);
-            ComputeContext compute{static_cast<cpipe_compute_t*>(in_ctx), compute_suite};
+            ComputeContext compute{static_cast<cpipe_compute_t*>(in_ctx), compute_suite, host};
             InferenceContext inference{nullptr, inference_suite};
             return result_to_status(instance->prepare(compute, &inference, param_view));
         }
         if (std::strcmp(action, CPIPE_ACTION_PROCESS) == 0) {
             auto* instance = reinterpret_cast<T*>(node);
             const auto* process = static_cast<const cpipe_process_ctx*>(in_ctx);
-            ComputeContext compute{process->compute, compute_suite};
+            ComputeContext compute{process->compute, compute_suite, host};
             InferenceContext inference{process->inference, inference_suite};
 
             std::vector<Buffer> input_buffers;

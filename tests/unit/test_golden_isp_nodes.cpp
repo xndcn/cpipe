@@ -35,6 +35,7 @@
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_color_3d_lut();
+void cpipe_link_builtin_color_scene_linear_to_display();
 void cpipe_link_builtin_denoise_bm3d();
 void cpipe_link_builtin_denoise_guided_filter();
 void cpipe_link_builtin_denoise_wavelet_bayes_shrink();
@@ -211,6 +212,17 @@ FloatImage read_rgba16(CpuBuffer& buffer, const int width, const int height) {
     return image;
 }
 
+FloatImage read_rgba8(CpuBuffer& buffer, const int width, const int height) {
+    FloatImage image{width, height, 4, {}};
+    image.pixels.resize(static_cast<std::size_t>(width) * static_cast<std::size_t>(height) * 4U);
+    const auto* in = static_cast<const std::uint8_t*>(buffer.lock_cpu(IBuffer::CpuAccess::Read));
+    for (std::size_t i = 0; i < image.pixels.size(); ++i) {
+        image.pixels[i] = static_cast<float>(in[i]) / 255.0F;
+    }
+    buffer.unlock_cpu();
+    return image;
+}
+
 const cpipe_plugin_desc_t& require_node(cpipe::runtime::Registry& registry,
                                         const std::string& node_id) {
     const auto* desc = registry.find(node_id.c_str());
@@ -374,6 +386,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_denoise_guided_filter();
     cpipe_link_builtin_denoise_wavelet_bayes_shrink();
     cpipe_link_builtin_color_3d_lut();
+    cpipe_link_builtin_color_scene_linear_to_display();
     cpipe_link_builtin_sharpen_edge_aware_usm();
     cpipe_link_builtin_tone_aces_filmic();
     cpipe_link_builtin_tone_filmic_rgb();
@@ -710,6 +723,28 @@ void assert_color_lut_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_scene_linear_to_display_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.color.scene_linear_to_display";
+    constexpr auto kFixture = "color.scene_linear_to_display";
+    const auto input_image = read_fixture(kFixture, "in.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = {"tone.filmic_rgb", "color.3d_lut", "sharpen.edge_aware_usm"};
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output = make_buffer(PixelFormat::R8G8B8A8_UNORM, input_image.width, input_image.height,
+                              BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node_with_params(require_node(registry, kNode), input, output,
+                                          nlohmann::json{{"target", "sRGB"}});
+    require_psnr_at_least(kFixture, read_rgba8(*output, input_image.width, input_image.height));
+}
+
 }  // namespace
 
 TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
@@ -775,6 +810,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("color.3d_lut") {
         assert_color_lut_golden(registry);
+    }
+    SECTION("color.scene_linear_to_display") {
+        assert_scene_linear_to_display_golden(registry);
     }
     SECTION("sharpen.edge_aware_usm") {
         assert_denoise_golden(registry, "com.cpipe.sharpen.edge_aware_usm",
