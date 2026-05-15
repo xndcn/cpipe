@@ -15,6 +15,9 @@ add_halide_generator(
         denoise/wavelet_bayes_shrink_generator.cpp
         precision/precision_convert_generator.cpp
         sharpen/edge_aware_usm_generator.cpp
+        tone/aces_filmic_generator.cpp
+        tone/filmic_rgb_generator.cpp
+        tone/reinhard_generator.cpp
 )
 cpipe_add_halide_library(
     passthrough_copy
@@ -125,6 +128,39 @@ cpipe_add_halide_library(
         sharpen_edge_aware_usm
     FUNCTION_NAME
         sharpen_edge_aware_usm
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    tone_aces_filmic
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        tone_aces_filmic
+    FUNCTION_NAME
+        tone_aces_filmic
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    tone_filmic_rgb
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        tone_filmic_rgb
+    FUNCTION_NAME
+        tone_filmic_rgb
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    tone_reinhard
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        tone_reinhard
+    FUNCTION_NAME
+        tone_reinhard
     TARGETS
         x86-64-linux
 )
@@ -367,6 +403,42 @@ add_custom_command(
     DEPENDS sharpen/edge_aware_usm.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(tone_aces_filmic_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_aces_filmic_manifest.cpp")
+add_custom_command(
+    OUTPUT "${tone_aces_filmic_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tone/aces_filmic.json"
+        -DOUTPUT_CPP="${tone_aces_filmic_manifest_cpp}"
+        -DSYMBOL_NAME=TONE_ACES_FILMIC_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS tone/aces_filmic.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
+set(tone_filmic_rgb_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_filmic_rgb_manifest.cpp")
+add_custom_command(
+    OUTPUT "${tone_filmic_rgb_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tone/filmic_rgb.json"
+        -DOUTPUT_CPP="${tone_filmic_rgb_manifest_cpp}"
+        -DSYMBOL_NAME=TONE_FILMIC_RGB_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS tone/filmic_rgb.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
+set(tone_reinhard_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/tone_reinhard_manifest.cpp")
+add_custom_command(
+    OUTPUT "${tone_reinhard_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/tone/reinhard.json"
+        -DOUTPUT_CPP="${tone_reinhard_manifest_cpp}"
+        -DSYMBOL_NAME=TONE_REINHARD_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS tone/reinhard.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(output_heif_sdr_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/output_heif_sdr_manifest.cpp")
 add_custom_command(
     OUTPUT "${output_heif_sdr_manifest_cpp}"
@@ -451,6 +523,12 @@ add_library(
         denoise/wavelet_bayes_shrink_dispatch.cpp
         sharpen/edge_aware_usm.cpp
         sharpen/edge_aware_usm_dispatch.cpp
+        tone/aces_filmic.cpp
+        tone/aces_filmic_dispatch.cpp
+        tone/filmic_rgb.cpp
+        tone/filmic_rgb_dispatch.cpp
+        tone/reinhard.cpp
+        tone/reinhard_dispatch.cpp
         lens/shading_gainmap.cpp
         lens/shading_gainmap_dispatch.cpp
         lens/dng_opcode_list_3.cpp
@@ -473,6 +551,9 @@ add_library(
         "${denoise_guided_filter_manifest_cpp}"
         "${denoise_wavelet_bayes_shrink_manifest_cpp}"
         "${sharpen_edge_aware_usm_manifest_cpp}"
+        "${tone_aces_filmic_manifest_cpp}"
+        "${tone_filmic_rgb_manifest_cpp}"
+        "${tone_reinhard_manifest_cpp}"
         "${lens_shading_gainmap_manifest_cpp}"
         "${lens_dng_opcode_list_3_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
@@ -504,6 +585,9 @@ target_link_libraries(
         denoise_guided_filter
         denoise_wavelet_bayes_shrink
         sharpen_edge_aware_usm
+        tone_aces_filmic
+        tone_filmic_rgb
+        tone_reinhard
         precision_convert_r16u_to_f32
         precision_convert_f32_to_rgba16f
         precision_convert_rgba16f_to_rgba8

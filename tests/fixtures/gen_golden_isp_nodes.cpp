@@ -782,6 +782,58 @@ Image sharpen_output(const Image& input) {
     return image;
 }
 
+Image tone_input() {
+    Image image{8, 4, 4, {}};
+    image.pixels.reserve(128);
+    const auto count = image.width * image.height;
+    for (int i = 0; i < count; ++i) {
+        const auto t = static_cast<float>(i) / static_cast<float>(count - 1);
+        const auto value = 16.0F * t * t;
+        image.pixels.push_back(value);
+        image.pixels.push_back(0.65F * value);
+        image.pixels.push_back(0.35F * value);
+        image.pixels.push_back(1.0F);
+    }
+    return image;
+}
+
+float aces_fit(float value) {
+    value = std::max(0.0F, value);
+    constexpr float a = 2.51F;
+    constexpr float b = 0.03F;
+    constexpr float c = 2.43F;
+    constexpr float d = 0.59F;
+    constexpr float e = 0.14F;
+    return std::clamp((value * ((a * value) + b)) / ((value * ((c * value) + d)) + e), 0.0F, 1.0F);
+}
+
+float filmic_curve(float value) {
+    value = std::max(0.0F, value);
+    constexpr float contrast = 6.0F;
+    constexpr float white = 18.0F;
+    return std::clamp(std::log(1.0F + (contrast * value)) / std::log(1.0F + (contrast * white)),
+                      0.0F, 1.0F);
+}
+
+float reinhard(float value) {
+    value = std::max(0.0F, value);
+    return value / (1.0F + value);
+}
+
+using ToneCurve = float (*)(float);
+
+Image tone_output(const Image& input, ToneCurve curve) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (std::size_t i = 0; i < input.pixels.size(); i += 4U) {
+        image.pixels.push_back(half_roundtrip(curve(half_roundtrip(input.pixels[i + 0U]))));
+        image.pixels.push_back(half_roundtrip(curve(half_roundtrip(input.pixels[i + 1U]))));
+        image.pixels.push_back(half_roundtrip(curve(half_roundtrip(input.pixels[i + 2U]))));
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 3U])));
+    }
+    return image;
+}
+
 Image opcode_list_3_input() {
     Image image{8, 8, 4, {}};
     image.pixels.reserve(256);
@@ -875,6 +927,7 @@ int main(int argc, char** argv) {
     const auto cm_in = colormatrix_input();
     const auto denoise_in = denoise_input();
     const auto sharpen_in = sharpen_input();
+    const auto tone_in = tone_input();
 
     const bool ok =
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
@@ -893,6 +946,9 @@ int main(int argc, char** argv) {
         write_pair(root, "denoise.guided_filter", denoise_in, guided_filter_output(denoise_in)) &&
         write_pair(root, "denoise.wavelet_bayes_shrink", denoise_in,
                    wavelet_bayes_shrink_output(denoise_in)) &&
+        write_pair(root, "tone.aces_filmic", tone_in, tone_output(tone_in, aces_fit)) &&
+        write_pair(root, "tone.filmic_rgb", tone_in, tone_output(tone_in, filmic_curve)) &&
+        write_pair(root, "tone.reinhard", tone_in, tone_output(tone_in, reinhard)) &&
         write_pair(root, "sharpen.edge_aware_usm", sharpen_in, sharpen_output(sharpen_in));
     return ok ? 0 : 1;
 }

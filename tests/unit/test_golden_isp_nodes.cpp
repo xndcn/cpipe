@@ -41,6 +41,9 @@ void cpipe_link_builtin_lens_dng_opcode_list_3();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_sharpen_edge_aware_usm();
+void cpipe_link_builtin_tone_aces_filmic();
+void cpipe_link_builtin_tone_filmic_rgb();
+void cpipe_link_builtin_tone_reinhard();
 void cpipe_link_builtin_wb_dual_illuminant();
 void cpipe_link_builtin_wb_greyworld_auto();
 
@@ -286,6 +289,9 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_denoise_guided_filter();
     cpipe_link_builtin_denoise_wavelet_bayes_shrink();
     cpipe_link_builtin_sharpen_edge_aware_usm();
+    cpipe_link_builtin_tone_aces_filmic();
+    cpipe_link_builtin_tone_filmic_rgb();
+    cpipe_link_builtin_tone_reinhard();
     registry.load_builtin_nodes();
 }
 
@@ -540,6 +546,26 @@ void assert_denoise_golden(cpipe::runtime::Registry& registry, const char* node,
     require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_tone_golden(cpipe::runtime::Registry& registry, const char* node, const char* fixture) {
+    const auto input_image = read_fixture(fixture, "in.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = {"denoise.bm3d", "denoise.wavelet_bayes_shrink"};
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node(require_node(registry, node), input, output);
+    require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
+}
+
 }  // namespace
 
 TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
@@ -590,6 +616,15 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
         assert_denoise_golden(registry, "com.cpipe.denoise.wavelet_bayes_shrink",
                               "denoise.wavelet_bayes_shrink",
                               {"color_matrix", "denoise.guided_filter"});
+    }
+    SECTION("tone.aces_filmic") {
+        assert_tone_golden(registry, "com.cpipe.tone.aces_filmic", "tone.aces_filmic");
+    }
+    SECTION("tone.filmic_rgb") {
+        assert_tone_golden(registry, "com.cpipe.tone.filmic_rgb", "tone.filmic_rgb");
+    }
+    SECTION("tone.reinhard") {
+        assert_tone_golden(registry, "com.cpipe.tone.reinhard", "tone.reinhard");
     }
     SECTION("sharpen.edge_aware_usm") {
         assert_denoise_golden(registry, "com.cpipe.sharpen.edge_aware_usm",

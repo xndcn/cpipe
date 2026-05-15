@@ -245,6 +245,33 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_tone_filmic_rgb test_node_tone_filmic_rgb.cpp)
+target_link_libraries(
+    test_node_tone_filmic_rgb
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_tone_aces_filmic test_node_tone_aces_filmic.cpp)
+target_link_libraries(
+    test_node_tone_aces_filmic
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_tone_reinhard test_node_tone_reinhard.cpp)
+target_link_libraries(
+    test_node_tone_reinhard
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_precision_convert test_node_precision_convert.cpp)
 target_link_libraries(
     test_node_precision_convert
