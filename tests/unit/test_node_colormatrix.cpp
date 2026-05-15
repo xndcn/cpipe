@@ -3,10 +3,13 @@
 
 #include <array>
 #include <catch2/catch_approx.hpp>
+#include <cpipe/core/ByteBlob.hpp>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
+#include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <nlohmann/json.hpp>
@@ -57,11 +60,19 @@ constexpr std::array<float, 9> kXyzD65ToRec2020{
     1.7166512F, -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
     0.0157685F, 0.0176399F,  -0.0427706F, 0.9421031F,
 };
+constexpr const char* kCameraToXyzBlob = "com.cpipe.wb.camera_to_xyz_d50_f32";
 
 std::array<float, 3> mul3(const std::array<float, 9>& matrix, const std::array<float, 3>& value) {
     return {matrix[0] * value[0] + matrix[1] * value[1] + matrix[2] * value[2],
             matrix[3] * value[0] + matrix[4] * value[1] + matrix[5] * value[2],
             matrix[6] * value[0] + matrix[7] * value[1] + matrix[8] * value[2]};
+}
+
+void set_matrix_blob(cpipe::tests::BufferMetadata& metadata, const std::array<float, 9>& matrix) {
+    auto blob = std::make_shared<cpipe::compute::ByteBlob>();
+    blob->bytes.resize(matrix.size() * sizeof(float));
+    std::memcpy(blob->bytes.data(), matrix.data(), blob->bytes.size());
+    metadata.ext_blobs[kCameraToXyzBlob] = blob;
 }
 
 std::filesystem::path write_colormatrix_without_wb_pipeline() {
@@ -113,18 +124,23 @@ TEST_CASE("colormatrix.dng_to_working maps camera RGB to linear Rec.2020 D65") {
     const auto manifest = nlohmann::json::parse(desc->manifest_json);
     REQUIRE(manifest.at("ports").at(0).at("metadata").at("requires_steps_applied") ==
             nlohmann::json::array({"white_balance"}));
+    REQUIRE(manifest.at("ports").at(0).at("metadata").at("requires_blobs") ==
+            nlohmann::json::array({kCameraToXyzBlob}));
     REQUIRE(manifest.at("ports").at(1).at("metadata").at("sets_steps_applied") ==
             nlohmann::json::array({"color_matrix"}));
     REQUIRE(manifest.at("color").at("output_role") == "scene_linear_rec2020");
 
     auto calibration = std::make_shared<cpipe::compute::CalibrationBlock>();
     calibration->color_matrix1 =
-        cpipe::tests::Matrix3{{2.0F, 0.0F, 0.0F, 0.0F, 4.0F, 0.0F, 0.0F, 0.0F, 0.5F}};
+        cpipe::tests::Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    constexpr std::array<float, 9> camera_to_xyz_d50{0.5F, 0.0F, 0.0F, 0.0F, 0.25F,
+                                                     0.0F, 0.0F, 0.0F, 2.0F};
 
     auto metadata = std::make_shared<cpipe::tests::BufferMetadata>();
     metadata->calibration = calibration;
     metadata->cs_role = "raw_camera";
     metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic", "white_balance"};
+    set_matrix_blob(*metadata, camera_to_xyz_d50);
 
     auto input = std::make_shared<cpipe::tests::CpuBuffer>(cpipe::tests::rgba16_layout(1, 1),
                                                            cpipe::tests::BufferUsage::Input |
@@ -140,7 +156,8 @@ TEST_CASE("colormatrix.dng_to_working maps camera RGB to linear Rec.2020 D65") {
 
     REQUIRE(cpipe::tests::process_single_input_node(*desc, input, output) == CPIPE_OK);
 
-    const std::array<float, 3> xyz_d50{0.25F, 0.0625F, 0.25F};
+    const std::array<float, 3> camera_rgb{0.5F, 0.25F, 0.125F};
+    const auto xyz_d50 = mul3(camera_to_xyz_d50, camera_rgb);
     const auto xyz_d65 = mul3(kD50ToD65, xyz_d50);
     const auto rec2020 = mul3(kXyzD65ToRec2020, xyz_d65);
     const auto pixels = cpipe::tests::read_rgba16(*output, 1);

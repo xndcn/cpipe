@@ -38,6 +38,7 @@ void cpipe_link_builtin_lens_dng_opcode_list_3();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_wb_dual_illuminant();
+void cpipe_link_builtin_wb_greyworld_auto();
 
 namespace {
 
@@ -55,6 +56,7 @@ using cpipe::compute::Matrix3;
 using cpipe::compute::PixelFormat;
 
 constexpr double kMinPsnrDb = 40.0;
+constexpr const char* kCameraToXyzBlob = "com.cpipe.wb.camera_to_xyz_d50_f32";
 
 struct FloatImage {
     int width = 0;
@@ -274,8 +276,16 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_lens_dng_opcode_list_3();
     cpipe_link_builtin_wb_dual_illuminant();
+    cpipe_link_builtin_wb_greyworld_auto();
     cpipe_link_builtin_colormatrix_dng_to_working();
     registry.load_builtin_nodes();
+}
+
+void set_matrix_blob(BufferMetadata& metadata, const std::array<float, 9>& matrix) {
+    auto blob = std::make_shared<ByteBlob>();
+    blob->bytes.resize(matrix.size() * sizeof(float));
+    std::memcpy(blob->bytes.data(), matrix.data(), blob->bytes.size());
+    metadata.ext_blobs[kCameraToXyzBlob] = blob;
 }
 
 void assert_linearize_golden(cpipe::runtime::Registry& registry) {
@@ -447,18 +457,46 @@ void assert_wb_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
+void assert_wb_greyworld_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.wb.greyworld_auto";
+    constexpr auto kFixture = "wb.greyworld_auto";
+    const auto input_image = read_fixture(kFixture, "in.exr", 4);
+
+    auto calibration = std::make_shared<CalibrationBlock>();
+    calibration->calibration_illuminant1 = 17;
+    calibration->calibration_illuminant2 = 21;
+    calibration->color_matrix1 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->color_matrix2 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->forward_matrix1 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+    calibration->forward_matrix2 = Matrix3{{1.0F, 0.0F, 0.0F, 0.0F, 1.0F, 0.0F, 0.0F, 0.0F, 1.0F}};
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->calibration = calibration;
+    metadata->cs_role = "raw_camera";
+    metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic"};
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node(require_node(registry, kNode), input, output);
+    require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
+}
+
 void assert_colormatrix_golden(cpipe::runtime::Registry& registry) {
     constexpr auto kNode = "com.cpipe.colormatrix.dng_to_working";
     constexpr auto kFixture = "colormatrix.dng_to_working";
     const auto input_image = read_fixture(kFixture, "in.exr", 4);
 
-    auto calibration = std::make_shared<CalibrationBlock>();
-    calibration->color_matrix1 = Matrix3{{2.0F, 0.0F, 0.0F, 0.0F, 4.0F, 0.0F, 0.0F, 0.0F, 0.5F}};
-
     auto metadata = std::make_shared<BufferMetadata>();
-    metadata->calibration = calibration;
     metadata->cs_role = "raw_camera";
     metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic", "white_balance"};
+    set_matrix_blob(*metadata, {0.5F, 0.0F, 0.0F, 0.0F, 0.25F, 0.0F, 0.0F, 0.0F, 2.0F});
 
     auto input =
         make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
@@ -505,6 +543,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("wb.dual_illuminant") {
         assert_wb_golden(registry);
+    }
+    SECTION("wb.greyworld_auto") {
+        assert_wb_greyworld_golden(registry);
     }
     SECTION("colormatrix.dng_to_working") {
         assert_colormatrix_golden(registry);

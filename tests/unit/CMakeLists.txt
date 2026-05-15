@@ -189,6 +189,15 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_wb_greyworld_auto test_node_wb_greyworld_auto.cpp)
+target_link_libraries(
+    test_node_wb_greyworld_auto
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_colormatrix test_node_colormatrix.cpp)
 target_link_libraries(
     test_node_colormatrix

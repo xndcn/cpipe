@@ -74,19 +74,6 @@ std::array<float, 3> mul3(const std::array<float, 9>& matrix, const std::array<f
             matrix[6] * value[0] + matrix[7] * value[1] + matrix[8] * value[2]};
 }
 
-std::array<float, 9> inverse3(const std::array<float, 9>& m) {
-    const auto det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) +
-                     m[2] * (m[3] * m[7] - m[4] * m[6]);
-    const auto inv_det = 1.0F / det;
-    return std::array<float, 9>{
-        (m[4] * m[8] - m[5] * m[7]) * inv_det, (m[2] * m[7] - m[1] * m[8]) * inv_det,
-        (m[1] * m[5] - m[2] * m[4]) * inv_det, (m[5] * m[6] - m[3] * m[8]) * inv_det,
-        (m[0] * m[8] - m[2] * m[6]) * inv_det, (m[2] * m[3] - m[0] * m[5]) * inv_det,
-        (m[3] * m[7] - m[4] * m[6]) * inv_det, (m[1] * m[6] - m[0] * m[7]) * inv_det,
-        (m[0] * m[4] - m[1] * m[3]) * inv_det,
-    };
-}
-
 float bayer_sample(const Image& image, int x, int y) {
     x = std::clamp(x, 0, image.width - 1);
     y = std::clamp(y, 0, image.height - 1);
@@ -505,6 +492,29 @@ Image wb_output(const Image& input) {
     return image;
 }
 
+std::array<float, 3> greyworld_neutral(const Image& input) {
+    std::array<double, 3> sums{};
+    for (std::size_t i = 0; i < input.pixels.size(); i += 4U) {
+        sums[0] += half_roundtrip(input.pixels[i + 0U]);
+        sums[1] += half_roundtrip(input.pixels[i + 1U]);
+        sums[2] += half_roundtrip(input.pixels[i + 2U]);
+    }
+    return {static_cast<float>(sums[0] / sums[1]), 1.0F, static_cast<float>(sums[2] / sums[1])};
+}
+
+Image greyworld_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    const auto neutral = greyworld_neutral(input);
+    for (std::size_t i = 0; i < input.pixels.size(); i += 4U) {
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 0U]) / neutral[0]));
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 1U]) / neutral[1]));
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 2U]) / neutral[2]));
+        image.pixels.push_back(half_roundtrip(half_roundtrip(input.pixels[i + 3U])));
+    }
+    return image;
+}
+
 Image colormatrix_input() {
     Image image{4, 4, 4, {}};
     image.pixels.reserve(64);
@@ -520,9 +530,8 @@ Image colormatrix_input() {
 }
 
 Image colormatrix_output(const Image& input) {
-    constexpr std::array<float, 9> color_matrix1{2.0F, 0.0F, 0.0F, 0.0F, 4.0F,
-                                                 0.0F, 0.0F, 0.0F, 0.5F};
-    const auto camera_to_xyz_d50 = inverse3(color_matrix1);
+    constexpr std::array<float, 9> camera_to_xyz_d50{0.5F, 0.0F, 0.0F, 0.0F, 0.25F,
+                                                     0.0F, 0.0F, 0.0F, 2.0F};
     const auto transform = mul3(kXyzD65ToRec2020, mul3(kD50ToD65, camera_to_xyz_d50));
 
     Image image{input.width, input.height, 4, {}};
@@ -643,6 +652,7 @@ int main(int argc, char** argv) {
                    quad_bayer_remosaic_output(qbc_in)) &&
         write_pair(root, "lens.dng_opcode_list_3", opcode3_in, opcode_list_3_output(opcode3_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
+        write_pair(root, "wb.greyworld_auto", wb_in, greyworld_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
     return ok ? 0 : 1;
 }

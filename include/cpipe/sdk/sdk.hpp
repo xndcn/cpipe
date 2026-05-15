@@ -261,6 +261,18 @@ public:
         return {};
     }
 
+    Result<void> set_as_shot_neutral(const std::array<float, 3>& neutral) {
+        if (suite_ == nullptr || suite_->set_as_shot_neutral == nullptr || impl_ == nullptr) {
+            return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});
+        }
+        const auto status =
+            static_cast<cpipe_status_t>(suite_->set_as_shot_neutral(impl_, neutral.data()));
+        if (status != CPIPE_OK) {
+            return tl::unexpected(Error{status, "set_as_shot_neutral failed"});
+        }
+        return {};
+    }
+
     Result<void> clear_cfa() {
         if (suite_ == nullptr || suite_->clear_cfa == nullptr || impl_ == nullptr) {
             return tl::unexpected(Error{CPIPE_UNSUPPORTED, "metadata builder suite unavailable"});

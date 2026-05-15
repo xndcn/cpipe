@@ -226,6 +226,18 @@ add_custom_command(
     DEPENDS wb/wb_dual_illuminant.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(wb_greyworld_auto_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/wb_greyworld_auto_manifest.cpp")
+add_custom_command(
+    OUTPUT "${wb_greyworld_auto_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/wb/greyworld_auto.json"
+        -DOUTPUT_CPP="${wb_greyworld_auto_manifest_cpp}"
+        -DSYMBOL_NAME=WB_GREYWORLD_AUTO_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS wb/greyworld_auto.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(colormatrix_dng_to_working_manifest_cpp
     "${CMAKE_CURRENT_BINARY_DIR}/colormatrix_dng_to_working_manifest.cpp"
 )
@@ -314,6 +326,7 @@ add_library(
         demosaic/demosaic_rcd_dispatch.cpp
         wb/wb_dual_illuminant.cpp
         wb/wb_dual_illuminant_dispatch.cpp
+        wb/greyworld_auto.cpp
         colormatrix/colormatrix_dng_to_working.cpp
         colormatrix/colormatrix_dng_to_working_dispatch.cpp
         lens/shading_gainmap.cpp
@@ -332,6 +345,7 @@ add_library(
         "${demosaic_quad_bayer_remosaic_manifest_cpp}"
         "${demosaic_rcd_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
+        "${wb_greyworld_auto_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
         "${lens_shading_gainmap_manifest_cpp}"
         "${lens_dng_opcode_list_3_manifest_cpp}"

@@ -7,7 +7,9 @@
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
 #include <cstdint>
+#include <cstring>
 #include <span>
 
 #include "../detail/P1ParamDispatch.hpp"
@@ -24,6 +26,7 @@ constexpr std::array<float, 9> kXyzD65ToRec2020{
     1.7166512F, -0.3556708F, -0.2533663F, -0.6666844F, 1.6164812F,
     0.0157685F, 0.0176399F,  -0.0427706F, 0.9421031F,
 };
+constexpr const char* kCameraToXyzBlob = "com.cpipe.wb.camera_to_xyz_d50_f32";
 
 sdk::Result<std::vector<std::uint32_t>> checked_rgba16_image(const sdk::Buffer& input,
                                                              const sdk::Buffer& output) {
@@ -61,20 +64,26 @@ std::array<float, 9> mul3(const std::array<float, 9>& lhs, const std::array<floa
     };
 }
 
-std::optional<std::array<float, 9>> inverse3(const std::array<float, 9>& m) {
-    const auto det = m[0] * (m[4] * m[8] - m[5] * m[7]) - m[1] * (m[3] * m[8] - m[5] * m[6]) +
-                     m[2] * (m[3] * m[7] - m[4] * m[6]);
-    if (!std::isfinite(det) || std::abs(det) < 1.0e-8F) {
-        return std::nullopt;
+sdk::Result<std::array<float, 9>> required_camera_to_xyz_blob(const sdk::BufferMetadata& metadata) {
+    const auto blob = metadata.blob(kCameraToXyzBlob);
+    if (!blob) {
+        return tl::unexpected(
+            sdk::Error{CPIPE_NEED_METADATA, "colormatrix missing WB camera-to-XYZ blob"});
     }
-    const auto inv_det = 1.0F / det;
-    return std::array<float, 9>{
-        (m[4] * m[8] - m[5] * m[7]) * inv_det, (m[2] * m[7] - m[1] * m[8]) * inv_det,
-        (m[1] * m[5] - m[2] * m[4]) * inv_det, (m[5] * m[6] - m[3] * m[8]) * inv_det,
-        (m[0] * m[8] - m[2] * m[6]) * inv_det, (m[2] * m[3] - m[0] * m[5]) * inv_det,
-        (m[3] * m[7] - m[4] * m[6]) * inv_det, (m[1] * m[6] - m[0] * m[7]) * inv_det,
-        (m[0] * m[4] - m[1] * m[3]) * inv_det,
-    };
+    if (blob->size() != 9U * sizeof(float)) {
+        return tl::unexpected(
+            sdk::Error{CPIPE_NEED_METADATA, "colormatrix invalid WB camera-to-XYZ blob"});
+    }
+
+    std::array<float, 9> matrix{};
+    std::memcpy(matrix.data(), blob->data(), blob->size());
+    for (const auto value : matrix) {
+        if (!std::isfinite(value)) {
+            return tl::unexpected(
+                sdk::Error{CPIPE_NEED_METADATA, "colormatrix non-finite WB camera-to-XYZ blob"});
+        }
+    }
+    return matrix;
 }
 
 }  // namespace
@@ -84,7 +93,7 @@ public:
     static constexpr const char* ID = "com.cpipe.colormatrix.dng_to_working";
     static constexpr const char* VERSION = "1.0.0";
 
-    /// Applies the P1 ColorMatrix1 → Bradford D50-to-D65 → Rec.2020 chain from
+    /// Applies the WB-interpolated camera-to-XYZ → Bradford D50-to-D65 → Rec.2020 chain from
     /// docs/research/07-classic-isp-algorithms.md §3.3 and
     /// docs/research/13-color-management.md §3.6.
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
@@ -109,19 +118,9 @@ public:
             return tl::unexpected(
                 sdk::Error{CPIPE_NEED_METADATA, "colormatrix requires raw_camera white balance"});
         }
-        const auto calibration = metadata->calibration();
-        if (!calibration) {
-            return tl::unexpected(calibration.error());
-        }
-        const auto& color_matrix1 = calibration->color_matrix1;
-        if (!color_matrix1) {
-            return tl::unexpected(
-                sdk::Error{CPIPE_NEED_METADATA, "colormatrix missing ColorMatrix1"});
-        }
-        const auto camera_to_xyz_d50 = inverse3(*color_matrix1);
+        const auto camera_to_xyz_d50 = required_camera_to_xyz_blob(*metadata);
         if (!camera_to_xyz_d50) {
-            return tl::unexpected(
-                sdk::Error{CPIPE_NEED_METADATA, "colormatrix invalid ColorMatrix1"});
+            return tl::unexpected(camera_to_xyz_d50.error());
         }
         const auto transform = mul3(kXyzD65ToRec2020, mul3(kD50ToD65, *camera_to_xyz_d50));
 

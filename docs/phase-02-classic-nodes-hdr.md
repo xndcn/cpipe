@@ -140,6 +140,7 @@ P2-specific decisions, locked from the planning round on 2026-05-15. PD numberin
 | P2-PD-64   | T9 GainMap fixture / dispatch scope      | T9 ships `com.cpipe.lens.shading_gainmap` with an OpcodeList2 GainMap parser, one-plane Bayer synthetic golden, and synthetic four-plane QBC node coverage because the real Pixel 8 Pro 4×4 QBC corpus is still unavailable after P2-PD-63. The node uses the existing `CPIPE_REGISTER_HALIDE_PARAM_FILTER` path (the same parameter-buffer dispatch style as `linearize`, `blacklevel`, `wb`, and `colormatrix`) rather than a separate Halide generator because the v1 GainMap payload is variable-length and parsed from metadata. Real Bayer/QBC corpus validation remains tracked by P2-R4/P2-R6 and does not reopen Architecture §17 Q6: the 4-plane semantics are implemented and Q6 remains resolved by P2-PD-18. |
 | P2-PD-65   | T10 OpcodeList3 fixture / dispatch scope | T10 ships `com.cpipe.lens.dng_opcode_list_3` with a first-party OpcodeList3 parser, synthetic coverage for `WarpRectilinear`, `FixVignetteRadial`, `FixBadPixelsConstant`, `FixBadPixelsList`, `TrimBounds`, optional-unknown skip behavior, and a deterministic cpipe self-reference EXR golden. The planned `tools/golden/colour_hdri_opcode3_render.py` script is absent, the repo has no `tools/` tree yet, and the current `tests/corpus/pixel8pro.dng` primary IFD does not carry tag 51022 (`OpcodeList3`). The node therefore uses the existing `CPIPE_REGISTER_HALIDE_PARAM_FILTER` path rather than a separate generator because the OpcodeList3 payload is variable-length and parsed from metadata. Real Pixel/colour-hdri validation remains a fixture-authoring follow-up, not a T10 code gate. |
 | P2-PD-66   | T11 WB fixture / metadata scope          | T11 ships `com.cpipe.wb.dual_illuminant` with synthetic dual-illuminant unit coverage for a 5000 K scene solve, reciprocal-CCT weight, linear ColorMatrix/ForwardMatrix interpolation, and metadata blobs (`com.cpipe.wb.camera_diag_f32`, `com.cpipe.wb.camera_to_xyz_d50_f32`, `com.cpipe.wb.scene_cct_f32`, `com.cpipe.wb.dual_illuminant_weight_f32`). The local repo still has no Pixel 8 Pro dual-illuminant WB fixture, no `tools/golden/rt_render.sh`, and no RawTherapee 5.10 reference workflow, so the WB EXR golden remains deterministic cpipe self-reference while the metadata math is covered by `test_node_wb`. Real Pixel/RT validation remains a fixture-authoring follow-up under P2-R4/P2-R6, not a T11 code gate. |
+| P2-PD-67   | T12 greyworld / colormatrix fixture scope | T12 ships `com.cpipe.wb.greyworld_auto` with synthetic gray-mean unit coverage and upgrades `com.cpipe.colormatrix.dng_to_working` to consume the WB-emitted `com.cpipe.wb.camera_to_xyz_d50_f32` matrix blob. The local repo still has no Pixel 8 Pro same-CCT WB/ColorMatrix fixture, no `tools/golden/rt_render.sh`, and no RawTherapee 5.10 reference workflow, so `tests/golden/wb.greyworld_auto/{in,out}.exr` and `tests/golden/colormatrix.dng_to_working/{in,out}.exr` are treated as deterministic cpipe self-reference fixtures; unit tests cover the gray-world estimate, metadata surface, and blob-selected Rec.2020 D65 transform. Real Pixel/RT validation remains a fixture-authoring follow-up under P2-R4/P2-R6, not a T12 code gate. |
 
 ---
 
@@ -597,18 +598,18 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 **Description.** Implement `com.cpipe.wb.greyworld_auto` (P2-PD-20) — host engine, CPU plugin loop, emits the same metadata surface as `wb.dual_illuminant`. Upgrade `com.cpipe.colormatrix.dng_to_working` (P2-PD-21) to consume the interpolated matrix from metadata; Bradford + Rec.2020 stay baked constants. Regenerate the colormatrix golden.
 
 **Acceptance criteria:**
-- [ ] `wb.greyworld_auto` produces a neutral estimate within 5 % on a synthetic gray-mean fixture.
-- [ ] `colormatrix.dng_to_working` with the upgraded `wb.dual_illuminant` upstream produces Rec.2020 D65 to within 1 LSB of an RT 5.10 same-CCT reference.
-- [ ] PSNR ≥ 40 dB on both nodes' goldens.
+- [x] `wb.greyworld_auto` produces a neutral estimate within 5 % on a synthetic gray-mean fixture.
+- [x] `colormatrix.dng_to_working` consumes the WB-emitted matrix blob and produces Rec.2020 D65 within 1 LSB on the synthetic same-CCT fixture (P2-PD-67 substitutes for the missing RT 5.10 reference).
+- [x] PSNR ≥ 40 dB on both nodes' goldens (P2-PD-67).
 
 **Verification:**
-- [ ] `ctest -R test_node_wb_greyworld_auto` green.
-- [ ] `ctest -R test_node_colormatrix` green (extended).
-- [ ] `ctest -L golden` PSNR ≥ 40 dB.
+- [x] `ctest -R test_node_wb_greyworld_auto` green.
+- [x] `ctest -R test_node_colormatrix` green (extended).
+- [x] `ctest -L golden` PSNR ≥ 40 dB.
 
 **Dependencies:** T11.
 
-**Files likely touched:** `src/cpipe/nodes/wb/greyworld_auto.{cpp,json}`, `src/cpipe/nodes/colormatrix/dng_to_working.{cpp,json,_generator.cpp}` (rewritten), `tests/unit/test_node_wb_greyworld_auto.cpp`, `tests/unit/test_node_colormatrix.cpp` (extended), `tests/golden/wb.greyworld_auto/{in,out}.exr`, `tests/golden/colormatrix.dng_to_working/{in,out}.exr` (regenerated).
+**Files touched:** `include/cpipe/sdk/sdk.hpp`, `src/cpipe/nodes/wb/{WbMetadata.hpp,greyworld_auto.cpp,greyworld_auto.json}`, `src/cpipe/nodes/colormatrix/colormatrix_dng_to_working.{cpp,json}`, `src/cpipe/nodes/{CMakeLists.txt,builtin_link.cpp}`, `tests/unit/{test_node_wb_greyworld_auto.cpp,test_node_colormatrix.cpp,test_golden_isp_nodes.cpp,CMakeLists.txt}`, `tests/fixtures/gen_golden_isp_nodes.cpp`, `tests/golden/wb.greyworld_auto/{in,out}.exr`, `tests/golden/{wb.greyworld_auto,colormatrix.dng_to_working}/reference.md`, `docs/phase-02-classic-nodes-hdr.md`.
 
 **Estimated scope:** M (2 new node files + 1 rewrite + 2 tests + 4 LFS goldens).
 

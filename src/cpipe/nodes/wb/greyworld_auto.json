@@ -1,10 +1,10 @@
 {
   "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
-  "id": "com.cpipe.colormatrix.dng_to_working",
+  "id": "com.cpipe.wb.greyworld_auto",
   "version": "1.0.0",
-  "label": "DNG Color Matrix",
+  "label": "Gray-World White Balance",
   "category": "color",
-  "doc": "Maps white-balanced camera RGB through the WB-interpolated camera-to-XYZ matrix into linear Rec.2020 D65.",
+  "doc": "Estimates AsShotNeutral from demosaiced RGB means, applies white balance, and emits the interpolated camera-to-XYZ matrix.",
   "ports": [
     {
       "name": "rgb",
@@ -16,9 +16,13 @@
       },
       "cardinality": "single",
       "metadata": {
-        "requires_steps_applied": ["white_balance"],
-        "requires_fields": ["cs_role"],
-        "requires_blobs": ["com.cpipe.wb.camera_to_xyz_d50_f32"]
+        "requires_steps_applied": ["demosaic"],
+        "requires_fields": [
+          "calibration.color_matrix1",
+          "calibration.color_matrix2",
+          "calibration.calibration_illuminant1",
+          "calibration.calibration_illuminant2"
+        ]
       }
     },
     {
@@ -32,23 +36,22 @@
       "cardinality": "single",
       "metadata": {
         "inherits_from": "rgb",
-        "sets_steps_applied": ["color_matrix"],
-        "writes_fields": ["cs_role"]
+        "sets_steps_applied": ["white_balance"],
+        "writes_fields": ["capture.as_shot_neutral"]
       }
     }
   ],
   "params": [],
   "compute": {
     "device": "CPU",
-    "engine": "Halide",
+    "engine": "Host",
     "in_pixel_bytes": 8,
     "out_pixel_bytes": 8,
-    "scratch_pixel_bytes": 0,
-    "halide_aot": ["colormatrix_dng_to_working"]
+    "scratch_pixel_bytes": 0
   },
   "color": {
     "input_role": "raw_camera",
-    "output_role": "scene_linear_rec2020",
+    "output_role": "raw_camera",
     "respects_chromaticity": true
   }
 }

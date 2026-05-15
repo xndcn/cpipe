@@ -10,6 +10,7 @@ void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
 void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_wb_dual_illuminant();
+void cpipe_link_builtin_wb_greyworld_auto();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_lens_dng_opcode_list_3();
@@ -26,6 +27,7 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_demosaic_quad_bayer_remosaic();
     cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_wb_dual_illuminant();
+    cpipe_link_builtin_wb_greyworld_auto();
     cpipe_link_builtin_colormatrix_dng_to_working();
     cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_lens_dng_opcode_list_3();
