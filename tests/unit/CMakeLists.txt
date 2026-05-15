@@ -140,6 +140,15 @@ target_link_libraries(
 set_tests_properties(
     test_node_demosaic_rcd_vulkan PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0"
 )
+cpipe_add_unit_test(test_node_demosaic_amaze test_node_demosaic_amaze.cpp)
+target_link_libraries(
+    test_node_demosaic_amaze
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_wb test_node_wb.cpp)
 target_link_libraries(
     test_node_wb

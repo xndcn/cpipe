@@ -26,6 +26,7 @@
 
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
+void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_linearize_dng_lut();
@@ -234,6 +235,7 @@ std::shared_ptr<BufferMetadata> metadata_with_cfa() {
 void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_linearize_dng_lut();
     cpipe_link_builtin_blacklevel_dng_levels();
+    cpipe_link_builtin_demosaic_amaze();
     cpipe_link_builtin_demosaic_bilinear();
     cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_wb_dual_illuminant();
@@ -376,6 +378,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("demosaic.rcd") {
         assert_demosaic_golden(registry, "com.cpipe.demosaic.rcd", "demosaic.rcd");
+    }
+    SECTION("demosaic.amaze") {
+        assert_demosaic_golden(registry, "com.cpipe.demosaic.amaze", "demosaic.amaze");
     }
     SECTION("wb.dual_illuminant") {
         assert_wb_golden(registry);

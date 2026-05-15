@@ -5,6 +5,7 @@ add_halide_generator(
     cpipe_halide_generators
     SOURCES
         passthrough_copy_generator.cpp
+        demosaic/demosaic_amaze_generator.cpp
         demosaic/demosaic_bilinear_generator.cpp
         demosaic/demosaic_rcd_generator.cpp
         precision/precision_convert_generator.cpp
@@ -17,6 +18,17 @@ cpipe_add_halide_library(
         passthrough_copy
     FUNCTION_NAME
         passthrough_copy
+    TARGETS
+        x86-64-linux
+)
+cpipe_add_halide_library(
+    demosaic_amaze
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        demosaic_amaze
+    FUNCTION_NAME
+        demosaic_amaze
     TARGETS
         x86-64-linux
 )
@@ -151,6 +163,18 @@ add_custom_command(
     DEPENDS demosaic/demosaic_bilinear.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(demosaic_amaze_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/demosaic_amaze_manifest.cpp")
+add_custom_command(
+    OUTPUT "${demosaic_amaze_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/demosaic/demosaic_amaze.json"
+        -DOUTPUT_CPP="${demosaic_amaze_manifest_cpp}"
+        -DSYMBOL_NAME=DEMOSAIC_AMAZE_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS demosaic/demosaic_amaze.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(demosaic_rcd_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/demosaic_rcd_manifest.cpp")
 add_custom_command(
     OUTPUT "${demosaic_rcd_manifest_cpp}"
@@ -225,6 +249,8 @@ add_library(
         linearize/linearize_dng_lut_dispatch.cpp
         blacklevel/blacklevel_dng_levels.cpp
         blacklevel/blacklevel_dng_levels_dispatch.cpp
+        demosaic/demosaic_amaze.cpp
+        demosaic/demosaic_amaze_dispatch.cpp
         demosaic/demosaic_bilinear.cpp
         demosaic/demosaic_bilinear_dispatch.cpp
         demosaic/demosaic_rcd.cpp
@@ -240,6 +266,7 @@ add_library(
         "${dng_input_manifest_cpp}"
         "${linearize_dng_lut_manifest_cpp}"
         "${blacklevel_dng_levels_manifest_cpp}"
+        "${demosaic_amaze_manifest_cpp}"
         "${demosaic_bilinear_manifest_cpp}"
         "${demosaic_rcd_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
@@ -264,6 +291,7 @@ target_link_libraries(
         cpipe::sdk
         cpipe::runtime
         passthrough_copy
+        demosaic_amaze
         demosaic_bilinear
         demosaic_rcd
         precision_convert_r16u_to_f32

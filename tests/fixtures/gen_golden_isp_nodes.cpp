@@ -176,6 +176,68 @@ std::array<float, 4> demosaic_rcd_rgba(const Image& bayer, int x, int y) {
     return {red, green, blue, 1.0F};
 }
 
+float amaze_green(const Image& bayer, int x, int y) {
+    const auto center = bayer_sample(bayer, x, y);
+    if (cfa_at(x, y) == 1) {
+        return center;
+    }
+
+    const auto gh =
+        0.5F * (bayer_sample(bayer, x - 1, y) + bayer_sample(bayer, x + 1, y)) +
+        0.25F * ((2.0F * center) - bayer_sample(bayer, x - 2, y) - bayer_sample(bayer, x + 2, y));
+    const auto gv =
+        0.5F * (bayer_sample(bayer, x, y - 1) + bayer_sample(bayer, x, y + 1)) +
+        0.25F * ((2.0F * center) - bayer_sample(bayer, x, y - 2) - bayer_sample(bayer, x, y + 2));
+    const auto grad_h = std::abs(bayer_sample(bayer, x - 1, y) - bayer_sample(bayer, x + 1, y)) +
+                        std::abs(bayer_sample(bayer, x - 2, y) - center) +
+                        std::abs(bayer_sample(bayer, x + 2, y) - center);
+    const auto grad_v = std::abs(bayer_sample(bayer, x, y - 1) - bayer_sample(bayer, x, y + 1)) +
+                        std::abs(bayer_sample(bayer, x, y - 2) - center) +
+                        std::abs(bayer_sample(bayer, x, y + 2) - center);
+    if (grad_h < grad_v) {
+        return gh;
+    }
+    if (grad_v < grad_h) {
+        return gv;
+    }
+    return 0.5F * (gh + gv);
+}
+
+float amaze_chroma_horizontal(const Image& bayer, int x, int y) {
+    return 0.5F * ((bayer_sample(bayer, x - 1, y) - amaze_green(bayer, x - 1, y)) +
+                   (bayer_sample(bayer, x + 1, y) - amaze_green(bayer, x + 1, y)));
+}
+
+float amaze_chroma_vertical(const Image& bayer, int x, int y) {
+    return 0.5F * ((bayer_sample(bayer, x, y - 1) - amaze_green(bayer, x, y - 1)) +
+                   (bayer_sample(bayer, x, y + 1) - amaze_green(bayer, x, y + 1)));
+}
+
+float amaze_chroma_diagonal(const Image& bayer, int x, int y) {
+    return 0.25F * ((bayer_sample(bayer, x - 1, y - 1) - amaze_green(bayer, x - 1, y - 1)) +
+                    (bayer_sample(bayer, x + 1, y - 1) - amaze_green(bayer, x + 1, y - 1)) +
+                    (bayer_sample(bayer, x - 1, y + 1) - amaze_green(bayer, x - 1, y + 1)) +
+                    (bayer_sample(bayer, x + 1, y + 1) - amaze_green(bayer, x + 1, y + 1)));
+}
+
+std::array<float, 4> demosaic_amaze_rgba(const Image& bayer, int x, int y) {
+    const auto center = bayer_sample(bayer, x, y);
+    const auto green = amaze_green(bayer, x, y);
+    const auto cfa = cfa_at(x, y);
+    const auto horizontal_red = cfa_at(x - 1, y) == 0;
+    const auto horizontal_blue = cfa_at(x - 1, y) == 2;
+    const auto red = std::max(0.0F, cfa == 0         ? center
+                                    : cfa == 2       ? green + amaze_chroma_diagonal(bayer, x, y)
+                                    : horizontal_red ? green + amaze_chroma_horizontal(bayer, x, y)
+                                                     : green + amaze_chroma_vertical(bayer, x, y));
+    const auto blue =
+        std::max(0.0F, cfa == 2          ? center
+                       : cfa == 0        ? green + amaze_chroma_diagonal(bayer, x, y)
+                       : horizontal_blue ? green + amaze_chroma_horizontal(bayer, x, y)
+                                         : green + amaze_chroma_vertical(bayer, x, y));
+    return {red, std::max(0.0F, green), blue, 1.0F};
+}
+
 Image linearize_input() {
     Image image{8, 4, 1, {}};
     image.pixels.reserve(32);
@@ -261,12 +323,39 @@ Image demosaic_rcd_input() {
     return image;
 }
 
+Image demosaic_amaze_input() {
+    Image image{16, 16, 1, {}};
+    image.pixels.reserve(256);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(0.035F + (0.021F * static_cast<float>(x)) +
+                                   (0.017F * static_cast<float>(y)) +
+                                   (0.004F * static_cast<float>((x * 3 + y * 5) % 7)));
+        }
+    }
+    return image;
+}
+
 Image demosaic_rcd_output(const Image& input) {
     Image image{input.width, input.height, 4, {}};
     image.pixels.reserve(input.pixels.size() * 4U);
     for (int y = 0; y < input.height; ++y) {
         for (int x = 0; x < input.width; ++x) {
             const auto rgba = demosaic_rcd_rgba(input, x, y);
+            for (const auto value : rgba) {
+                image.pixels.push_back(half_roundtrip(value));
+            }
+        }
+    }
+    return image;
+}
+
+Image demosaic_amaze_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size() * 4U);
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            const auto rgba = demosaic_amaze_rgba(input, x, y);
             for (const auto value : rgba) {
                 image.pixels.push_back(half_roundtrip(value));
             }
@@ -386,6 +475,7 @@ int main(int argc, char** argv) {
     const auto black_in = blacklevel_input();
     const auto demosaic_in = demosaic_input();
     const auto rcd_in = demosaic_rcd_input();
+    const auto amaze_in = demosaic_amaze_input();
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
 
@@ -394,6 +484,7 @@ int main(int argc, char** argv) {
         write_pair(root, "blacklevel.dng_levels", black_in, blacklevel_output(black_in)) &&
         write_pair(root, "demosaic.bilinear", demosaic_in, demosaic_output(demosaic_in)) &&
         write_pair(root, "demosaic.rcd", rcd_in, demosaic_rcd_output(rcd_in)) &&
+        write_pair(root, "demosaic.amaze", amaze_in, demosaic_amaze_output(amaze_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
     return ok ? 0 : 1;
