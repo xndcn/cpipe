@@ -7,5 +7,6 @@
 *.dng filter=lfs diff=lfs merge=lfs -text
 *.exr filter=lfs diff=lfs merge=lfs -text
 *.cube filter=lfs diff=lfs merge=lfs -text
+*.icc filter=lfs diff=lfs merge=lfs -text
 *.heif binary
 *.bin binary

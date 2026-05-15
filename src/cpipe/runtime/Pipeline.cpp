@@ -143,6 +143,21 @@ std::optional<BufferLayout> output_layout_for_node(const cpipe_plugin_desc_t* de
         layout.format = *format;
         return layout;
     }
+    if (desc->node_id != nullptr &&
+        std::string_view{desc->node_id} == "com.cpipe.color.scene_linear_to_display") {
+        const auto target = params.value("target", "sRGB");
+        BufferLayout layout = input;
+        if (target == "sRGB") {
+            layout.format = PixelFormat::R8G8B8A8_UNORM;
+            return layout;
+        }
+        if (target == "BT2020-PQ") {
+            layout.format = PixelFormat::R16G16B16A16_UNORM;
+            return layout;
+        }
+        set_error(error, "unsupported scene_linear_to_display target");
+        return std::nullopt;
+    }
 
     const auto manifest = nlohmann::json::parse(desc->manifest_json);
     for (const auto& port : manifest.value("ports", nlohmann::json::array())) {

@@ -18,13 +18,22 @@ struct Rgba16ImageView {
     std::uint32_t stride_pixels{0};
 };
 
+struct Rgba8ImageView {
+    const std::uint8_t* pixels{nullptr};
+    std::uint32_t width{0};
+    std::uint32_t height{0};
+    std::uint32_t stride_pixels{0};
+};
+
 struct HeifWriteOptions {
-    std::filesystem::path ocio_config_path;
     int quality{58};
 };
 
 [[nodiscard]] cpipe_status_t write_heif_sdr(const std::filesystem::path& path,
-                                            const Rgba16ImageView& image,
+                                            const Rgba8ImageView& image,
                                             const HeifWriteOptions& options, std::string* error);
+[[nodiscard]] cpipe_status_t write_heif_hdr_pq(const std::filesystem::path& path,
+                                               const Rgba16ImageView& image,
+                                               const HeifWriteOptions& options, std::string* error);
 
 }  // namespace cpipe::color

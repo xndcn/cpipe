@@ -10,6 +10,7 @@ add_library(
         Cube3dLutLoader.cpp
         HeifReader.cpp
         HeifWriter.cpp
+        IccV4_4Writer.cpp
 )
 add_library(cpipe::color ALIAS cpipe-color)
 

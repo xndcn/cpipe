@@ -17,6 +17,7 @@
       "name": "libheif",
       "default-features": false,
       "features": [
+        "iso23001-17",
         "kvazaar"
       ]
     },

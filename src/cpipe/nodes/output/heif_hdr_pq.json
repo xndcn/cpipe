@@ -1,10 +1,10 @@
 {
   "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
-  "id": "com.cpipe.output.heif_sdr",
+  "id": "com.cpipe.output.heif_hdr_pq",
   "version": "1.0.0",
-  "label": "HEIF SDR Output",
+  "label": "HEIF HDR PQ Output",
   "category": "output",
-  "doc": "Writes display-referred sRGB RGBA8 input as SDR HEIF.",
+  "doc": "Writes display-referred BT.2020 PQ top-aligned RGBA10 input as HDR HEIF.",
   "ports": [
     {
       "name": "rgb",
@@ -12,7 +12,7 @@
       "caps": {
         "buffer_kind": "Image2D",
         "channels": ["rgba"],
-        "precision": ["u8"]
+        "precision": ["u16"]
       },
       "cardinality": "single",
       "metadata": {
@@ -31,12 +31,12 @@
   "compute": {
     "device": "CPU",
     "engine": "Host",
-    "in_pixel_bytes": 4,
+    "in_pixel_bytes": 8,
     "out_pixel_bytes": 0,
     "scratch_pixel_bytes": 0
   },
   "color": {
-    "input_role": "output_srgb",
+    "input_role": "output_pq_rec2020",
     "output_role": "any",
     "respects_chromaticity": true
   }

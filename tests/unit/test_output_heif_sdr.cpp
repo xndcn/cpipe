@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 // Copyright (c) 2026 cpipe contributors
 
-#include <OpenColorIO/OpenColorIO.h>
 #include <cpipe/sdk/cpipe_node.h>
 
 #include <array>
 #include <catch2/catch_test_macros.hpp>
 #include <cpipe/color/HeifReader.hpp>
+#include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/ParamHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <fstream>
 #include <memory>
 #include <nlohmann/json.hpp>
 #include <sstream>
@@ -27,6 +28,16 @@ namespace {
 
 std::filesystem::path temp_heif_path() {
     return std::filesystem::temp_directory_path() / "cpipe_output_heif_sdr_test.heif";
+}
+
+cpipe::tests::BufferLayout rgba8_layout(std::uint32_t width, std::uint32_t height) {
+    cpipe::tests::BufferLayout layout{};
+    layout.kind = cpipe::tests::BufferKind::Image2D;
+    layout.format = cpipe::tests::PixelFormat::R8G8B8A8_UNORM;
+    layout.ndim = 2;
+    layout.dims[0] = width;
+    layout.dims[1] = height;
+    return layout;
 }
 
 std::string run_ldd_on_cli() {
@@ -73,33 +84,6 @@ void process_output_node(const cpipe_plugin_desc_t& desc,
 
 }  // namespace
 
-TEST_CASE("Bundled OCIO config round-trips sRGB gradient within one 8-bit code") {
-    namespace OCIO = OCIO_NAMESPACE;
-
-    const auto config_path =
-        std::filesystem::path{CPIPE_SOURCE_DIR} / "share/cpipe/ocio/v0.1/config.ocio";
-    const auto config = OCIO::Config::CreateFromFile(config_path.string().c_str());
-    REQUIRE(config);
-
-    const auto to_scene =
-        config->getProcessor("output_srgb", "scene_linear_rec2020")->getDefaultCPUProcessor();
-    const auto to_output =
-        config->getProcessor("scene_linear_rec2020", "output_srgb")->getDefaultCPUProcessor();
-    REQUIRE(to_scene);
-    REQUIRE(to_output);
-
-    for (int code = 0; code <= 255; code += 17) {
-        float rgba[4] = {static_cast<float>(code) / 255.0F, static_cast<float>(code) / 255.0F,
-                         static_cast<float>(code) / 255.0F, 1.0F};
-        to_scene->applyRGBA(rgba);
-        to_output->applyRGBA(rgba);
-        for (int channel = 0; channel < 3; ++channel) {
-            const auto rounded = static_cast<int>((rgba[channel] * 255.0F) + 0.5F);
-            REQUIRE(std::abs(rounded - code) <= 1);
-        }
-    }
-}
-
 TEST_CASE("output.heif_sdr writes an 8-bit sRGB HEIF with ICC and NCLX metadata") {
     cpipe_link_builtin_output_heif_sdr();
 
@@ -109,35 +93,37 @@ TEST_CASE("output.heif_sdr writes an 8-bit sRGB HEIF with ICC and NCLX metadata"
     REQUIRE(desc != nullptr);
 
     const auto manifest = nlohmann::json::parse(desc->manifest_json);
-    REQUIRE(manifest.at("ports").at(0).at("caps").at("precision") ==
-            nlohmann::json::array({"f16"}));
-    REQUIRE(manifest.at("color").at("input_role") == "scene_linear_rec2020");
+    REQUIRE(manifest.at("ports").at(0).at("caps").at("precision") == nlohmann::json::array({"u8"}));
+    REQUIRE(manifest.at("color").at("input_role") == "output_srgb");
 
     constexpr std::uint32_t width = 64;
     constexpr std::uint32_t height = 64;
     auto metadata = std::make_shared<cpipe::tests::BufferMetadata>();
-    metadata->cs_role = "scene_linear_rec2020";
-    metadata->applied_steps = {"linearization", "black_white_scaling", "demosaic", "white_balance",
-                               "color_matrix"};
+    metadata->cs_role = "output_srgb";
+    metadata->applied_steps = {"linearization", "black_white_scaling",
+                               "demosaic",      "white_balance",
+                               "color_matrix",  "color.scene_linear_to_display"};
 
-    auto input = std::make_shared<cpipe::tests::CpuBuffer>(
-        cpipe::tests::rgba16_layout(width, height), cpipe::tests::BufferUsage::Input |
-                                                        cpipe::tests::BufferUsage::CpuRead |
-                                                        cpipe::tests::BufferUsage::CpuWrite);
+    auto input = std::make_shared<cpipe::tests::CpuBuffer>(rgba8_layout(width, height),
+                                                           cpipe::tests::BufferUsage::Input |
+                                                               cpipe::tests::BufferUsage::CpuRead |
+                                                               cpipe::tests::BufferUsage::CpuWrite);
     input->set_metadata(metadata);
 
-    std::vector<std::array<float, 4>> pixels;
-    pixels.reserve(width * height);
+    auto* pixels =
+        static_cast<std::uint8_t*>(input->lock_cpu(cpipe::tests::IBuffer::CpuAccess::Write));
     for (std::uint32_t y = 0; y < height; ++y) {
         for (std::uint32_t x = 0; x < width; ++x) {
-            const auto r = static_cast<float>(x) / static_cast<float>(width - 1U);
-            const auto g = static_cast<float>(y) / static_cast<float>(height - 1U);
-            const auto b =
-                static_cast<float>(x + y) / static_cast<float>((width - 1U) + (height - 1U));
-            pixels.push_back({r, g, b, 1.0F});
+            const auto base = (static_cast<std::size_t>(y) * width + x) * 4U;
+            pixels[base + 0U] = static_cast<std::uint8_t>((x * 255U) / (width - 1U));
+            pixels[base + 1U] = static_cast<std::uint8_t>((y * 255U) / (height - 1U));
+            pixels[base + 2U] =
+                static_cast<std::uint8_t>(((x + y) * 255U) / ((width - 1U) + (height - 1U)));
+            pixels[base + 3U] = 255;
         }
     }
-    cpipe::tests::write_rgba16(*input, pixels);
+    input->unlock_cpu();
+    input->flush_cpu_writes();
 
     const auto path = temp_heif_path();
     std::filesystem::remove(path);
@@ -157,6 +143,31 @@ TEST_CASE("output.heif_sdr writes an 8-bit sRGB HEIF with ICC and NCLX metadata"
     REQUIRE(info.nclx_transfer_characteristics == 13);
     REQUIRE(info.nclx_matrix_coefficients == 1);
     REQUIRE(info.decoded_rgba.size() == static_cast<std::size_t>(width) * height * 4U);
+}
+
+TEST_CASE("min pipeline inserts the display transform before output.heif_sdr") {
+    const auto path =
+        std::filesystem::path{CPIPE_SOURCE_DIR} / "examples/pipelines/min-pipeline.cpipe.json";
+    std::ifstream file{path};
+    REQUIRE(file.good());
+    const auto doc = nlohmann::json::parse(file);
+
+    bool saw_display = false;
+    for (const auto& node : doc.at("nodes")) {
+        if (node.at("type") == "com.cpipe.color.scene_linear_to_display") {
+            saw_display = true;
+            REQUIRE(node.at("params").at("target") == "sRGB");
+        }
+    }
+    REQUIRE(saw_display);
+
+    bool display_feeds_output = false;
+    for (const auto& edge : doc.at("edges")) {
+        if (edge.at("from") == "display.display" && edge.at("to") == "out.rgb") {
+            display_feeds_output = true;
+        }
+    }
+    REQUIRE(display_feeds_output);
 }
 
 TEST_CASE("Debug CLI linkage does not pull libx265") {

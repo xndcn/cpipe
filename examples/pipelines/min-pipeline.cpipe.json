@@ -36,6 +36,13 @@
       "params": {}
     },
     {
+      "id": "display",
+      "type": "com.cpipe.color.scene_linear_to_display",
+      "params": {
+        "target": "sRGB"
+      }
+    },
+    {
       "id": "out",
       "type": "com.cpipe.output.heif_sdr",
       "params": {}
@@ -60,6 +67,10 @@
     },
     {
       "from": "cm.rgb",
+      "to": "display.rgb"
+    },
+    {
+      "from": "display.display",
       "to": "out.rgb"
     }
   ]

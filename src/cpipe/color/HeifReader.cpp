@@ -113,9 +113,10 @@ cpipe_status_t read_heif_sdr(const std::filesystem::path& path, const HeifReadOp
 
     out->icc_profile_bytes = heif_image_handle_get_raw_color_profile_size(handle.get());
     if (out->icc_profile_bytes > 0) {
-        std::vector<std::uint8_t> icc(out->icc_profile_bytes);
-        if (!check_heif(heif_image_handle_get_raw_color_profile(handle.get(), icc.data()),
-                        "heif_image_handle_get_raw_color_profile", error)) {
+        out->icc_profile.resize(out->icc_profile_bytes);
+        if (!check_heif(
+                heif_image_handle_get_raw_color_profile(handle.get(), out->icc_profile.data()),
+                "heif_image_handle_get_raw_color_profile", error)) {
             return CPIPE_FAILED;
         }
     }
@@ -130,6 +131,18 @@ cpipe_status_t read_heif_sdr(const std::filesystem::path& path, const HeifReadOp
     out->nclx_color_primaries = static_cast<int>(nclx->color_primaries);
     out->nclx_transfer_characteristics = static_cast<int>(nclx->transfer_characteristics);
     out->nclx_matrix_coefficients = static_cast<int>(nclx->matrix_coefficients);
+    out->nclx_full_range = nclx->full_range_flag != 0;
+
+    heif_mastering_display_colour_volume mdcv{};
+    out->has_mastering_display =
+        heif_image_handle_get_mastering_display_colour_volume(handle.get(), &mdcv) != 0;
+    heif_content_light_level clli{};
+    out->has_content_light_level =
+        heif_image_handle_get_content_light_level(handle.get(), &clli) != 0;
+    if (out->has_content_light_level) {
+        out->max_content_light_level = clli.max_content_light_level;
+        out->max_pic_average_light_level = clli.max_pic_average_light_level;
+    }
 
     heif_image* raw_image = nullptr;
     if (!check_heif(heif_decode_image(handle.get(), &raw_image, heif_colorspace_RGB,

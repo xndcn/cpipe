@@ -6,6 +6,12 @@ vcpkg_from_github(
     HEAD_REF master
 )
 
+vcpkg_replace_string(
+    "${SOURCE_PATH}/src/kvazaar.h"
+    "#define KVZ_BIT_DEPTH 8"
+    "#define KVZ_BIT_DEPTH 10"
+)
+
 vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
 
 vcpkg_cmake_configure(

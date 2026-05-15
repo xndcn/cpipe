@@ -513,6 +513,18 @@ add_custom_command(
     DEPENDS output/heif_sdr.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(output_heif_hdr_pq_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/output_heif_hdr_pq_manifest.cpp")
+add_custom_command(
+    OUTPUT "${output_heif_hdr_pq_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/output/heif_hdr_pq.json"
+        -DOUTPUT_CPP="${output_heif_hdr_pq_manifest_cpp}"
+        -DSYMBOL_NAME=OUTPUT_HEIF_HDR_PQ_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS output/heif_hdr_pq.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(lens_shading_gainmap_manifest_cpp
     "${CMAKE_CURRENT_BINARY_DIR}/lens_shading_gainmap_manifest.cpp"
 )
@@ -618,6 +630,7 @@ add_library(
         precision/precision_convert.cpp
         precision/precision_convert_dispatch.cpp
         output/heif_sdr.cpp
+        output/heif_hdr_pq.cpp
         "${passthrough_manifest_cpp}"
         "${dng_input_manifest_cpp}"
         "${linearize_dng_lut_manifest_cpp}"
@@ -644,6 +657,7 @@ add_library(
         "${fusion_hdr_plus_derivative_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
         "${output_heif_sdr_manifest_cpp}"
+        "${output_heif_hdr_pq_manifest_cpp}"
 )
 add_library(cpipe::builtin_nodes ALIAS cpipe-builtin-nodes)
 

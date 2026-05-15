@@ -2,6 +2,7 @@ find_package(Catch2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 find_package(OpenImageIO CONFIG REQUIRED)
+find_package(lcms2 CONFIG REQUIRED)
 include(HalideHelpers)
 
 function(cpipe_add_unit_test target)
@@ -360,6 +361,17 @@ target_compile_definitions(
 )
 target_link_libraries(
     test_output_heif_sdr
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_icc_v4_4_writer test_icc_v4_4_writer.cpp)
+target_link_libraries(test_icc_v4_4_writer PRIVATE cpipe::color lcms2::lcms2)
+cpipe_add_unit_test(test_output_heif_hdr_pq test_output_heif_hdr_pq.cpp)
+target_link_libraries(
+    test_output_heif_hdr_pq
     PRIVATE
         cpipe::runtime
         cpipe::sdk

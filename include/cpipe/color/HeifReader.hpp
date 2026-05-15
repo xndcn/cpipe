@@ -18,9 +18,15 @@ struct HeifInfo {
     std::uint32_t height{0};
     int luma_bits_per_pixel{0};
     std::size_t icc_profile_bytes{0};
+    std::vector<std::uint8_t> icc_profile;
     int nclx_color_primaries{0};
     int nclx_transfer_characteristics{0};
     int nclx_matrix_coefficients{0};
+    bool nclx_full_range{false};
+    bool has_mastering_display{false};
+    bool has_content_light_level{false};
+    std::uint32_t max_content_light_level{0};
+    std::uint32_t max_pic_average_light_level{0};
     std::vector<std::uint8_t> decoded_rgba;
     std::vector<float> scene_linear_rec2020_rgba;
 };

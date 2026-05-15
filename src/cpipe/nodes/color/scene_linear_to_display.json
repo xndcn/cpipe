@@ -48,7 +48,7 @@
   },
   "color": {
     "input_role": "scene_linear_rec2020",
-    "output_role": "display",
+    "output_role": "any",
     "respects_chromaticity": true
   }
 }
