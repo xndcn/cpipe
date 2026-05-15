@@ -55,6 +55,8 @@ cpipe_add_unit_test(test_opcode_list_parser test_opcode_list_parser.cpp)
 target_link_libraries(test_opcode_list_parser PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_opcode_list_2_parser test_opcode_list_2_parser.cpp)
 target_link_libraries(test_opcode_list_2_parser PRIVATE cpipe::runtime)
+cpipe_add_unit_test(test_opcode_list_3_parser test_opcode_list_3_parser.cpp)
+target_link_libraries(test_opcode_list_3_parser PRIVATE cpipe::runtime)
 cpipe_add_unit_test(test_dng_reader test_dng_reader.cpp)
 target_compile_definitions(test_dng_reader PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(
@@ -163,6 +165,15 @@ target_link_libraries(
 cpipe_add_unit_test(test_node_lens_shading_gainmap test_node_lens_shading_gainmap.cpp)
 target_link_libraries(
     test_node_lens_shading_gainmap
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_lens_dng_opcode_list_3 test_node_lens_dng_opcode_list_3.cpp)
+target_link_libraries(
+    test_node_lens_dng_opcode_list_3
     PRIVATE
         cpipe::runtime
         cpipe::sdk

@@ -31,6 +31,7 @@ add_library(
     STATIC
         ../ingest/dng/DngReader.cpp
         ../ingest/dng_opcode/OpcodeList2.cpp
+        ../ingest/dng_opcode/OpcodeList3.cpp
         ../ingest/dng_opcode/OpcodeListParser.cpp
         ComputeContext.cpp
         BufferHandle.cpp

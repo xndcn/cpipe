@@ -26,6 +26,7 @@
 #include <vector>
 
 #include "gainmap_test_fixture.hpp"
+#include "opcode_list_3_test_fixture.hpp"
 
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
@@ -33,6 +34,7 @@ void cpipe_link_builtin_demosaic_amaze();
 void cpipe_link_builtin_demosaic_bilinear();
 void cpipe_link_builtin_demosaic_quad_bayer_remosaic();
 void cpipe_link_builtin_demosaic_rcd();
+void cpipe_link_builtin_lens_dng_opcode_list_3();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_wb_dual_illuminant();
@@ -270,6 +272,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_demosaic_quad_bayer_remosaic();
     cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_lens_shading_gainmap();
+    cpipe_link_builtin_lens_dng_opcode_list_3();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();
     registry.load_builtin_nodes();
@@ -386,6 +389,32 @@ void assert_quad_bayer_remosaic_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_r16(*output, input_image.width, input_image.height));
 }
 
+void assert_opcode_list_3_golden(cpipe::runtime::Registry& registry) {
+    constexpr auto kNode = "com.cpipe.lens.dng_opcode_list_3";
+    constexpr auto kFixture = "lens.dng_opcode_list_3";
+    const auto input_image = read_fixture(kFixture, "in.exr", 4);
+
+    auto metadata = std::make_shared<BufferMetadata>();
+    metadata->cs_role = "scene_linear_rec2020";
+    metadata->applied_steps = {"demosaic"};
+    auto opcode_blob = std::make_shared<ByteBlob>();
+    opcode_blob->bytes =
+        cpipe::tests::opcode_list_3_with({{3, cpipe::tests::fix_vignette_radial_params(0.5)}});
+    metadata->ext_blobs["com.cpipe.dng.opcode_list_3_bytes"] = opcode_blob;
+
+    auto input =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+    input->set_metadata(metadata);
+    write_rgba16(*input, input_image);
+    auto output =
+        make_buffer(PixelFormat::R16G16B16A16_SFLOAT, input_image.width, input_image.height,
+                    BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    process_single_input_node(require_node(registry, kNode), input, output);
+    require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
+}
+
 void assert_wb_golden(cpipe::runtime::Registry& registry) {
     constexpr auto kNode = "com.cpipe.wb.dual_illuminant";
     constexpr auto kFixture = "wb.dual_illuminant";
@@ -461,6 +490,9 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
     }
     SECTION("demosaic.quad_bayer_remosaic") {
         assert_quad_bayer_remosaic_golden(registry);
+    }
+    SECTION("lens.dng_opcode_list_3") {
+        assert_opcode_list_3_golden(registry);
     }
     SECTION("wb.dual_illuminant") {
         assert_wb_golden(registry);

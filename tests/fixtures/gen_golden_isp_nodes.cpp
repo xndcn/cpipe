@@ -540,6 +540,56 @@ Image colormatrix_output(const Image& input) {
     return image;
 }
 
+Image opcode_list_3_input() {
+    Image image{8, 8, 4, {}};
+    image.pixels.reserve(256);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(0.10F + (0.012F * static_cast<float>(x)));
+            image.pixels.push_back(0.08F + (0.010F * static_cast<float>(y)));
+            image.pixels.push_back(0.06F + (0.006F * static_cast<float>(x + y)));
+            image.pixels.push_back(1.0F);
+        }
+    }
+    return image;
+}
+
+float normalized_radius2(int x, int y, int width, int height) {
+    const auto cx = 0.5F * static_cast<float>(width - 1);
+    const auto cy = 0.5F * static_cast<float>(height - 1);
+    const auto dx0 = cx;
+    const auto dx1 = static_cast<float>(width - 1) - cx;
+    const auto dy0 = cy;
+    const auto dy1 = static_cast<float>(height - 1) - cy;
+    const auto max_distance2 = std::max({(dx0 * dx0) + (dy0 * dy0), (dx1 * dx1) + (dy0 * dy0),
+                                         (dx0 * dx0) + (dy1 * dy1), (dx1 * dx1) + (dy1 * dy1)});
+    const auto dx = static_cast<float>(x) - cx;
+    const auto dy = static_cast<float>(y) - cy;
+    return ((dx * dx) + (dy * dy)) / max_distance2;
+}
+
+Image opcode_list_3_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size());
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            const auto gain = 1.0F + (0.5F * normalized_radius2(x, y, input.width, input.height));
+            const auto offset =
+                ((static_cast<std::size_t>(y) * static_cast<std::size_t>(input.width)) +
+                 static_cast<std::size_t>(x)) *
+                4U;
+            image.pixels.push_back(
+                half_roundtrip(half_roundtrip(input.pixels[offset + 0U]) * gain));
+            image.pixels.push_back(
+                half_roundtrip(half_roundtrip(input.pixels[offset + 1U]) * gain));
+            image.pixels.push_back(
+                half_roundtrip(half_roundtrip(input.pixels[offset + 2U]) * gain));
+            image.pixels.push_back(half_roundtrip(input.pixels[offset + 3U]));
+        }
+    }
+    return image;
+}
+
 bool write_image(const std::filesystem::path& path, const Image& image) {
     std::filesystem::create_directories(path.parent_path());
     OIIO::ImageSpec spec{image.width, image.height, image.channels, OIIO::TypeDesc::FLOAT};
@@ -578,6 +628,7 @@ int main(int argc, char** argv) {
     const auto rcd_in = demosaic_rcd_input();
     const auto amaze_in = demosaic_amaze_input();
     const auto qbc_in = quad_bayer_remosaic_input();
+    const auto opcode3_in = opcode_list_3_input();
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
 
@@ -590,6 +641,7 @@ int main(int argc, char** argv) {
         write_pair(root, "demosaic.amaze", amaze_in, demosaic_amaze_output(amaze_in)) &&
         write_pair(root, "demosaic.quad_bayer_remosaic", qbc_in,
                    quad_bayer_remosaic_output(qbc_in)) &&
+        write_pair(root, "lens.dng_opcode_list_3", opcode3_in, opcode_list_3_output(opcode3_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
     return ok ? 0 : 1;

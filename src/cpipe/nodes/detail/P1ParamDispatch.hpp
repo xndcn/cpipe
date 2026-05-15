@@ -52,4 +52,52 @@ struct GainMapDispatchPlane {
     std::uint32_t gain_count;
 };
 
+struct Opcode3DispatchHeader {
+    std::uint32_t opcode_count;
+    std::uint32_t reserved;
+};
+
+struct Opcode3WarpCoefficient {
+    double kr0;
+    double kr1;
+    double kr2;
+    double kr3;
+    double kt0;
+    double kt1;
+};
+
+struct Opcode3DispatchRecord {
+    std::uint32_t id;
+    std::uint32_t optional;
+    std::uint32_t coefficient_count;
+    Opcode3WarpCoefficient coefficients[4];
+    double cx_hat;
+    double cy_hat;
+    double vignette_k[5];
+    double vignette_cx_hat;
+    double vignette_cy_hat;
+    std::uint32_t constant;
+    std::uint32_t bayer_phase;
+    std::uint32_t point_offset;
+    std::uint32_t point_count;
+    std::uint32_t rect_offset;
+    std::uint32_t rect_count;
+    std::uint32_t top;
+    std::uint32_t left;
+    std::uint32_t bottom;
+    std::uint32_t right;
+};
+
+struct Opcode3BadPoint {
+    std::uint32_t row;
+    std::uint32_t column;
+};
+
+struct Opcode3BadRect {
+    std::uint32_t top;
+    std::uint32_t left;
+    std::uint32_t bottom;
+    std::uint32_t right;
+};
+
 }  // namespace cpipe::nodes::detail

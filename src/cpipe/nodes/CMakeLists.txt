@@ -267,6 +267,20 @@ add_custom_command(
     DEPENDS lens/shading_gainmap.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(lens_dng_opcode_list_3_manifest_cpp
+    "${CMAKE_CURRENT_BINARY_DIR}/lens_dng_opcode_list_3_manifest.cpp"
+)
+add_custom_command(
+    OUTPUT "${lens_dng_opcode_list_3_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/lens/dng_opcode_list_3.json"
+        -DOUTPUT_CPP="${lens_dng_opcode_list_3_manifest_cpp}"
+        -DSYMBOL_NAME=LENS_DNG_OPCODE_LIST_3_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS lens/dng_opcode_list_3.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(precision_convert_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/precision_convert_manifest.cpp")
 add_custom_command(
     OUTPUT "${precision_convert_manifest_cpp}"
@@ -304,6 +318,8 @@ add_library(
         colormatrix/colormatrix_dng_to_working_dispatch.cpp
         lens/shading_gainmap.cpp
         lens/shading_gainmap_dispatch.cpp
+        lens/dng_opcode_list_3.cpp
+        lens/dng_opcode_list_3_dispatch.cpp
         precision/precision_convert.cpp
         precision/precision_convert_dispatch.cpp
         output/heif_sdr.cpp
@@ -318,6 +334,7 @@ add_library(
         "${wb_dual_illuminant_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
         "${lens_shading_gainmap_manifest_cpp}"
+        "${lens_dng_opcode_list_3_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
         "${output_heif_sdr_manifest_cpp}"
 )

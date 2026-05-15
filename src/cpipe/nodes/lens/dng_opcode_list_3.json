@@ -1,0 +1,51 @@
+{
+  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "id": "com.cpipe.lens.dng_opcode_list_3",
+  "version": "1.0.0",
+  "label": "DNG OpcodeList3",
+  "category": "lens",
+  "doc": "Applies DNG OpcodeList3 RGB-domain lens and bad-pixel corrections after demosaic.",
+  "ports": [
+    {
+      "name": "scene_rgb",
+      "kind": "in",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "requires_blobs": ["com.cpipe.dng.opcode_list_3_bytes"]
+      }
+    },
+    {
+      "name": "corrected_rgb",
+      "kind": "out",
+      "caps": {
+        "buffer_kind": "Image2D",
+        "channels": ["rgba"],
+        "precision": ["f16"]
+      },
+      "cardinality": "single",
+      "metadata": {
+        "inherits_from": "scene_rgb",
+        "sets_steps_applied": ["opcode_list_3"]
+      }
+    }
+  ],
+  "params": [],
+  "compute": {
+    "device": "CPU",
+    "engine": "Halide",
+    "halide_aot": ["lens_dng_opcode_list_3"],
+    "in_pixel_bytes": 8,
+    "out_pixel_bytes": 8,
+    "scratch_pixel_bytes": 8
+  },
+  "color": {
+    "input_role": "scene_linear_rec2020",
+    "output_role": "scene_linear_rec2020",
+    "respects_chromaticity": true
+  }
+}
