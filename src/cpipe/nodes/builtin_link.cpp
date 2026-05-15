@@ -23,6 +23,7 @@ void cpipe_link_builtin_tone_mertens_local();
 void cpipe_link_builtin_tone_reinhard();
 void cpipe_link_builtin_lens_shading_gainmap();
 void cpipe_link_builtin_lens_dng_opcode_list_3();
+void cpipe_link_builtin_fusion_hdr_plus_derivative();
 void cpipe_link_builtin_precision_convert();
 void cpipe_link_builtin_output_heif_sdr();
 
@@ -49,6 +50,7 @@ void cpipe_link_all_builtin_nodes() {
     cpipe_link_builtin_tone_reinhard();
     cpipe_link_builtin_lens_shading_gainmap();
     cpipe_link_builtin_lens_dng_opcode_list_3();
+    cpipe_link_builtin_fusion_hdr_plus_derivative();
     cpipe_link_builtin_precision_convert();
     cpipe_link_builtin_output_heif_sdr();
 }

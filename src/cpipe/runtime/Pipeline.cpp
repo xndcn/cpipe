@@ -170,6 +170,17 @@ bool node_has_output(const cpipe_plugin_desc_t* desc) {
                                [](const auto& port) { return port.value("kind", "") == "out"; });
 }
 
+std::size_t node_input_count(const cpipe_plugin_desc_t* desc) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        return 1;
+    }
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    const auto count = static_cast<std::size_t>(
+        std::ranges::count_if(manifest.value("ports", nlohmann::json::array()),
+                              [](const auto& port) { return port.value("kind", "") == "in"; }));
+    return std::max<std::size_t>(count, 1);
+}
+
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
     try {
         if (document.value("version", "") != "0.3") {
@@ -664,7 +675,9 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
                     }
 
                     auto input_handle = make_buffer_handle(current);
-                    const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
+                    const auto input_count = node_input_count(node->descriptor);
+                    std::vector<const cpipe_buffer_t*> process_inputs(input_count,
+                                                                      input_handle.get());
                     std::shared_ptr<IBuffer> next;
                     std::unique_ptr<cpipe_buffer_t> output_handle;
                     std::unique_ptr<cpipe_metadata_builder_t> output_metadata_builder;
@@ -681,8 +694,8 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
                             *output_layout,
                             BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
                         output_handle = make_buffer_handle(next);
-                        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
-                            current->metadata()};
+                        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata(
+                            input_count, current->metadata());
                         output_metadata_builder = make_metadata_builder_handle(
                             current->metadata(), std::move(input_metadata));
                         process_outputs[0] = output_handle.get();
@@ -693,8 +706,8 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
                     cpipe_process_ctx process{
                         .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
                         .inference = nullptr,
-                        .inputs = process_inputs,
-                        .n_in = 1,
+                        .inputs = process_inputs.data(),
+                        .n_in = process_inputs.size(),
                         .outputs = has_output ? process_outputs : nullptr,
                         .n_out = output_count,
                         .out_metadata = has_output ? process_out_metadata : nullptr,
@@ -772,18 +785,19 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
 
         auto input_handle = make_buffer_handle(current);
         auto output_handle = make_buffer_handle(next);
-        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata{
-            current->metadata()};
+        const auto input_count = node_input_count(node.descriptor);
+        std::vector<const cpipe_buffer_t*> process_inputs(input_count, input_handle.get());
+        std::vector<std::shared_ptr<const compute::BufferMetadata>> input_metadata(
+            input_count, current->metadata());
         auto output_metadata_builder =
             make_metadata_builder_handle(current->metadata(), std::move(input_metadata));
-        const cpipe_buffer_t* process_inputs[] = {input_handle.get()};
         cpipe_buffer_t* process_outputs[] = {output_handle.get()};
         cpipe_metadata_builder_t* process_out_metadata[] = {output_metadata_builder.get()};
         cpipe_process_ctx process{
             .compute = reinterpret_cast<cpipe_compute_t*>(&compute),
             .inference = nullptr,
-            .inputs = process_inputs,
-            .n_in = 1,
+            .inputs = process_inputs.data(),
+            .n_in = process_inputs.size(),
             .outputs = process_outputs,
             .n_out = 1,
             .out_metadata = process_out_metadata,
