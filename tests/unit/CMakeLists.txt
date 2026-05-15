@@ -146,6 +146,14 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_manifest_v0_2 test_node_manifest_v0_2.cpp)
+target_compile_definitions(test_node_manifest_v0_2 PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+target_link_libraries(
+    test_node_manifest_v0_2
+    PRIVATE
+        nlohmann_json::nlohmann_json
+        nlohmann_json_schema_validator::validator
+)
 cpipe_add_unit_test(test_golden_isp_nodes test_golden_isp_nodes.cpp)
 target_compile_definitions(test_golden_isp_nodes PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(

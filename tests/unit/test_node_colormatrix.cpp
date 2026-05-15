@@ -68,8 +68,8 @@ std::filesystem::path write_colormatrix_without_wb_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_colormatrix_without_wb.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.2.json",
-  "version":"0.2",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
+  "version":"0.3",
   "id":"colormatrix-without-wb",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R16_UINT","width":4,"height":4}],
   "nodes":[
@@ -85,8 +85,8 @@ std::filesystem::path write_colormatrix_wrong_role_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_colormatrix_wrong_role.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.2.json",
-  "version":"0.2",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
+  "version":"0.3",
   "id":"colormatrix-wrong-role",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R16_UINT","width":4,"height":4}],
   "nodes":[

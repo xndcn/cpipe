@@ -1,0 +1,32 @@
+{
+  "$schema": "https://schemas.cpipe.dev/pipeline/v0.3.json",
+  "version": "0.3",
+  "id": "precision-mismatch",
+  "inputs": [
+    {
+      "port": "raw",
+      "kind": "Image2D",
+      "format": "R8G8B8A8_UNORM",
+      "width": 4,
+      "height": 4
+    }
+  ],
+  "nodes": [
+    {
+      "id": "producer",
+      "type": "com.cpipe.test.precision_producer",
+      "params": {}
+    },
+    {
+      "id": "consumer",
+      "type": "com.cpipe.test.precision_consumer",
+      "params": {}
+    }
+  ],
+  "edges": [
+    {
+      "from": "producer.out",
+      "to": "consumer.in"
+    }
+  ]
+}

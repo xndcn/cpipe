@@ -408,13 +408,13 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 
 ### Checkpoint A — after T1–T4
 
-- [ ] All four tasks merged; `main` is green.
-- [ ] Compute suite carries `submit_halide_with_params` + `submit_ocio_processor`; `CPIPE_ABI_MINOR == 3`.
-- [ ] cpipe-owned Vulkan dispatch runs `demosaic.bilinear`; Tracy GPU evidence filed.
-- [ ] Memory planner is interference-graph coloring; three fan-out / fan-in tests pass.
-- [ ] Precision planner auto-inserts conversions; `precision_convert` built-in registered.
-- [ ] P1 min-pipeline integration smoke still green; no regression on P1 unit tests.
-- [ ] Review: ABI grew at the tail only; P0 passthrough still loads.
+- [x] All four tasks merged; `main` is green.
+- [x] Compute suite carries `submit_halide_with_params` + `submit_ocio_processor`; `CPIPE_ABI_MINOR == 3`.
+- [x] cpipe-owned Vulkan dispatch runs `demosaic.bilinear`; Tracy GPU evidence filed.
+- [x] Memory planner is interference-graph coloring; three fan-out / fan-in tests pass.
+- [x] Precision planner auto-inserts conversions; `precision_convert` built-in registered.
+- [x] P1 min-pipeline integration smoke still green; no regression on P1 unit tests.
+- [x] Review: ABI grew at the tail only; P0 passthrough still loads.
 
 ---
 
@@ -425,13 +425,13 @@ Twenty-two vertical T-tasks (T0 + T1–T21). Three checkpoints. Each task lands 
 **Description.** Author `schemas/pipeline-v0.3.json` (param blocks live; reject v0.2). Author `schemas/node-v0.2.json` (param-schema entries: `name`, `type`, `enum_values?`, `range?`, `default?`). Implement `Pipeline::load` schema-bump logic and the v0.2 → v0.3 migration of the P1 fixtures (`min-pipeline.cpipe.json`). Reject v0.2 with the existing "schema version mismatch" message; v0.1 also rejected. Update one P1 node manifest (e.g. `linearize.dng_lut`) to declare an empty `params` array per node-v0.2 to prove the new schema works.
 
 **Acceptance criteria:**
-- [ ] `pipeline-v0.3.json` parses; v0.2 fixture loads after migration; v0.2 / v0.1 unmigrated fixtures fail with a clear message.
-- [ ] `node-v0.2.json` parses; node-v0.1 manifests forward-compat load.
-- [ ] `Pipeline::load` rejects a v0.3 fixture whose `params.target` is outside the enum.
+- [x] `pipeline-v0.3.json` parses; v0.2 fixture loads after migration; v0.2 / v0.1 unmigrated fixtures fail with a clear message.
+- [x] `node-v0.2.json` parses; node-v0.1 manifests forward-compat load.
+- [x] `Pipeline::load` rejects a v0.3 fixture whose `params.target` is outside the enum.
 
 **Verification:**
-- [ ] `ctest -R test_pipeline_load` green (extended).
-- [ ] `ctest -R test_node_manifest_v0_2` green.
+- [x] `ctest -R test_pipeline_load` green (extended).
+- [x] `ctest -R test_node_manifest_v0_2` green.
 
 **Dependencies:** Checkpoint A.
 

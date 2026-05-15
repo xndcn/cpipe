@@ -66,17 +66,6 @@ Endpoint split_endpoint(const std::string& endpoint) {
     return Endpoint{.node_id = endpoint.substr(0, dot), .port = endpoint.substr(dot + 1)};
 }
 
-BufferLayout layout_from_json(const nlohmann::json& input) {
-    BufferLayout layout{};
-    layout.kind = BufferKind::Image2D;
-    const auto format = input.at("format").get<std::string>();
-    layout.format = format == "R16_UINT" ? PixelFormat::R16_UINT : PixelFormat::R8G8B8A8_UNORM;
-    layout.ndim = 2;
-    layout.dims[0] = input.value("width", 0U);
-    layout.dims[1] = input.value("height", 0U);
-    return layout;
-}
-
 std::optional<PixelFormat> pixel_format_from_string(std::string_view format) {
     if (format == "R16_UINT") {
         return PixelFormat::R16_UINT;
@@ -94,6 +83,17 @@ std::optional<PixelFormat> pixel_format_from_string(std::string_view format) {
         return PixelFormat::R16G16B16A16_UNORM;
     }
     return std::nullopt;
+}
+
+BufferLayout layout_from_json(const nlohmann::json& input) {
+    BufferLayout layout{};
+    layout.kind = BufferKind::Image2D;
+    const auto format = input.at("format").get<std::string>();
+    layout.format = pixel_format_from_string(format).value_or(PixelFormat::R8G8B8A8_UNORM);
+    layout.ndim = 2;
+    layout.dims[0] = input.value("width", 0U);
+    layout.dims[1] = input.value("height", 0U);
+    return layout;
 }
 
 std::optional<PixelFormat> manifest_pixel_format(const nlohmann::json& port) {
@@ -172,8 +172,8 @@ bool node_has_output(const cpipe_plugin_desc_t* desc) {
 
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
     try {
-        if (document.value("version", "") != "0.2") {
-            set_error(error, "schema version mismatch: expected pipeline version 0.2");
+        if (document.value("version", "") != "0.3") {
+            set_error(error, "schema version mismatch: expected pipeline version 0.3");
             return CPIPE_FAILED;
         }
         nlohmann::json_schema::json_validator validator;
@@ -183,6 +183,95 @@ cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::str
         set_error(error, std::string{"pipeline schema validation failed: "} + e.what());
         return CPIPE_FAILED;
     }
+    return CPIPE_OK;
+}
+
+cpipe_status_t validate_enum_param(const std::string& name, const nlohmann::json& value,
+                                   const nlohmann::json& declaration, std::string* error) {
+    if (!value.is_string()) {
+        set_error(error, "node param must be enum string: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    const auto enum_values = declaration.value("enum_values", std::vector<std::string>{});
+    const auto selected = value.get<std::string>();
+    if (std::find(enum_values.begin(), enum_values.end(), selected) == enum_values.end()) {
+        set_error(error, "node param outside enum: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    return CPIPE_OK;
+}
+
+cpipe_status_t validate_number_param(const std::string& name, const nlohmann::json& value,
+                                     const nlohmann::json& declaration, std::string* error) {
+    if (!value.is_number()) {
+        set_error(error, "node param must be number: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    const auto range = declaration.find("range");
+    if (range == declaration.end()) {
+        return CPIPE_OK;
+    }
+
+    const auto selected = value.get<double>();
+    if (range->contains("min") && selected < range->at("min").get<double>()) {
+        set_error(error, "node param below range: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    if (range->contains("max") && selected > range->at("max").get<double>()) {
+        set_error(error, "node param above range: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    return CPIPE_OK;
+}
+
+cpipe_status_t validate_typed_param(const std::string& name, const nlohmann::json& value,
+                                    const nlohmann::json& declaration, std::string* error) {
+    const auto type = declaration.value("type", "");
+    if (type == "enum") {
+        return validate_enum_param(name, value, declaration, error);
+    }
+    if (type == "number") {
+        return validate_number_param(name, value, declaration, error);
+    }
+    if (type == "string" && !value.is_string()) {
+        set_error(error, "node param must be string: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    if (type == "array" && !value.is_array()) {
+        set_error(error, "node param must be array: " + name);
+        return CPIPE_BAD_INDEX;
+    }
+    if (type == "string" || type == "array") {
+        return CPIPE_OK;
+    }
+
+    set_error(error, "unsupported node param type: " + name);
+    return CPIPE_BAD_INDEX;
+}
+
+cpipe_status_t validate_node_params(const cpipe_plugin_desc_t* desc, const nlohmann::json& params,
+                                    std::string* error) {
+    if (desc == nullptr || desc->manifest_json == nullptr) {
+        set_error(error, "missing node manifest");
+        return CPIPE_BAD_INDEX;
+    }
+
+    const auto manifest = nlohmann::json::parse(desc->manifest_json);
+    const auto declarations = manifest.value("params", nlohmann::json::array());
+    for (const auto& [name, value] : params.items()) {
+        const auto found = std::find_if(
+            declarations.begin(), declarations.end(),
+            [&](const auto& declaration) { return declaration.value("name", "") == name; });
+        if (found == declarations.end()) {
+            set_error(error, "unknown node param: " + name);
+            return CPIPE_BAD_INDEX;
+        }
+        if (const auto status = validate_typed_param(name, value, *found, error);
+            status != CPIPE_OK) {
+            return status;
+        }
+    }
+
     return CPIPE_OK;
 }
 
@@ -277,6 +366,10 @@ cpipe_status_t Pipeline::load(const std::filesystem::path& path, const Registry&
         if (desc == nullptr) {
             set_error(error, "unknown node type: " + type);
             return CPIPE_BAD_INDEX;
+        }
+        if (const auto status = validate_node_params(desc, node.at("params"), error);
+            status != CPIPE_OK) {
+            return status;
         }
         node_index.emplace(id, nodes.size());
         nodes.push_back(NodeInstance{.id = id, .descriptor = desc, .params = node.at("params")});

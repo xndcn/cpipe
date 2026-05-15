@@ -127,7 +127,7 @@ TEST_CASE("Pipeline load includes implicit precision_convert node") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_auto_insert-v0.2.json"),
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_auto_insert-v0.3.json"),
                                            registry, &pipeline, &error) == CPIPE_OK);
     REQUIRE(pipeline.node_count() == 3);
 }
@@ -168,7 +168,7 @@ TEST_CASE("Pipeline rejects user-authored precision_convert nodes") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_convert_user-v0.2.json"),
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_convert_user-v0.3.json"),
                                            registry, &pipeline, &error) == CPIPE_BAD_INDEX);
     REQUIRE(error.find("reserved") != std::string::npos);
 }

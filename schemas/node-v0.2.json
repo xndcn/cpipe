@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/node/v0.2.json",
+  "type": "object",
+  "required": ["id", "version", "ports", "compute", "color"],
+  "additionalProperties": true,
+  "properties": {
+    "$schema": {
+      "enum": [
+        "https://schemas.cpipe.dev/node/v0.1.json",
+        "https://schemas.cpipe.dev/node/v0.2.json"
+      ]
+    },
+    "id": { "type": "string", "pattern": "^com\\.cpipe\\." },
+    "version": { "type": "string" },
+    "ports": { "type": "array" },
+    "params": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "name": { "type": "string", "minLength": 1 },
+          "type": { "enum": ["enum", "number", "string", "array"] },
+          "enum_values": {
+            "type": "array",
+            "minItems": 1,
+            "items": { "type": "string" }
+          },
+          "range": {
+            "type": "object",
+            "minProperties": 1,
+            "additionalProperties": false,
+            "properties": {
+              "min": { "type": "number" },
+              "max": { "type": "number" }
+            }
+          },
+          "default": true
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": { "type": { "const": "enum" } },
+              "required": ["type"]
+            },
+            "then": { "required": ["enum_values"] }
+          }
+        ]
+      }
+    },
+    "compute": { "type": "object" },
+    "color": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "$schema": { "const": "https://schemas.cpipe.dev/node/v0.2.json" }
+        },
+        "required": ["$schema"]
+      },
+      "then": { "required": ["params"] }
+    }
+  ]
+}

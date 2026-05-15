@@ -45,6 +45,20 @@ public:
     }
 };
 
+class ParamEnumNode final : public cpipe::sdk::Node {
+public:
+    static constexpr const char* ID = "com.cpipe.test.param_enum";
+    static constexpr const char* VERSION = "1.0.0";
+
+    cpipe::sdk::Result<void> process(cpipe::sdk::ComputeContext&, cpipe::sdk::InferenceContext*,
+                                     const cpipe::sdk::ParamView&,
+                                     std::span<const cpipe::sdk::Buffer*>,
+                                     std::span<cpipe::sdk::Buffer*>,
+                                     std::span<cpipe::sdk::MetadataBuilder*>) override {
+        return {};
+    }
+};
+
 constexpr char kPrecisionProducerManifest[] = R"({
   "id":"com.cpipe.test.precision_producer",
   "version":"1.0.0",
@@ -65,10 +79,27 @@ constexpr char kPrecisionConsumerManifest[] = R"({
   "color":{"input_role":"any","output_role":"any"}
 })";
 
+constexpr char kParamEnumManifest[] = R"({
+  "id":"com.cpipe.test.param_enum",
+  "version":"1.0.0",
+  "ports":[],
+  "params":[
+    {
+      "name":"target",
+      "type":"enum",
+      "enum_values":["sRGB","BT2020-PQ"],
+      "default":"sRGB"
+    }
+  ],
+  "compute":{"device":"CPU","engine":"Host","out_pixel_bytes":0},
+  "color":{"input_role":"any","output_role":"any"}
+})";
+
 }  // namespace
 
 CPIPE_REGISTER_NODE(PrecisionProducerNode, kPrecisionProducerManifest)
 CPIPE_REGISTER_NODE(PrecisionConsumerNode, kPrecisionConsumerManifest)
+CPIPE_REGISTER_NODE(ParamEnumNode, kParamEnumManifest)
 
 TEST_CASE("Pipeline loads valid passthrough graph") {
     cpipe_link_builtin_passthrough();
@@ -78,14 +109,14 @@ TEST_CASE("Pipeline loads valid passthrough graph") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_OK);
     REQUIRE(pipeline.node_count() == 1);
     REQUIRE(pipeline.layout().size_bytes() == 64ULL * 64ULL * 4ULL);
     REQUIRE(pipeline.memory_peak_bytes() >= pipeline.layout().size_bytes());
 }
 
-TEST_CASE("Pipeline rejects v0.1 schema after v0.2 migration") {
+TEST_CASE("Pipeline rejects v0.1 and v0.2 schemas after v0.3 migration") {
     cpipe_link_builtin_passthrough();
 
     cpipe::runtime::Registry registry;
@@ -96,9 +127,14 @@ TEST_CASE("Pipeline rejects v0.1 schema after v0.2 migration") {
     REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough.json"), registry, &pipeline,
                                            &error) == CPIPE_FAILED);
     REQUIRE(error.find("schema version mismatch") != std::string::npos);
+
+    error.clear();
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.2.json"), registry,
+                                           &pipeline, &error) == CPIPE_FAILED);
+    REQUIRE(error.find("schema version mismatch") != std::string::npos);
 }
 
-TEST_CASE("Pipeline enforces source binding for v0.2 inputs") {
+TEST_CASE("Pipeline enforces source binding for v0.3 inputs") {
     cpipe_link_builtin_passthrough();
 
     cpipe::runtime::Registry registry;
@@ -106,7 +142,7 @@ TEST_CASE("Pipeline enforces source binding for v0.2 inputs") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_OK);
     REQUIRE(pipeline.run(&error) == CPIPE_FAILED);
     REQUIRE(error.find("source") != std::string::npos);
@@ -121,7 +157,7 @@ TEST_CASE("Pipeline rejects unknown node type") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("invalid_pipeline-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("invalid_pipeline-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_BAD_INDEX);
     REQUIRE(error.find("unknown node type") != std::string::npos);
 }
@@ -134,7 +170,7 @@ TEST_CASE("Pipeline rejects dangling edge") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("dangling_pipeline-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("dangling_pipeline-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_BAD_INDEX);
     REQUIRE(error.find("dangling edge") != std::string::npos);
 }
@@ -148,7 +184,7 @@ TEST_CASE("Pipeline memory cap rejects plans above device budget") {
     cpipe::runtime::Pipeline pipeline;
     pipeline.set_device_memory_cap(1);
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("passthrough-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_OOM);
     REQUIRE(error.find("memory") != std::string::npos);
 }
@@ -159,7 +195,18 @@ TEST_CASE("Pipeline precision planner rejects disjoint edge precision") {
 
     cpipe::runtime::Pipeline pipeline;
     std::string error;
-    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_mismatch-v0.2.json"), registry,
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("precision_mismatch-v0.3.json"), registry,
                                            &pipeline, &error) == CPIPE_BAD_PRECISION);
     REQUIRE(error.find("precision") != std::string::npos);
+}
+
+TEST_CASE("Pipeline rejects enum params outside the node manifest") {
+    cpipe::runtime::Registry registry;
+    registry.load_builtin_nodes();
+
+    cpipe::runtime::Pipeline pipeline;
+    std::string error;
+    REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("params_invalid_target-v0.3.json"),
+                                           registry, &pipeline, &error) == CPIPE_BAD_INDEX);
+    REQUIRE(error.find("target") != std::string::npos);
 }
