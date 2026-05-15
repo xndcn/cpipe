@@ -6,6 +6,7 @@ add_halide_generator(
     SOURCES
         passthrough_copy_generator.cpp
         demosaic/demosaic_bilinear_generator.cpp
+        demosaic/demosaic_rcd_generator.cpp
         precision/precision_convert_generator.cpp
 )
 cpipe_add_halide_library(
@@ -27,6 +28,18 @@ cpipe_add_halide_library(
         demosaic_bilinear
     FUNCTION_NAME
         demosaic_bilinear
+    TARGETS
+        x86-64-linux
+        ${Halide_HOST_TARGET}-vulkan-vk_float16
+)
+cpipe_add_halide_library(
+    demosaic_rcd
+    FROM
+        cpipe_halide_generators
+    GENERATOR
+        demosaic_rcd
+    FUNCTION_NAME
+        demosaic_rcd
     TARGETS
         x86-64-linux
         ${Halide_HOST_TARGET}-vulkan-vk_float16
@@ -138,6 +151,18 @@ add_custom_command(
     DEPENDS demosaic/demosaic_bilinear.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
+set(demosaic_rcd_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/demosaic_rcd_manifest.cpp")
+add_custom_command(
+    OUTPUT "${demosaic_rcd_manifest_cpp}"
+    COMMAND
+        "${CMAKE_COMMAND}"
+        -DINPUT_JSON="${CMAKE_CURRENT_SOURCE_DIR}/demosaic/demosaic_rcd.json"
+        -DOUTPUT_CPP="${demosaic_rcd_manifest_cpp}"
+        -DSYMBOL_NAME=DEMOSAIC_RCD_MANIFEST_JSON
+        -P "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+    DEPENDS demosaic/demosaic_rcd.json "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
+)
+
 set(wb_dual_illuminant_manifest_cpp "${CMAKE_CURRENT_BINARY_DIR}/wb_dual_illuminant_manifest.cpp")
 add_custom_command(
     OUTPUT "${wb_dual_illuminant_manifest_cpp}"
@@ -202,6 +227,8 @@ add_library(
         blacklevel/blacklevel_dng_levels_dispatch.cpp
         demosaic/demosaic_bilinear.cpp
         demosaic/demosaic_bilinear_dispatch.cpp
+        demosaic/demosaic_rcd.cpp
+        demosaic/demosaic_rcd_dispatch.cpp
         wb/wb_dual_illuminant.cpp
         wb/wb_dual_illuminant_dispatch.cpp
         colormatrix/colormatrix_dng_to_working.cpp
@@ -214,6 +241,7 @@ add_library(
         "${linearize_dng_lut_manifest_cpp}"
         "${blacklevel_dng_levels_manifest_cpp}"
         "${demosaic_bilinear_manifest_cpp}"
+        "${demosaic_rcd_manifest_cpp}"
         "${wb_dual_illuminant_manifest_cpp}"
         "${colormatrix_dng_to_working_manifest_cpp}"
         "${precision_convert_manifest_cpp}"
@@ -237,6 +265,7 @@ target_link_libraries(
         cpipe::runtime
         passthrough_copy
         demosaic_bilinear
+        demosaic_rcd
         precision_convert_r16u_to_f32
         precision_convert_f32_to_rgba16f
         precision_convert_rgba16f_to_rgba8

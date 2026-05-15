@@ -1,10 +1,10 @@
 {
   "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
-  "id": "com.cpipe.demosaic.bilinear",
+  "id": "com.cpipe.demosaic.rcd",
   "version": "1.0.0",
-  "label": "Bilinear Demosaic",
+  "label": "RCD Demosaic",
   "category": "raw",
-  "doc": "Demosaics Bayer data with bilinear interpolation.",
+  "doc": "Demosaics Bayer data with ratio-corrected interpolation.",
   "ports": [
     {
       "name": "bayer",
@@ -40,7 +40,7 @@
   "compute": {
     "device": "CPU",
     "engine": "Halide",
-    "halide_aot": ["demosaic_bilinear"],
+    "halide_aot": ["demosaic_rcd"],
     "in_pixel_bytes": 4,
     "out_pixel_bytes": 8,
     "scratch_pixel_bytes": 0

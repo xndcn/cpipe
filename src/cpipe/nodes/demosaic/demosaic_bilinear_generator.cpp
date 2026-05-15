@@ -8,6 +8,7 @@ namespace cpipe::nodes {
 class DemosaicBilinearGenerator final : public Halide::Generator<DemosaicBilinearGenerator> {
 public:
     Input<Halide::Buffer<float, 2>> input{"input"};
+    Input<Halide::Buffer<int32_t, 1>> cfa_pattern{"cfa_pattern"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Implements the trivial Bayer bilinear fallback described in
@@ -15,6 +16,9 @@ public:
     void generate() {
         Halide::Var x{"x"}, y{"y"}, c{"c"};
         Halide::Func clamped = Halide::BoundaryConditions::repeat_edge(input);
+        const auto cfa_at = [&](const Halide::Expr& sx, const Halide::Expr& sy) {
+            return cfa_pattern(((sy & 1) * 2) + (sx & 1));
+        };
 
         const Halide::Expr center = clamped(x, y);
         const Halide::Expr horizontal = 0.5F * (clamped(x - 1, y) + clamped(x + 1, y));
@@ -24,15 +28,16 @@ public:
         const Halide::Expr diagonal = 0.25F * (clamped(x - 1, y - 1) + clamped(x + 1, y - 1) +
                                                clamped(x - 1, y + 1) + clamped(x + 1, y + 1));
 
-        const Halide::Expr red_site = ((x & 1) == 0) && ((y & 1) == 0);
-        const Halide::Expr blue_site = ((x & 1) == 1) && ((y & 1) == 1);
-        const Halide::Expr green_on_red_row = ((x & 1) == 1) && ((y & 1) == 0);
+        const Halide::Expr cfa = cfa_at(x, y);
+        const Halide::Expr red_site = cfa == 0;
+        const Halide::Expr blue_site = cfa == 2;
+        const Halide::Expr horizontal_red = cfa_at(x - 1, y) == 0;
 
-        const Halide::Expr r = Halide::select(red_site, center, blue_site, diagonal,
-                                              green_on_red_row, horizontal, vertical);
+        const Halide::Expr r = Halide::select(red_site, center, blue_site, diagonal, horizontal_red,
+                                              horizontal, vertical);
         const Halide::Expr g = Halide::select(red_site || blue_site, cross, center);
-        const Halide::Expr b = Halide::select(blue_site, center, red_site, diagonal,
-                                              green_on_red_row, vertical, horizontal);
+        const Halide::Expr b = Halide::select(blue_site, center, red_site, diagonal, horizontal_red,
+                                              vertical, horizontal);
         const Halide::Expr rgba = Halide::select(c == 0, r, c == 1, g, c == 2, b, 1.0F);
 
         output(x, y, c) = Halide::cast<Halide::float16_t>(rgba);

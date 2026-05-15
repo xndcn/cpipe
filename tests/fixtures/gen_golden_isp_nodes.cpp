@@ -94,6 +94,11 @@ float bayer_sample(const Image& image, int x, int y) {
                         static_cast<std::size_t>(x)];
 }
 
+int cfa_at(int x, int y) {
+    constexpr std::array<int, 4> pattern{0, 1, 1, 2};
+    return pattern[static_cast<std::size_t>(((y & 1) * 2) + (x & 1))];
+}
+
 std::array<float, 4> demosaic_rgba(const Image& bayer, int x, int y) {
     const auto center = bayer_sample(bayer, x, y);
     const auto horizontal = 0.5F * (bayer_sample(bayer, x - 1, y) + bayer_sample(bayer, x + 1, y));
@@ -103,17 +108,72 @@ std::array<float, 4> demosaic_rgba(const Image& bayer, int x, int y) {
     const auto diagonal =
         0.25F * (bayer_sample(bayer, x - 1, y - 1) + bayer_sample(bayer, x + 1, y - 1) +
                  bayer_sample(bayer, x - 1, y + 1) + bayer_sample(bayer, x + 1, y + 1));
-    const auto cfa = ((y & 1) * 2) + (x & 1);
+    const auto cfa = cfa_at(x, y);
     if (cfa == 0) {
         return {center, cross, diagonal, 1.0F};
     }
-    if (cfa == 3) {
+    if (cfa == 2) {
         return {diagonal, cross, center, 1.0F};
     }
-    if ((y & 1) == 0) {
+    if (cfa_at(x - 1, y) == 0) {
         return {horizontal, center, vertical, 1.0F};
     }
     return {vertical, center, horizontal, 1.0F};
+}
+
+float rcd_green(const Image& bayer, int x, int y) {
+    const auto center = bayer_sample(bayer, x, y);
+    if (cfa_at(x, y) == 1) {
+        return center;
+    }
+    const auto gh = 0.5F * (bayer_sample(bayer, x - 1, y) + bayer_sample(bayer, x + 1, y));
+    const auto gv = 0.5F * (bayer_sample(bayer, x, y - 1) + bayer_sample(bayer, x, y + 1));
+    const auto dh = std::abs(bayer_sample(bayer, x - 2, y) - bayer_sample(bayer, x + 2, y));
+    const auto dv = std::abs(bayer_sample(bayer, x, y - 2) - bayer_sample(bayer, x, y + 2));
+    if (dh < dv) {
+        return gh;
+    }
+    if (dv < dh) {
+        return gv;
+    }
+    return 0.5F * (gh + gv);
+}
+
+float rcd_ratio(const Image& bayer, int x, int y) {
+    return bayer_sample(bayer, x, y) / std::max(rcd_green(bayer, x, y), 0.000001F);
+}
+
+float rcd_horizontal(const Image& bayer, int x, int y) {
+    return rcd_green(bayer, x, y) * 0.5F *
+           (rcd_ratio(bayer, x - 1, y) + rcd_ratio(bayer, x + 1, y));
+}
+
+float rcd_vertical(const Image& bayer, int x, int y) {
+    return rcd_green(bayer, x, y) * 0.5F *
+           (rcd_ratio(bayer, x, y - 1) + rcd_ratio(bayer, x, y + 1));
+}
+
+float rcd_diagonal(const Image& bayer, int x, int y) {
+    return rcd_green(bayer, x, y) * 0.25F *
+           (rcd_ratio(bayer, x - 1, y - 1) + rcd_ratio(bayer, x + 1, y - 1) +
+            rcd_ratio(bayer, x - 1, y + 1) + rcd_ratio(bayer, x + 1, y + 1));
+}
+
+std::array<float, 4> demosaic_rcd_rgba(const Image& bayer, int x, int y) {
+    const auto center = bayer_sample(bayer, x, y);
+    const auto cfa = cfa_at(x, y);
+    const auto horizontal_red = cfa_at(x - 1, y) == 0;
+    const auto horizontal_blue = cfa_at(x - 1, y) == 2;
+    const auto red = std::max(0.0F, cfa == 0         ? center
+                                    : cfa == 2       ? rcd_diagonal(bayer, x, y)
+                                    : horizontal_red ? rcd_horizontal(bayer, x, y)
+                                                     : rcd_vertical(bayer, x, y));
+    const auto green = std::max(0.0F, rcd_green(bayer, x, y));
+    const auto blue = std::max(0.0F, cfa == 2          ? center
+                                     : cfa == 0        ? rcd_diagonal(bayer, x, y)
+                                     : horizontal_blue ? rcd_horizontal(bayer, x, y)
+                                                       : rcd_vertical(bayer, x, y));
+    return {red, green, blue, 1.0F};
 }
 
 Image linearize_input() {
@@ -183,6 +243,33 @@ Image demosaic_input() {
         for (int x = 0; x < image.width; ++x) {
             image.pixels.push_back(0.05F + (0.07F * static_cast<float>(x)) +
                                    (0.035F * static_cast<float>(y)));
+        }
+    }
+    return image;
+}
+
+Image demosaic_rcd_input() {
+    Image image{16, 16, 1, {}};
+    image.pixels.reserve(256);
+    for (int y = 0; y < image.height; ++y) {
+        for (int x = 0; x < image.width; ++x) {
+            image.pixels.push_back(0.04F + (0.026F * static_cast<float>(x)) +
+                                   (0.019F * static_cast<float>(y)) +
+                                   (0.003F * static_cast<float>((x * y) % 5)));
+        }
+    }
+    return image;
+}
+
+Image demosaic_rcd_output(const Image& input) {
+    Image image{input.width, input.height, 4, {}};
+    image.pixels.reserve(input.pixels.size() * 4U);
+    for (int y = 0; y < input.height; ++y) {
+        for (int x = 0; x < input.width; ++x) {
+            const auto rgba = demosaic_rcd_rgba(input, x, y);
+            for (const auto value : rgba) {
+                image.pixels.push_back(half_roundtrip(value));
+            }
         }
     }
     return image;
@@ -298,6 +385,7 @@ int main(int argc, char** argv) {
     const auto lin_in = linearize_input();
     const auto black_in = blacklevel_input();
     const auto demosaic_in = demosaic_input();
+    const auto rcd_in = demosaic_rcd_input();
     const auto wb_in = wb_input();
     const auto cm_in = colormatrix_input();
 
@@ -305,6 +393,7 @@ int main(int argc, char** argv) {
         write_pair(root, "linearize.dng_lut", lin_in, linearize_output(lin_in)) &&
         write_pair(root, "blacklevel.dng_levels", black_in, blacklevel_output(black_in)) &&
         write_pair(root, "demosaic.bilinear", demosaic_in, demosaic_output(demosaic_in)) &&
+        write_pair(root, "demosaic.rcd", rcd_in, demosaic_rcd_output(rcd_in)) &&
         write_pair(root, "wb.dual_illuminant", wb_in, wb_output(wb_in)) &&
         write_pair(root, "colormatrix.dng_to_working", cm_in, colormatrix_output(cm_in));
     return ok ? 0 : 1;

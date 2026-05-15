@@ -119,6 +119,27 @@ target_link_libraries(
 set_tests_properties(
     test_node_demosaic_bilinear_vulkan PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0"
 )
+cpipe_add_unit_test(test_node_demosaic_rcd test_node_demosaic_rcd.cpp)
+target_link_libraries(
+    test_node_demosaic_rcd
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_demosaic_rcd_vulkan test_node_demosaic_rcd_vulkan.cpp)
+target_link_libraries(
+    test_node_demosaic_rcd_vulkan
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+set_tests_properties(
+    test_node_demosaic_rcd_vulkan PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0"
+)
 cpipe_add_unit_test(test_node_wb test_node_wb.cpp)
 target_link_libraries(
     test_node_wb

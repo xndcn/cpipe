@@ -17,6 +17,10 @@ struct BlacklevelParams {
     std::uint8_t cfa_pattern[4];
 };
 
+struct DemosaicParams {
+    std::uint8_t cfa_pattern[4];
+};
+
 struct WbParams {
     float as_shot_neutral[3];
 };

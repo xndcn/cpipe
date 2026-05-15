@@ -27,6 +27,7 @@
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_demosaic_bilinear();
+void cpipe_link_builtin_demosaic_rcd();
 void cpipe_link_builtin_linearize_dng_lut();
 void cpipe_link_builtin_wb_dual_illuminant();
 
@@ -234,6 +235,7 @@ void register_builtin_nodes(cpipe::runtime::Registry& registry) {
     cpipe_link_builtin_linearize_dng_lut();
     cpipe_link_builtin_blacklevel_dng_levels();
     cpipe_link_builtin_demosaic_bilinear();
+    cpipe_link_builtin_demosaic_rcd();
     cpipe_link_builtin_wb_dual_illuminant();
     cpipe_link_builtin_colormatrix_dng_to_working();
     registry.load_builtin_nodes();
@@ -288,10 +290,9 @@ void assert_blacklevel_golden(cpipe::runtime::Registry& registry) {
     require_psnr_at_least(kFixture, read_f32(*output, input_image.width, input_image.height));
 }
 
-void assert_demosaic_golden(cpipe::runtime::Registry& registry) {
-    constexpr auto kNode = "com.cpipe.demosaic.bilinear";
-    constexpr auto kFixture = "demosaic.bilinear";
-    const auto input_image = read_fixture(kFixture, "in.exr", 1);
+void assert_demosaic_golden(cpipe::runtime::Registry& registry, const char* node,
+                            const char* fixture) {
+    const auto input_image = read_fixture(fixture, "in.exr", 1);
 
     auto metadata = metadata_with_cfa();
     metadata->applied_steps = {"linearization", "black_white_scaling"};
@@ -305,8 +306,8 @@ void assert_demosaic_golden(cpipe::runtime::Registry& registry) {
                     BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     cpipe::runtime::ComputeContext compute;
-    process_single_input_node(require_node(registry, kNode), input, output, &compute);
-    require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
+    process_single_input_node(require_node(registry, node), input, output, &compute);
+    require_psnr_at_least(fixture, read_rgba16(*output, input_image.width, input_image.height));
 }
 
 void assert_wb_golden(cpipe::runtime::Registry& registry) {
@@ -371,7 +372,10 @@ TEST_CASE("P1 ISP node EXR goldens meet PSNR threshold") {
         assert_blacklevel_golden(registry);
     }
     SECTION("demosaic.bilinear") {
-        assert_demosaic_golden(registry);
+        assert_demosaic_golden(registry, "com.cpipe.demosaic.bilinear", "demosaic.bilinear");
+    }
+    SECTION("demosaic.rcd") {
+        assert_demosaic_golden(registry, "com.cpipe.demosaic.rcd", "demosaic.rcd");
     }
     SECTION("wb.dual_illuminant") {
         assert_wb_golden(registry);
