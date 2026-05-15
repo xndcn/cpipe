@@ -3,10 +3,10 @@
 
 #pragma once
 
-#include <HalideRuntime.h>
 #include <cpipe/sdk/cpipe_node.h>
 
 #include <cpipe/core/IBuffer.hpp>
+#include <cpipe/runtime/HalideFilterRegistry.hpp>
 #include <initializer_list>
 #include <memory>
 #include <span>
@@ -16,11 +16,12 @@
 
 namespace cpipe::runtime {
 
-using HalideFilterEntry = int (*)(halide_buffer_t* input, halide_buffer_t* output);
-
 class ComputeContext {
 public:
+    ComputeContext();
+
     void register_halide_filter(std::string aot_id, HalideFilterEntry entry);
+    void register_halide_param_filter(std::string aot_id, HalideParamFilterEntry entry);
 
     [[nodiscard]] cpipe_status_t submit_halide(
         std::string_view aot_id, std::span<const std::shared_ptr<compute::IBuffer>> inputs,
@@ -32,6 +33,7 @@ public:
 
 private:
     std::unordered_map<std::string, HalideFilterEntry> halide_filters_;
+    std::unordered_map<std::string, HalideParamFilterEntry> halide_param_filters_;
 };
 
 }  // namespace cpipe::runtime

@@ -24,8 +24,6 @@
 #include <string>
 #include <vector>
 
-extern "C" int demosaic_bilinear(halide_buffer_t* input, halide_buffer_t* output);
-
 void cpipe_link_builtin_blacklevel_dng_levels();
 void cpipe_link_builtin_colormatrix_dng_to_working();
 void cpipe_link_builtin_demosaic_bilinear();
@@ -305,7 +303,6 @@ void assert_demosaic_golden(cpipe::runtime::Registry& registry) {
                     BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
 
     cpipe::runtime::ComputeContext compute;
-    compute.register_halide_filter("demosaic_bilinear", &demosaic_bilinear);
     process_single_input_node(require_node(registry, kNode), input, output, &compute);
     require_psnr_at_least(kFixture, read_rgba16(*output, input_image.width, input_image.height));
 }

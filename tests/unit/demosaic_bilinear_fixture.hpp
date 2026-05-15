@@ -110,7 +110,7 @@ inline std::array<float, 4> expected_rgba(const std::array<float, 16>& bayer, st
     }
 }
 
-inline void assert_demosaic_node(cpipe::runtime::HalideFilterEntry filter) {
+inline void assert_demosaic_node() {
     cpipe_link_builtin_demosaic_bilinear();
 
     cpipe::runtime::Registry registry;
@@ -150,7 +150,6 @@ inline void assert_demosaic_node(cpipe::runtime::HalideFilterEntry filter) {
     input->flush_cpu_writes();
 
     cpipe::runtime::ComputeContext compute;
-    compute.register_halide_filter("demosaic_bilinear", filter);
     cpipe::runtime::HostContext host_context;
     void* instance = nullptr;
     REQUIRE(desc->main_entry(CPIPE_ACTION_CREATE, host_context.host(), nullptr, nullptr, nullptr,

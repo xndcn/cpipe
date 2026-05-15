@@ -5,6 +5,7 @@
 #include <cpipe/core/CpuBuffer.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HalideBufferAdapter.hpp>
+#include <cpipe/runtime/HalideFilterRegistry.hpp>
 #include <cpipe/runtime/InferenceContext.hpp>
 #include <cstddef>
 #include <cstring>
@@ -25,6 +26,8 @@ int test_halide_copy(halide_buffer_t* input, halide_buffer_t* output) {
                     static_cast<std::size_t>(input->dim[1].stride));
     return 0;
 }
+
+CPIPE_REGISTER_HALIDE_FILTER("test_halide_copy", &test_halide_copy)
 
 BufferLayout rgba_layout(std::uint32_t width, std::uint32_t height) {
     BufferLayout layout{};
@@ -96,9 +99,8 @@ TEST_CASE("ComputeContext submit_halide copies CpuBuffer bytes") {
     input->flush_cpu_writes();
 
     cpipe::runtime::ComputeContext compute;
-    compute.register_halide_filter("passthrough_copy", &test_halide_copy);
 
-    REQUIRE(compute.submit_halide("passthrough_copy", {input}, {output}) == CPIPE_OK);
+    REQUIRE(compute.submit_halide("test_halide_copy", {input}, {output}) == CPIPE_OK);
 
     const auto* in = static_cast<const std::byte*>(input->lock_cpu(IBuffer::CpuAccess::Read));
     const auto* out = static_cast<const std::byte*>(output->lock_cpu(IBuffer::CpuAccess::Read));

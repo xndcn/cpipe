@@ -137,10 +137,12 @@ add_library(
     STATIC
         builtin_link.cpp
         passthrough.cpp
+        passthrough_copy_dispatch.cpp
         dng_input/dng_input.cpp
         linearize/linearize_dng_lut.cpp
         blacklevel/blacklevel_dng_levels.cpp
         demosaic/demosaic_bilinear.cpp
+        demosaic/demosaic_bilinear_dispatch.cpp
         wb/wb_dual_illuminant.cpp
         colormatrix/colormatrix_dng_to_working.cpp
         output/heif_sdr.cpp

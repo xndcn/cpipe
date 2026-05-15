@@ -29,7 +29,6 @@
 #include "../unit/dng_test_fixture.hpp"
 
 void cpipe_link_all_builtin_nodes();
-extern "C" int demosaic_bilinear(halide_buffer_t* input, halide_buffer_t* output);
 
 namespace {
 
@@ -155,7 +154,6 @@ FloatImage run_isp_reference(const std::filesystem::path& input_path) {
     REQUIRE(read.buffer != nullptr);
 
     cpipe::runtime::ComputeContext compute;
-    compute.register_halide_filter("demosaic_bilinear", &demosaic_bilinear);
 
     std::shared_ptr<IBuffer> current = read.buffer;
     const std::vector<std::string> node_ids{

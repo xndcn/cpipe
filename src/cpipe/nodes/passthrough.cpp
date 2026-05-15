@@ -25,4 +25,8 @@ extern const char PASSTHROUGH_MANIFEST_JSON[];
 
 CPIPE_REGISTER_NODE(cpipe::nodes::Passthrough, PASSTHROUGH_MANIFEST_JSON)
 
-void cpipe_link_builtin_passthrough() {}
+void cpipe_link_builtin_passthrough_halide();
+
+void cpipe_link_builtin_passthrough() {
+    cpipe_link_builtin_passthrough_halide();
+}

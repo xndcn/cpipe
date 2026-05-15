@@ -29,9 +29,6 @@
 #include <utility>
 #include <vector>
 
-extern "C" int passthrough_copy(halide_buffer_t* input, halide_buffer_t* output);
-extern "C" int demosaic_bilinear(halide_buffer_t* input, halide_buffer_t* output);
-
 extern const char PIPELINE_SCHEMA_JSON[];
 
 namespace {
@@ -397,8 +394,6 @@ cpipe_status_t Pipeline::run_bound(std::optional<std::filesystem::path> output,
     }
 
     ComputeContext compute;
-    compute.register_halide_filter("passthrough_copy", &passthrough_copy);
-    compute.register_halide_filter("demosaic_bilinear", &demosaic_bilinear);
     HostContext host_context;
 
     auto source_params = make_param_handle(source->second.params);
@@ -566,7 +561,6 @@ cpipe_status_t Pipeline::run_file(const std::filesystem::path& input_path,
     current->flush_cpu_writes();
 
     ComputeContext compute;
-    compute.register_halide_filter("passthrough_copy", &passthrough_copy);
     HostContext host_context;
 
     for (const auto& node : nodes_) {

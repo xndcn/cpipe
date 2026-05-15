@@ -8,8 +8,17 @@
 
 namespace cpipe::runtime {
 
+ComputeContext::ComputeContext()
+    : halide_filters_(HalideFilterRegistry::instance().halide_filters()),
+      halide_param_filters_(HalideFilterRegistry::instance().halide_param_filters()) {}
+
 void ComputeContext::register_halide_filter(std::string aot_id, HalideFilterEntry entry) {
     halide_filters_.insert_or_assign(std::move(aot_id), entry);
+}
+
+void ComputeContext::register_halide_param_filter(std::string aot_id,
+                                                  HalideParamFilterEntry entry) {
+    halide_param_filters_.insert_or_assign(std::move(aot_id), entry);
 }
 
 cpipe_status_t ComputeContext::submit_halide(
