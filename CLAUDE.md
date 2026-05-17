@@ -132,7 +132,7 @@ Same PR also updates the changelog surface:
 
 ### Open questions
 
-[`docs/research/00-summary.md` §9](docs/research/00-summary.md) lists 15 open questions; [`docs/architecture.md` §17](docs/architecture.md) tracks them with architecture impact. Resolved so far: **Q1** (Adobe DNG SDK cancelled per RD-11 — P1 T5 shipped first-party OpcodeList interpreter), **Q10** (burst = N independent `.dng`), **Q12** (no Windows v1), **Q15** (editor edits `pipeline.cpipe.json` only — no in-browser node authoring). The other 11 still need human decision; apply the workflow's open-question check before implementing in any area they touch.
+[`docs/research/00-summary.md` §9](docs/research/00-summary.md) lists 15 open questions; [`docs/architecture.md` §17](docs/architecture.md) tracks them with architecture impact. Resolved so far: **Q1** (Adobe DNG SDK cancelled per RD-11 — P1 T5 shipped first-party OpcodeList interpreter), **Q6** (Quad Bayer GainMap is per-Bayer-channel × 4 planes at the 4×4 stage before remosaic — P2-PD-18 / T9), **Q10** (burst = N independent `.dng`), **Q12** (no Windows v1), **Q15** (editor edits `pipeline.cpipe.json` only — no in-browser node authoring). The other 10 still need human decision; apply the workflow's open-question check before implementing in any area they touch.
 
 ---
 

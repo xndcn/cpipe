@@ -350,25 +350,25 @@ A phased plan that respects D14 (long timeline allows production-grade depth). E
 
 ## 9. Consolidated Open Questions
 
-These came back from the sub-agents and remain unresolved. They become the next round of human-decision asks once research is digested.
+These came back from the sub-agents. Resolution status is tracked here; [`architecture.md` §17](../architecture.md#17-open-questions) carries the architecture impact for each. Five resolved (Q1, Q6, Q10, Q12, Q15); ten still open.
 
-| # | Question | From | Why it matters |
-|---|----------|------|----------------|
-| Q1 | Is Adobe DNG SDK 1.7.1 redistributable under Apache 2.0 static linking? Need legal review. | [#12](12-dng-format.md) | If yes, simpler ingest path than LibRaw + custom interpreter. |
-| Q2 | Does Qualcomm publish a `VK_QCOM_…` extension that lets Vulkan import an HTP buffer in 2026? | [#05](05-npu-backends-zero-copy.md) | Eliminates the AHB→HTP memcpy. |
-| Q3 | Is there an HTP context-binary cache invalidation strategy that survives Android OS updates? | [#05](05-npu-backends-zero-copy.md) | Production reliability. |
-| Q4 | Should we ship our own DCP writer for v2 calibration profiles, or stay JSON-only? | [#15](15-mobile-camera-calibration.md) | Adobe ecosystem interop. |
-| Q5 | Per-unit calibration capture flow — how invasive should v2 chart UI be? | [#15](15-mobile-camera-calibration.md) | UX scope. |
-| Q6 | Quad Bayer DNG GainMap encoding when shooting in 4×4 native mode — is OpcodeList3 GainMap multi-plane? | [#15](15-mobile-camera-calibration.md), [#12](12-dng-format.md) | Whether Quad Bayer flat-field correction works without custom plumbing. |
-| Q7 | Should AI demosaic ship in v1 (versus v2) given its quality lift on Quad Bayer? | [#08](08-ai-isp-algorithms.md), [#07](07-classic-isp-algorithms.md) | Differentiation vs schedule. |
-| Q8 | Do we want a desktop-only mode for the editor (offline, no network)? | [#11](11-pipeline-editor-and-connectivity.md) | Privacy-conscious users. |
-| Q9 | Mobile-side Apple Adaptive HDR write fidelity — how do we test it without Apple's reader stack? | [#14](14-heif-and-hdr-output.md) | Validation. |
-| Q10 | Is the burst-frame metadata serialised to a single DNG (multi-image) or N DNGs? | [#16](16-camera2-raw-and-burst.md) | Storage + DNG spec compliance. |
-| Q11 | Do we expose a plugin marketplace UI in v2, and if so, what's the signing model? | [#10](10-plugin-architecture.md) | Trust model for v2 dynamic loading. |
-| Q12 | Do we need a Windows v1 build for parity with Linux CLI? | inferred | User feedback. |
-| Q13 | Multi-camera (logical multi-camera burst from main + tele + ultrawide) — v1 or v2? | [#16](16-camera2-raw-and-burst.md), [#17](17-mobile-pro-camera-apps.md) | Architecture impact. |
-| Q14 | NPU vendor SDK for MediaTek / Samsung — v2 or v3? | [#04](04-mobile-ai-inference.md), [#05](05-npu-backends-zero-copy.md) | Reach (D13 says v2). |
-| Q15 | Does the editor allow user authoring of new node types from the UI (Halide / slang in-browser), or only loading? | [#11](11-pipeline-editor-and-connectivity.md) | Scope of editor. |
+| # | Question | From | Why it matters | Status |
+|---|----------|------|----------------|--------|
+| Q1 | Is Adobe DNG SDK 1.7.1 redistributable under Apache 2.0 static linking? Need legal review. | [#12](12-dng-format.md) | If yes, simpler ingest path than LibRaw + custom interpreter. | **Resolved** — cancelled per [RD-11](../roadmap.md#1-decision-quick-reference); P1 T5 shipped LibRaw 0.22 + first-party OpcodeList interpreter. |
+| Q2 | Does Qualcomm publish a `VK_QCOM_…` extension that lets Vulkan import an HTP buffer in 2026? | [#05](05-npu-backends-zero-copy.md) | Eliminates the AHB→HTP memcpy. | Open. |
+| Q3 | Is there an HTP context-binary cache invalidation strategy that survives Android OS updates? | [#05](05-npu-backends-zero-copy.md) | Production reliability. | Open. |
+| Q4 | Should we ship our own DCP writer for v2 calibration profiles, or stay JSON-only? | [#15](15-mobile-camera-calibration.md) | Adobe ecosystem interop. | Open. |
+| Q5 | Per-unit calibration capture flow — how invasive should v2 chart UI be? | [#15](15-mobile-camera-calibration.md) | UX scope. | Open. |
+| Q6 | Quad Bayer DNG GainMap encoding when shooting in 4×4 native mode — is OpcodeList3 GainMap multi-plane? | [#15](15-mobile-camera-calibration.md), [#12](12-dng-format.md) | Whether Quad Bayer flat-field correction works without custom plumbing. | **Resolved** — per [P2-PD-18](../phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) / T9: `lens.shading_gainmap` applies per-Bayer-channel × 4 planes at the 4×4 stage before remosaic; 2×2 path is the single-plane unwrap. |
+| Q7 | Should AI demosaic ship in v1 (versus v2) given its quality lift on Quad Bayer? | [#08](08-ai-isp-algorithms.md), [#07](07-classic-isp-algorithms.md) | Differentiation vs schedule. | Open. |
+| Q8 | Do we want a desktop-only mode for the editor (offline, no network)? | [#11](11-pipeline-editor-and-connectivity.md) | Privacy-conscious users. | Open. |
+| Q9 | Mobile-side Apple Adaptive HDR write fidelity — how do we test it without Apple's reader stack? | [#14](14-heif-and-hdr-output.md) | Validation. | Open. |
+| Q10 | Is the burst-frame metadata serialised to a single DNG (multi-image) or N DNGs? | [#16](16-camera2-raw-and-burst.md) | Storage + DNG spec compliance. | **Resolved** — N independent `.dng` per frame for v1. |
+| Q11 | Do we expose a plugin marketplace UI in v2, and if so, what's the signing model? | [#10](10-plugin-architecture.md) | Trust model for v2 dynamic loading. | Open (v2 scope). |
+| Q12 | Do we need a Windows v1 build for parity with Linux CLI? | inferred | User feedback. | **Resolved** — not in v1; CMake stays portable. |
+| Q13 | Multi-camera (logical multi-camera burst from main + tele + ultrawide) — v1 or v2? | [#16](16-camera2-raw-and-burst.md), [#17](17-mobile-pro-camera-apps.md) | Architecture impact. | Open. |
+| Q14 | NPU vendor SDK for MediaTek / Samsung — v2 or v3? | [#04](04-mobile-ai-inference.md), [#05](05-npu-backends-zero-copy.md) | Reach (D13 says v2). | Open. |
+| Q15 | Does the editor allow user authoring of new node types from the UI (Halide / slang in-browser), or only loading? | [#11](11-pipeline-editor-and-connectivity.md) | Scope of editor. | **Resolved** — not in v1; editor edits `pipeline.cpipe.json` only. |
 
 ---
 
