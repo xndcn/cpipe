@@ -14,6 +14,10 @@
 #include <cpipe/server/ThumbnailEncoder.hpp>
 #include <cstdint>
 #include <exception>
+#include <filesystem>
+#include <fstream>
+#include <ios>
+#include <iterator>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
@@ -67,6 +71,72 @@ void raw_json_response(auto* response, std::string_view body) {
         ->end(body);
 }
 
+std::string static_content_type(const std::filesystem::path& path) {
+    const auto extension = path.extension().string();
+    if (extension == ".html" || extension == ".htm") {
+        return "text/html; charset=utf-8";
+    }
+    if (extension == ".js") {
+        return "text/javascript; charset=utf-8";
+    }
+    if (extension == ".css") {
+        return "text/css; charset=utf-8";
+    }
+    if (extension == ".json") {
+        return "application/json";
+    }
+    if (extension == ".png") {
+        return "image/png";
+    }
+    if (extension == ".webp") {
+        return "image/webp";
+    }
+    return "application/octet-stream";
+}
+
+std::optional<std::filesystem::path> editor_asset_path(const std::filesystem::path& root,
+                                                       std::string_view url) {
+    constexpr std::string_view prefix = "/editor";
+    if (!url.starts_with(prefix)) {
+        return std::nullopt;
+    }
+    auto relative = url.substr(prefix.size());
+    if (relative.empty() || relative == "/") {
+        relative = "/index.html";
+    }
+    if (!relative.starts_with("/") || relative.find("..") != std::string_view::npos) {
+        return std::nullopt;
+    }
+    auto path = (root / std::string{relative.substr(1)}).lexically_normal();
+    if (std::filesystem::is_directory(path)) {
+        path /= "index.html";
+    }
+    if (!std::filesystem::is_regular_file(path)) {
+        return std::nullopt;
+    }
+    return path;
+}
+
+void static_file_response(auto* response, const std::filesystem::path& root, std::string_view url) {
+    const auto path = editor_asset_path(root, url);
+    if (!path) {
+        json_response(response, error_envelope("not_found", "static asset not found"),
+                      "404 Not Found");
+        return;
+    }
+    std::ifstream input{*path, std::ios::binary};
+    if (!input.good()) {
+        json_response(response, error_envelope("not_found", "static asset not found"),
+                      "404 Not Found");
+        return;
+    }
+    std::string body{std::istreambuf_iterator<char>{input}, std::istreambuf_iterator<char>{}};
+    const auto content_type = static_content_type(*path);
+    response->writeHeader("Content-Type", content_type)
+        ->writeHeader("Cache-Control", "no-store")
+        ->end(body);
+}
+
 std::optional<std::uint64_t> parse_run_id(std::string_view url) {
     constexpr std::string_view prefix = "/api/pipelines/active/runs/";
     if (!url.starts_with(prefix)) {
@@ -114,6 +184,11 @@ void EditorServer::set_registry(const runtime::Registry* registry) noexcept {
     registry_ = registry;
 }
 
+cpipe_status_t EditorServer::set_active_pipeline(const nlohmann::json& pipeline,
+                                                 std::string* error) {
+    return replace_active_pipeline(pipeline, error);
+}
+
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::string* error) {
     if (running_.load()) {
@@ -132,6 +207,18 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
     io_thread_ = std::thread{[this, options] {
         try {
             uWS::App app;
+            if (!options.editor_static.empty()) {
+                const auto editor_static = options.editor_static;
+                app.get("/editor", [editor_static](auto* response, auto* request) {
+                    (void)request;
+                    CPIPE_TRACE_SCOPE("EditorServer::handle_request");
+                    static_file_response(response, editor_static, "/editor/");
+                });
+                app.get("/editor/*", [editor_static](auto* response, auto* request) {
+                    CPIPE_TRACE_SCOPE("EditorServer::handle_request");
+                    static_file_response(response, editor_static, request->getUrl());
+                });
+            }
             app.get("/api/health", [](auto* response, auto* request) {
                 (void)request;
                 CPIPE_TRACE_SCOPE("EditorServer::handle_request");

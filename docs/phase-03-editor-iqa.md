@@ -473,15 +473,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] `cpipe serve --port 4747 --bind 127.0.0.1` boots; `curl localhost:4747/api/health` returns 200.
-- [ ] `cpipe serve --bind 0.0.0.0` boots after printing the yellow LAN warning to stderr.
-- [ ] `cpipe serve --editor-static apps/web/dist` mounts the editor at `/editor`; `curl localhost:4747/editor/` returns `index.html`.
-- [ ] `~/.config/cpipe/settings.json` overrides apply; CLI flags override settings.json.
+- [x] `cpipe serve --port 4747 --bind 127.0.0.1` boots; `curl localhost:4747/api/health` returns 200.
+- [x] `cpipe serve --bind 0.0.0.0` boots after printing the yellow LAN warning to stderr.
+- [x] `cpipe serve --editor-static apps/web/dist` mounts the editor at `/editor`; `curl localhost:4747/editor/` returns `index.html`.
+- [x] `~/.config/cpipe/settings.json` overrides apply; CLI flags override settings.json.
 
 **Verification:**
 
-- [ ] `ctest -R test_cpipe_serve_cli` green.
-- [ ] Manual: `cpipe serve --bind 0.0.0.0` emits the LAN warning on stderr.
+- [x] `ctest -R test_cpipe_serve_cli` green.
+- [x] Manual: `cpipe serve --bind 0.0.0.0` emits the LAN warning on stderr.
 
 **Dependencies:** T6.
 

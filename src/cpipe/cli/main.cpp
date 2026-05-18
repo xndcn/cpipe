@@ -10,9 +10,13 @@
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/server/EditorServer.hpp>
 #include <csignal>
+#include <cstdlib>
+#include <exception>
 #include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <thread>
@@ -23,6 +27,13 @@ namespace {
 
 constexpr int kNotImplementedExit = 100;
 std::atomic_bool g_stop_server{false};
+
+struct ServeCommandConfig {
+    std::string port;
+    std::string bind;
+    std::string pipeline;
+    std::string editor_static;
+};
 
 void request_server_stop(int /*signal*/) {
     g_stop_server.store(true);
@@ -52,10 +63,130 @@ std::uint16_t parse_port(const std::string& value, std::uint16_t fallback) {
     return static_cast<std::uint16_t>(parsed);
 }
 
-int run_serve_command(const std::string& serve_port, const std::string& serve_bind) {
+std::optional<std::string> env_string(const char* key) {
+    const auto* value = std::getenv(key);
+    if (value == nullptr || std::string_view{value}.empty()) {
+        return std::nullopt;
+    }
+    return std::string{value};
+}
+
+std::filesystem::path settings_path() {
+    if (const auto home = env_string("HOME")) {
+        return std::filesystem::path{*home} / ".config" / "cpipe" / "settings.json";
+    }
+    return {};
+}
+
+ServeCommandConfig load_settings_config() {
+    const auto path = settings_path();
+    if (path.empty() || !std::filesystem::is_regular_file(path)) {
+        return {};
+    }
+    std::ifstream input{path};
+    const auto document = nlohmann::json::parse(input);
+    const auto server = document.value("server", nlohmann::json::object());
+    ServeCommandConfig config;
+    if (server.contains("port")) {
+        config.port = std::to_string(server.at("port").get<std::uint16_t>());
+    }
+    if (server.contains("bind")) {
+        config.bind = server.at("bind").get<std::string>();
+    }
+    if (server.contains("pipeline")) {
+        config.pipeline = server.at("pipeline").get<std::string>();
+    }
+    if (server.contains("editor_static")) {
+        config.editor_static = server.at("editor_static").get<std::string>();
+    }
+    return config;
+}
+
+std::filesystem::path installed_editor_static_path() {
+    return std::filesystem::path{CPIPE_INSTALLED_EDITOR_STATIC};
+}
+
+ServeCommandConfig default_serve_config() {
+    ServeCommandConfig config;
+    const auto editor_static = installed_editor_static_path();
+    if (std::filesystem::is_regular_file(editor_static / "index.html")) {
+        config.editor_static = editor_static.string();
+    }
+    return config;
+}
+
+void apply_settings_config(ServeCommandConfig* config) {
+    const auto settings = load_settings_config();
+    if (!settings.port.empty()) {
+        config->port = settings.port;
+    }
+    if (!settings.bind.empty()) {
+        config->bind = settings.bind;
+    }
+    if (!settings.pipeline.empty()) {
+        config->pipeline = settings.pipeline;
+    }
+    if (!settings.editor_static.empty()) {
+        config->editor_static = settings.editor_static;
+    }
+}
+
+void apply_env_config(ServeCommandConfig* config) {
+    if (const auto value = env_string("CPIPE_SERVER_PORT")) {
+        config->port = *value;
+    }
+    if (const auto value = env_string("CPIPE_SERVER_BIND")) {
+        config->bind = *value;
+    }
+    if (const auto value = env_string("CPIPE_PIPELINE")) {
+        config->pipeline = *value;
+    }
+    if (const auto value = env_string("CPIPE_EDITOR_STATIC")) {
+        config->editor_static = *value;
+    }
+}
+
+ServeCommandConfig resolve_serve_config(const std::string& serve_port,
+                                        const std::string& serve_bind,
+                                        const std::string& serve_pipeline,
+                                        const std::string& editor_static) {
+    auto config = default_serve_config();
+    apply_settings_config(&config);
+    apply_env_config(&config);
+    if (!serve_port.empty()) {
+        config.port = serve_port;
+    }
+    if (!serve_bind.empty()) {
+        config.bind = serve_bind;
+    }
+    if (!serve_pipeline.empty()) {
+        config.pipeline = serve_pipeline;
+    }
+    if (!editor_static.empty()) {
+        config.editor_static = editor_static;
+    }
+    return config;
+}
+
+bool is_loopback_bind(std::string_view bind) {
+    return bind == "localhost" || bind == "::1" || bind.starts_with("127.");
+}
+
+void warn_on_lan_bind(const cpipe::server::EditorServerOptions& options) {
+    if (is_loopback_bind(options.bind)) {
+        return;
+    }
+    std::cerr << "\033[33mWARNING: binding to " << options.bind << ':' << options.port
+              << "; this server has no authentication and may expose your runtime to anyone on "
+                 "the LAN. RD-8 documents this risk.\033[0m\n";
+}
+
+int run_serve_command(const std::string& serve_port, const std::string& serve_bind,
+                      const std::string& serve_pipeline, const std::string& editor_static) {
+    const auto config = resolve_serve_config(serve_port, serve_bind, serve_pipeline, editor_static);
     cpipe::server::EditorServerOptions options;
     try {
-        options.port = parse_port(serve_port, options.port);
+        options.port = parse_port(config.port, options.port);
     } catch (const CLI::ValidationError& e) {
         std::cerr << e.what() << '\n';
         return static_cast<int>(CPIPE_BAD_INDEX);
@@ -63,9 +194,13 @@ int run_serve_command(const std::string& serve_port, const std::string& serve_bi
         std::cerr << "invalid --port: " << e.what() << '\n';
         return static_cast<int>(CPIPE_BAD_INDEX);
     }
-    if (!serve_bind.empty()) {
-        options.bind = serve_bind;
+    if (!config.bind.empty()) {
+        options.bind = config.bind;
     }
+    if (!config.editor_static.empty()) {
+        options.editor_static = config.editor_static;
+    }
+    warn_on_lan_bind(options);
 
     cpipe_link_all_builtin_nodes();
     cpipe::runtime::Registry registry;
@@ -73,6 +208,21 @@ int run_serve_command(const std::string& serve_port, const std::string& serve_bi
 
     cpipe::server::EditorServer server;
     server.set_registry(&registry);
+    if (!config.pipeline.empty()) {
+        std::ifstream input{config.pipeline};
+        if (!input.good()) {
+            std::cerr << "failed to open pipeline: " << config.pipeline << '\n';
+            return static_cast<int>(CPIPE_BAD_INDEX);
+        }
+        std::string pipeline_error;
+        const auto document = nlohmann::json::parse(input);
+        const auto pipeline_status = server.set_active_pipeline(document, &pipeline_error);
+        if (pipeline_status != CPIPE_OK) {
+            std::cerr << pipeline_error << '\n';
+            return static_cast<int>(pipeline_status);
+        }
+    }
+
     std::string error;
     const auto status = server.start(options, &error);
     if (status != CPIPE_OK) {
@@ -91,7 +241,7 @@ int run_serve_command(const std::string& serve_port, const std::string& serve_bi
 
 }  // namespace
 
-int main(int argc, char** argv) {
+int cpipe_main(int argc, char** argv) {
     CLI::App app{"cpipe"};
     app.allow_extras(false);
 
@@ -141,7 +291,7 @@ int main(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     if (*serve) {
-        return run_serve_command(serve_port, serve_bind);
+        return run_serve_command(serve_port, serve_bind, serve_pipeline, editor_static);
     }
     if (*info) {
         return not_implemented("info");
@@ -184,4 +334,13 @@ int main(int argc, char** argv) {
         }
     }
     return 0;
+}
+
+int main(int argc, char** argv) noexcept {
+    try {
+        return cpipe_main(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
+        return static_cast<int>(CPIPE_BAD_INDEX);
+    }
 }

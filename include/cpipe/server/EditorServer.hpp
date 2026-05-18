@@ -11,6 +11,7 @@
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/server/EditorProtocol.hpp>
 #include <cstdint>
+#include <filesystem>
 #include <mutex>
 #include <nlohmann/json.hpp>
 #include <set>
@@ -23,6 +24,7 @@ namespace cpipe::server {
 struct EditorServerOptions {
     std::string bind{"127.0.0.1"};
     std::uint16_t port{4747};
+    std::filesystem::path editor_static;
 };
 
 class EditorServer {
@@ -35,6 +37,8 @@ public:
     ~EditorServer();
 
     void set_registry(const runtime::Registry* registry) noexcept;
+    [[nodiscard]] cpipe_status_t set_active_pipeline(const nlohmann::json& pipeline,
+                                                     std::string* error);
     [[nodiscard]] cpipe_status_t start(const EditorServerOptions& options, std::string* error);
     void stop() noexcept;
     [[nodiscard]] bool running() const noexcept;

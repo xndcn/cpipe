@@ -421,6 +421,9 @@ target_link_libraries(
 cpipe_add_unit_test(test_cli_p3_scaffolding test_cli_p3_scaffolding.cpp)
 add_dependencies(test_cli_p3_scaffolding cpipe)
 target_compile_definitions(test_cli_p3_scaffolding PRIVATE CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>")
+cpipe_add_unit_test(test_cpipe_serve_cli test_cpipe_serve_cli.cpp)
+add_dependencies(test_cpipe_serve_cli cpipe)
+target_compile_definitions(test_cpipe_serve_cli PRIVATE CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>")
 cpipe_add_unit_test(test_editor_server_health test_editor_server_health.cpp)
 target_link_libraries(
     test_editor_server_health
