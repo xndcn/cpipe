@@ -29,11 +29,14 @@ Halide::Expr channel_exposure_weight(const Halide::Expr& value) {
     return Halide::exp(-(distance * distance) / (2.0F * sigma * sigma));
 }
 
-Halide::Expr exposure_weight(Halide::Func& input, const Halide::Var& x, const Halide::Var& y) {
+Halide::Expr exposure_weight(Halide::Func& input, Halide::Func& luma, const Halide::Var& x,
+                             const Halide::Var& y, const Halide::Expr& weight_contrast,
+                             const Halide::Expr& weight_saturation,
+                             const Halide::Expr& weight_well_exposedness) {
     const auto red = Halide::max(0.0F, input(x, y, 0));
     const auto green = Halide::max(0.0F, input(x, y, 1));
     const auto blue = Halide::max(0.0F, input(x, y, 2));
-    const auto mean = (red + green + blue) / 3.0F;
+    const auto mean = luma(x, y);
     const auto saturation =
         Halide::sqrt(((red - mean) * (red - mean) + (green - mean) * (green - mean) +
                       (blue - mean) * (blue - mean)) /
@@ -41,7 +44,16 @@ Halide::Expr exposure_weight(Halide::Func& input, const Halide::Var& x, const Ha
                      0.0001F);
     const auto well_exposed = channel_exposure_weight(red) * channel_exposure_weight(green) *
                               channel_exposure_weight(blue);
-    return (saturation + 0.01F) * well_exposed;
+    const auto contrast = Halide::abs(luma(x, y) - 0.5F);
+    const auto contrast_factor = Halide::select(weight_contrast == 0.0F, 1.0F,
+                                                Halide::pow(contrast + 0.01F, weight_contrast));
+    const auto saturation_factor =
+        Halide::select(weight_saturation == 1.0F, saturation + 0.01F,
+                       Halide::pow(saturation + 0.01F, weight_saturation));
+    const auto exposure_factor =
+        Halide::select(weight_well_exposedness == 1.0F, well_exposed,
+                       Halide::pow(well_exposed + 0.0001F, weight_well_exposedness));
+    return contrast_factor * saturation_factor * exposure_factor;
 }
 
 }  // namespace
@@ -51,6 +63,9 @@ public:
     Input<Halide::Buffer<Halide::float16_t, 3>> under{"under"};
     Input<Halide::Buffer<Halide::float16_t, 3>> normal{"normal"};
     Input<Halide::Buffer<Halide::float16_t, 3>> over{"over"};
+    Input<float> weight_contrast{"weight_contrast"};
+    Input<float> weight_saturation{"weight_saturation"};
+    Input<float> weight_well_exposedness{"weight_well_exposedness"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Implements the P2 SDR exposure-fusion weight blend selected in
@@ -72,12 +87,22 @@ public:
         normal_f(x, y, c) = Halide::cast<float>(normal(x, y, c));
         over_f(x, y, c) = Halide::cast<float>(over(x, y, c));
 
+        Halide::Func under_luma{"under_luma"};
+        Halide::Func normal_luma{"normal_luma"};
+        Halide::Func over_luma{"over_luma"};
+        under_luma(x, y) = (under_f(x, y, 0) + under_f(x, y, 1) + under_f(x, y, 2)) / 3.0F;
+        normal_luma(x, y) = (normal_f(x, y, 0) + normal_f(x, y, 1) + normal_f(x, y, 2)) / 3.0F;
+        over_luma(x, y) = (over_f(x, y, 0) + over_f(x, y, 1) + over_f(x, y, 2)) / 3.0F;
+
         Halide::Func under_weight{"under_weight"};
         Halide::Func normal_weight{"normal_weight"};
         Halide::Func over_weight{"over_weight"};
-        under_weight(x, y) = exposure_weight(under_f, x, y);
-        normal_weight(x, y) = exposure_weight(normal_f, x, y);
-        over_weight(x, y) = exposure_weight(over_f, x, y);
+        under_weight(x, y) = exposure_weight(under_f, under_luma, x, y, weight_contrast,
+                                             weight_saturation, weight_well_exposedness);
+        normal_weight(x, y) = exposure_weight(normal_f, normal_luma, x, y, weight_contrast,
+                                              weight_saturation, weight_well_exposedness);
+        over_weight(x, y) = exposure_weight(over_f, over_luma, x, y, weight_contrast,
+                                            weight_saturation, weight_well_exposedness);
 
         const auto total_weight =
             Halide::max(under_weight(x, y) + normal_weight(x, y) + over_weight(x, y), 0.000001F);

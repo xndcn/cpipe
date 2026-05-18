@@ -138,7 +138,8 @@ TEST_CASE("denoise.bm3d reduces synthetic noise and honors sigma override") {
     REQUIRE(manifest.at("compute").at("engine") == "Halide");
     REQUIRE(manifest.at("compute").at("halide_aot") ==
             nlohmann::json::array({"denoise_bm3d_step1", "denoise_bm3d_step2"}));
-    REQUIRE(manifest.at("params").at(0).at("name") == "sigma_override");
+    REQUIRE(manifest.at("params").at(0).at("name") == "sigma");
+    REQUIRE(manifest.at("params").at(1).at("name") == "sigma_override");
     REQUIRE(manifest.at("ports").at(1).at("metadata").at("sets_steps_applied") ==
             nlohmann::json::array({"denoise.bm3d"}));
 

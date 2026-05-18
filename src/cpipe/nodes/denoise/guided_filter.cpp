@@ -3,9 +3,21 @@
 
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
+#include <cstdint>
 #include <span>
 
+#include "../ParamUtils.hpp"
+
 namespace cpipe::nodes {
+namespace {
+
+struct GuidedFilterParams {
+    std::int32_t radius;
+    float eps;
+};
+
+}  // namespace
 
 class DenoiseGuidedFilter final : public sdk::Node {
 public:
@@ -15,7 +27,7 @@ public:
     /// Applies the edge-preserving guided filter from
     /// docs/research/07-classic-isp-algorithms.md §3.3 / §4.3 and He et al. 2010.
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              const sdk::ParamView& params, std::span<const sdk::Buffer*> inputs,
                               std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
@@ -24,7 +36,12 @@ public:
                 sdk::Error{CPIPE_BAD_INDEX, "denoise.guided_filter missing buffers"});
         }
 
-        const auto submitted = compute.submit_halide("denoise_guided_filter", inputs, outputs);
+        const GuidedFilterParams guided_params{
+            .radius = clamped_param_int_or(params, "radius", 1, 1, 32),
+            .eps = clamped_param_float_or(params, "eps", 0.015F, 0.00001F, 0.1F)};
+        const auto bytes = std::as_bytes(std::span<const GuidedFilterParams>{&guided_params, 1});
+        const auto submitted =
+            compute.submit_halide_with_params("denoise_guided_filter", inputs, outputs, bytes);
         if (!submitted) {
             return tl::unexpected(submitted.error());
         }

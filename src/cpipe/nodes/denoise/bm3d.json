@@ -37,6 +37,14 @@
   ],
   "params": [
     {
+      "name": "sigma",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 0.2
+      }
+    },
+    {
       "name": "sigma_override",
       "type": "number",
       "range": {

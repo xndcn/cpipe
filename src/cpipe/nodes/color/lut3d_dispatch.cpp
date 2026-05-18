@@ -15,7 +15,7 @@
 namespace {
 
 extern "C" int color_3d_lut(halide_buffer_t* input, halide_buffer_t* lut, std::int32_t lut_size,
-                            halide_buffer_t* output);
+                            std::int32_t interpolation, halide_buffer_t* output);
 
 int color_3d_lut_param(halide_buffer_t* const* inputs, std::size_t n_inputs,
                        halide_buffer_t* const* outputs, std::size_t n_outputs,
@@ -55,7 +55,8 @@ int color_3d_lut_param(halide_buffer_t* const* inputs, std::size_t n_inputs,
     lut_buffer.dimensions = 2;
     lut_buffer.dim = lut_dims;
 
-    return color_3d_lut(inputs[0], &lut_buffer, static_cast<std::int32_t>(header.size), outputs[0]);
+    return color_3d_lut(inputs[0], &lut_buffer, static_cast<std::int32_t>(header.size),
+                        static_cast<std::int32_t>(header.interpolation), outputs[0]);
 }
 
 }  // namespace

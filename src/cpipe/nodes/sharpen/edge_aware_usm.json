@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
   "id": "com.cpipe.sharpen.edge_aware_usm",
   "version": "1.0.0",
   "label": "Edge-aware USM",
@@ -34,7 +34,35 @@
       }
     }
   ],
-  "params": [],
+  "params": [
+    {
+      "name": "strength",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 0.75
+    },
+    {
+      "name": "radius",
+      "type": "number",
+      "range": {
+        "min": 1,
+        "max": 32
+      },
+      "default": 1
+    },
+    {
+      "name": "threshold",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 0.1
+      },
+      "default": 0
+    }
+  ],
   "compute": {
     "device": "CPU",
     "engine": "Halide",

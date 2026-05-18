@@ -60,7 +60,35 @@
       }
     }
   ],
-  "params": [],
+  "params": [
+    {
+      "name": "weight_contrast",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 0
+    },
+    {
+      "name": "weight_saturation",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 1
+    },
+    {
+      "name": "weight_well_exposedness",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 1
+    }
+  ],
   "compute": {
     "device": "CPU",
     "engine": "Halide",

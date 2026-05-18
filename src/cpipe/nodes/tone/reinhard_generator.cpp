@@ -19,9 +19,11 @@ void schedule_rgba(OutputBuffer& output, const Halide::Target& target) {
     }
 }
 
-Halide::Expr reinhard(Halide::Expr value) {
-    value = Halide::max(0.0F, value);
-    return value / (1.0F + value);
+Halide::Expr reinhard(const Halide::Expr& value, const Halide::Expr& white_point) {
+    const auto clamped_value = Halide::max(0.0F, value);
+    return Halide::clamp((clamped_value * (1.0F + (clamped_value / (white_point * white_point)))) /
+                             (1.0F + clamped_value),
+                         0.0F, 1.0F);
 }
 
 }  // namespace
@@ -29,6 +31,7 @@ Halide::Expr reinhard(Halide::Expr value) {
 class ToneReinhardGenerator final : public Halide::Generator<ToneReinhardGenerator> {
 public:
     Input<Halide::Buffer<Halide::float16_t, 3>> input{"input"};
+    Input<float> white_point{"white_point"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Implements Reinhard et al. 2002 global tone mapping as selected in
@@ -40,7 +43,7 @@ public:
         Halide::Func value{"value"};
         value(x, y, c) = Halide::cast<float>(input(x, y, c));
         output(x, y, c) = Halide::cast<Halide::float16_t>(
-            Halide::select(c == 3, value(x, y, c), reinhard(value(x, y, c))));
+            Halide::select(c == 3, value(x, y, c), reinhard(value(x, y, c), white_point)));
         output.dim(2).set_bounds(0, 4);
     }
 

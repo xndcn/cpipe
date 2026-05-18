@@ -22,7 +22,7 @@
         "additionalProperties": false,
         "properties": {
           "name": { "type": "string", "minLength": 1 },
-          "type": { "enum": ["enum", "number", "string", "array"] },
+          "type": { "enum": ["boolean", "enum", "number", "string", "array"] },
           "enum_values": {
             "type": "array",
             "minItems": 1,

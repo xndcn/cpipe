@@ -34,7 +34,13 @@
       }
     }
   ],
-  "params": [],
+  "params": [
+    {
+      "name": "toggle",
+      "type": "boolean",
+      "default": true
+    }
+  ],
   "compute": {
     "device": "CPU",
     "engine": "Halide",

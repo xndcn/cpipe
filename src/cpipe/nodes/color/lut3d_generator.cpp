@@ -37,6 +37,7 @@ public:
     Input<Halide::Buffer<Halide::float16_t, 3>> input{"input"};
     Input<Halide::Buffer<float, 2>> lut{"lut"};
     Input<std::int32_t> lut_size{"lut_size"};
+    Input<std::int32_t> interpolation{"interpolation"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Applies a 3D RGB LUT with tetrahedral interpolation as selected in
@@ -66,7 +67,9 @@ public:
         const Halide::Expr db = b_scaled - Halide::cast<float>(b0);
         const Halide::Expr rgb_channel = Halide::min(c, 2);
 
-        const Halide::Expr value = tetrahedral(rgb_channel, r0, g0, b0, dr, dg, db);
+        const Halide::Expr value =
+            Halide::select(interpolation == 1, trilinear(rgb_channel, r0, g0, b0, dr, dg, db),
+                           tetrahedral(rgb_channel, r0, g0, b0, dr, dg, db));
         output(x, y, c) = Halide::cast<Halide::float16_t>(
             Halide::select(c == 3, Halide::cast<float>(input(x, y, c)), clamp01(value)));
         output.dim(2).set_bounds(0, 4);
@@ -110,6 +113,27 @@ private:
         return Halide::select(dr >= dg && dg >= db, rgb_order, dr >= db && db >= dg, rbg_order,
                               db >= dr && dr >= dg, brg_order, dg >= dr && dr >= db, grb_order,
                               dg >= db && db >= dr, gbr_order, bgr_order);
+    }
+
+    Halide::Expr trilinear(const Halide::Expr& channel, const Halide::Expr& r0,
+                           const Halide::Expr& g0, const Halide::Expr& b0, const Halide::Expr& dr,
+                           const Halide::Expr& dg, const Halide::Expr& db) {
+        const auto c000 = sample(channel, r0, g0, b0);
+        const auto c100 = sample(channel, r0 + 1, g0, b0);
+        const auto c010 = sample(channel, r0, g0 + 1, b0);
+        const auto c001 = sample(channel, r0, g0, b0 + 1);
+        const auto c110 = sample(channel, r0 + 1, g0 + 1, b0);
+        const auto c101 = sample(channel, r0 + 1, g0, b0 + 1);
+        const auto c011 = sample(channel, r0, g0 + 1, b0 + 1);
+        const auto c111 = sample(channel, r0 + 1, g0 + 1, b0 + 1);
+
+        const auto c00 = c000 + ((c100 - c000) * dr);
+        const auto c10 = c010 + ((c110 - c010) * dr);
+        const auto c01 = c001 + ((c101 - c001) * dr);
+        const auto c11 = c011 + ((c111 - c011) * dr);
+        const auto c0 = c00 + ((c10 - c00) * dg);
+        const auto c1 = c01 + ((c11 - c01) * dg);
+        return c0 + ((c1 - c0) * db);
     }
 };
 

@@ -3,9 +3,22 @@
 
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
+#include <cstdint>
 #include <span>
 
+#include "../ParamUtils.hpp"
+
 namespace cpipe::nodes {
+namespace {
+
+struct EdgeAwareUsmParams {
+    float strength;
+    std::int32_t radius;
+    float threshold;
+};
+
+}  // namespace
 
 class SharpenEdgeAwareUsm final : public sdk::Node {
 public:
@@ -15,7 +28,7 @@ public:
     /// Applies edge-aware unsharp masking via guided-filter blur per
     /// docs/research/07-classic-isp-algorithms.md §3.7 and He et al. 2010/2013.
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              const sdk::ParamView& params, std::span<const sdk::Buffer*> inputs,
                               std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
@@ -24,7 +37,13 @@ public:
                 sdk::Error{CPIPE_BAD_INDEX, "sharpen.edge_aware_usm missing buffers"});
         }
 
-        const auto submitted = compute.submit_halide("sharpen_edge_aware_usm", inputs, outputs);
+        const EdgeAwareUsmParams usm_params{
+            .strength = clamped_param_float_or(params, "strength", 0.75F, 0.0F, 2.0F),
+            .radius = clamped_param_int_or(params, "radius", 1, 1, 32),
+            .threshold = clamped_param_float_or(params, "threshold", 0.0F, 0.0F, 0.1F)};
+        const auto bytes = std::as_bytes(std::span<const EdgeAwareUsmParams>{&usm_params, 1});
+        const auto submitted =
+            compute.submit_halide_with_params("sharpen_edge_aware_usm", inputs, outputs, bytes);
         if (!submitted) {
             return tl::unexpected(submitted.error());
         }

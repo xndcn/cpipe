@@ -34,7 +34,53 @@
       }
     }
   ],
-  "params": [],
+  "params": [
+    {
+      "name": "ev",
+      "type": "number",
+      "range": {
+        "min": -2,
+        "max": 2
+      },
+      "default": 0
+    },
+    {
+      "name": "contrast",
+      "type": "number",
+      "range": {
+        "min": 0.5,
+        "max": 2
+      },
+      "default": 1
+    },
+    {
+      "name": "saturation",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 1
+    },
+    {
+      "name": "highlights",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 1
+    },
+    {
+      "name": "shadows",
+      "type": "number",
+      "range": {
+        "min": 0,
+        "max": 2
+      },
+      "default": 1
+    }
+  ],
   "compute": {
     "device": "CPU",
     "engine": "Halide",

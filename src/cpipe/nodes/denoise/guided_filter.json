@@ -1,5 +1,5 @@
 {
-  "$schema": "https://schemas.cpipe.dev/node/v0.1.json",
+  "$schema": "https://schemas.cpipe.dev/node/v0.2.json",
   "id": "com.cpipe.denoise.guided_filter",
   "version": "1.0.0",
   "label": "Guided Filter Denoise",
@@ -34,7 +34,26 @@
       }
     }
   ],
-  "params": [],
+  "params": [
+    {
+      "name": "radius",
+      "type": "number",
+      "range": {
+        "min": 1,
+        "max": 32
+      },
+      "default": 1
+    },
+    {
+      "name": "eps",
+      "type": "number",
+      "range": {
+        "min": 0.00001,
+        "max": 0.1
+      },
+      "default": 0.015
+    }
+  ],
   "compute": {
     "device": "CPU",
     "engine": "Halide",

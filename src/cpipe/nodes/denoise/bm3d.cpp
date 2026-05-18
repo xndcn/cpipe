@@ -9,6 +9,8 @@
 #include <cstddef>
 #include <span>
 
+#include "../ParamUtils.hpp"
+
 namespace cpipe::nodes {
 namespace {
 
@@ -20,11 +22,18 @@ sdk::Result<float> sigma_from_params_or_metadata(const sdk::ParamView& params,
                                                  const sdk::Buffer& input) {
     if (params.suite() != nullptr && params.suite()->get_double != nullptr &&
         params.impl() != nullptr) {
+        double sigma_value = 0.0;
+        const auto sigma_status = static_cast<cpipe_status_t>(
+            params.suite()->get_double(params.impl(), "sigma", &sigma_value));
+        if (sigma_status == CPIPE_OK) {
+            return std::clamp(static_cast<float>(sigma_value), 0.0F, 0.2F);
+        }
+
         double override_value = 0.0;
         const auto status = static_cast<cpipe_status_t>(
             params.suite()->get_double(params.impl(), "sigma_override", &override_value));
         if (status == CPIPE_OK) {
-            return static_cast<float>(std::max(0.0, override_value));
+            return std::clamp(static_cast<float>(override_value), 0.0F, 0.2F);
         }
     }
 

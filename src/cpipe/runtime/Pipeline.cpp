@@ -259,6 +259,10 @@ cpipe_status_t validate_typed_param(const std::string& name, const nlohmann::jso
     if (type == "number") {
         return validate_number_param(name, value, declaration, error);
     }
+    if (type == "boolean" && !value.is_boolean()) {
+        set_error(error, "node param must be boolean: " + name);
+        return CPIPE_BAD_INDEX;
+    }
     if (type == "string" && !value.is_string()) {
         set_error(error, "node param must be string: " + name);
         return CPIPE_BAD_INDEX;
@@ -267,7 +271,7 @@ cpipe_status_t validate_typed_param(const std::string& name, const nlohmann::jso
         set_error(error, "node param must be array: " + name);
         return CPIPE_BAD_INDEX;
     }
-    if (type == "string" || type == "array") {
+    if (type == "boolean" || type == "string" || type == "array") {
         return CPIPE_OK;
     }
 

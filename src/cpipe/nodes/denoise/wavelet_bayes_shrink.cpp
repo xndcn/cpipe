@@ -3,9 +3,19 @@
 
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
 #include <span>
 
+#include "../ParamUtils.hpp"
+
 namespace cpipe::nodes {
+namespace {
+
+struct WaveletBayesShrinkParams {
+    float chroma_strength;
+};
+
+}  // namespace
 
 class DenoiseWaveletBayesShrink final : public sdk::Node {
 public:
@@ -15,7 +25,7 @@ public:
     /// Applies chroma Haar soft-thresholding based on BayesShrink from
     /// docs/research/07-classic-isp-algorithms.md §4.3 and Chang et al. 2000.
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              const sdk::ParamView& params, std::span<const sdk::Buffer*> inputs,
                               std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 1 || outputs.size() != 1 || inputs[0] == nullptr ||
@@ -24,8 +34,12 @@ public:
                 sdk::Error{CPIPE_BAD_INDEX, "denoise.wavelet_bayes_shrink missing buffers"});
         }
 
-        const auto submitted =
-            compute.submit_halide("denoise_wavelet_bayes_shrink", inputs, outputs);
+        const WaveletBayesShrinkParams wavelet_params{
+            .chroma_strength = clamped_param_float_or(params, "chroma_strength", 1.0F, 0.0F, 2.0F)};
+        const auto bytes =
+            std::as_bytes(std::span<const WaveletBayesShrinkParams>{&wavelet_params, 1});
+        const auto submitted = compute.submit_halide_with_params("denoise_wavelet_bayes_shrink",
+                                                                 inputs, outputs, bytes);
         if (!submitted) {
             return tl::unexpected(submitted.error());
         }

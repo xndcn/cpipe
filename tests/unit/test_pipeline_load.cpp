@@ -7,6 +7,8 @@
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
 #include <filesystem>
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <string>
 
 void cpipe_link_builtin_passthrough();
@@ -59,6 +61,20 @@ public:
     }
 };
 
+class ParamBoolNumberNode final : public cpipe::sdk::Node {
+public:
+    static constexpr const char* ID = "com.cpipe.test.param_bool_number";
+    static constexpr const char* VERSION = "1.0.0";
+
+    cpipe::sdk::Result<void> process(cpipe::sdk::ComputeContext&, cpipe::sdk::InferenceContext*,
+                                     const cpipe::sdk::ParamView&,
+                                     std::span<const cpipe::sdk::Buffer*>,
+                                     std::span<cpipe::sdk::Buffer*>,
+                                     std::span<cpipe::sdk::MetadataBuilder*>) override {
+        return {};
+    }
+};
+
 constexpr char kPrecisionProducerManifest[] = R"({
   "id":"com.cpipe.test.precision_producer",
   "version":"1.0.0",
@@ -95,11 +111,54 @@ constexpr char kParamEnumManifest[] = R"({
   "color":{"input_role":"any","output_role":"any"}
 })";
 
+constexpr char kParamBoolNumberManifest[] = R"({
+  "id":"com.cpipe.test.param_bool_number",
+  "version":"1.0.0",
+  "ports":[],
+  "params":[
+    {
+      "name":"enabled",
+      "type":"boolean",
+      "default":true
+    },
+    {
+      "name":"strength",
+      "type":"number",
+      "range":{"min":0,"max":2},
+      "default":1
+    }
+  ],
+  "compute":{"device":"CPU","engine":"Host","out_pixel_bytes":0},
+  "color":{"input_role":"any","output_role":"any"}
+})";
+
+std::filesystem::path write_temp_pipeline(std::string_view name, nlohmann::json params) {
+    const auto path = std::filesystem::temp_directory_path() / std::string{name};
+    const nlohmann::json doc{
+        {"$schema", "https://schemas.cpipe.dev/pipeline/v0.4.json"},
+        {"version", "0.4"},
+        {"id", "param-bool-number"},
+        {"inputs", nlohmann::json::array({{{"port", "raw"},
+                                           {"kind", "Image2D"},
+                                           {"format", "R16G16B16A16_SFLOAT"},
+                                           {"width", 1},
+                                           {"height", 1}}})},
+        {"nodes", nlohmann::json::array({{{"id", "param"},
+                                          {"type", "com.cpipe.test.param_bool_number"},
+                                          {"params", std::move(params)}}})},
+        {"edges", nlohmann::json::array()},
+    };
+    std::ofstream out{path};
+    out << doc.dump(2);
+    return path;
+}
+
 }  // namespace
 
 CPIPE_REGISTER_NODE(PrecisionProducerNode, kPrecisionProducerManifest)
 CPIPE_REGISTER_NODE(PrecisionConsumerNode, kPrecisionConsumerManifest)
 CPIPE_REGISTER_NODE(ParamEnumNode, kParamEnumManifest)
+CPIPE_REGISTER_NODE(ParamBoolNumberNode, kParamBoolNumberManifest)
 
 TEST_CASE("Pipeline loads valid passthrough graph") {
     cpipe_link_builtin_passthrough();
@@ -214,4 +273,30 @@ TEST_CASE("Pipeline rejects enum params outside the node manifest") {
     REQUIRE(cpipe::runtime::Pipeline::load(fixture_path("params_invalid_target-v0.4.json"),
                                            registry, &pipeline, &error) == CPIPE_BAD_INDEX);
     REQUIRE(error.find("target") != std::string::npos);
+}
+
+TEST_CASE("Pipeline validates boolean params and numeric manifest ranges") {
+    cpipe::runtime::Registry registry;
+    registry.load_builtin_nodes();
+
+    cpipe::runtime::Pipeline pipeline;
+    std::string error;
+    REQUIRE(
+        cpipe::runtime::Pipeline::load(write_temp_pipeline("cpipe-param-bool-number-valid.json",
+                                                           {{"enabled", true}, {"strength", 1.5}}),
+                                       registry, &pipeline, &error) == CPIPE_OK);
+
+    error.clear();
+    REQUIRE(cpipe::runtime::Pipeline::load(
+                write_temp_pipeline("cpipe-param-bool-number-bad-bool.json",
+                                    {{"enabled", "true"}, {"strength", 1.0}}),
+                registry, &pipeline, &error) == CPIPE_BAD_INDEX);
+    REQUIRE(error.find("enabled") != std::string::npos);
+
+    error.clear();
+    REQUIRE(
+        cpipe::runtime::Pipeline::load(write_temp_pipeline("cpipe-param-bool-number-bad-range.json",
+                                                           {{"enabled", true}, {"strength", 3.0}}),
+                                       registry, &pipeline, &error) == CPIPE_BAD_INDEX);
+    REQUIRE(error.find("strength") != std::string::npos);
 }

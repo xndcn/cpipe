@@ -35,6 +35,12 @@
     {
       "name": "lut_path",
       "type": "string"
+    },
+    {
+      "name": "interpolation",
+      "type": "enum",
+      "enum_values": ["tetrahedral", "trilinear"],
+      "default": "tetrahedral"
     }
   ],
   "compute": {

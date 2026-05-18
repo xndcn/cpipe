@@ -3,6 +3,8 @@
 
 #include <Halide.h>
 
+#include <cstdint>
+
 namespace cpipe::nodes {
 namespace {
 
@@ -12,6 +14,17 @@ Halide::Expr mean3x3(const Halide::Func& value, const Halide::Expr& x, const Hal
             value(x - 1, y, c) + value(x, y, c) + value(x + 1, y, c) + value(x - 1, y + 1, c) +
             value(x, y + 1, c) + value(x + 1, y + 1, c)) /
            9.0F;
+}
+
+Halide::Expr mean5x5(const Halide::Func& value, const Halide::Expr& x, const Halide::Expr& y,
+                     const Halide::Expr& c) {
+    Halide::Expr sum = 0.0F;
+    for (int dy = -2; dy <= 2; ++dy) {
+        for (int dx = -2; dx <= 2; ++dx) {
+            sum += value(x + dx, y + dy, c);
+        }
+    }
+    return sum / 25.0F;
 }
 
 template <class OutputBuffer>
@@ -32,6 +45,8 @@ void schedule_rgba(OutputBuffer& output, const Halide::Target& target) {
 class DenoiseGuidedFilterGenerator final : public Halide::Generator<DenoiseGuidedFilterGenerator> {
 public:
     Input<Halide::Buffer<Halide::float16_t, 3>> input{"input"};
+    Input<std::int32_t> radius{"radius"};
+    Input<float> eps{"eps"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Implements the local-linear guided filter from He et al. 2010, as selected in
@@ -48,19 +63,24 @@ public:
         square(x, y, c) = value(x, y, c) * value(x, y, c);
 
         Halide::Func mean{"mean"};
-        mean(x, y, c) = mean3x3(value, x, y, c);
+        mean(x, y, c) =
+            Halide::select(radius <= 1, mean3x3(value, x, y, c), mean5x5(value, x, y, c));
         Halide::Func corr{"corr"};
-        corr(x, y, c) = mean3x3(square, x, y, c);
+        corr(x, y, c) =
+            Halide::select(radius <= 1, mean3x3(square, x, y, c), mean5x5(square, x, y, c));
         const Halide::Expr variance =
             Halide::max(0.0F, corr(x, y, c) - (mean(x, y, c) * mean(x, y, c)));
 
-        constexpr float kEpsilon = 0.015F;
         Halide::Func a{"guided_a"};
-        a(x, y, c) = variance / (variance + kEpsilon);
+        a(x, y, c) = variance / (variance + eps);
         Halide::Func b{"guided_b"};
         b(x, y, c) = mean(x, y, c) - (a(x, y, c) * mean(x, y, c));
 
-        const Halide::Expr filtered = (mean3x3(a, x, y, c) * value(x, y, c)) + mean3x3(b, x, y, c);
+        const Halide::Expr mean_a =
+            Halide::select(radius <= 1, mean3x3(a, x, y, c), mean5x5(a, x, y, c));
+        const Halide::Expr mean_b =
+            Halide::select(radius <= 1, mean3x3(b, x, y, c), mean5x5(b, x, y, c));
+        const Halide::Expr filtered = (mean_a * value(x, y, c)) + mean_b;
         output(x, y, c) = Halide::cast<Halide::float16_t>(
             Halide::select(c == 3, value(x, y, c), Halide::max(0.0F, filtered)));
         output.dim(2).set_bounds(0, 4);

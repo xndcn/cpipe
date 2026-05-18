@@ -6,12 +6,14 @@
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <span>
 #include <string>
 #include <vector>
 
+#include "../ParamUtils.hpp"
 #include "Lut3dParams.hpp"
 
 namespace cpipe::nodes {
@@ -45,12 +47,14 @@ sdk::Result<void> require_rgba16_pair(const sdk::Buffer& input, const sdk::Buffe
     return {};
 }
 
-std::vector<float> make_param_blob_words(const color::Cube3dLut& lut) {
+std::vector<float> make_param_blob_words(const color::Cube3dLut& lut, std::uint32_t interpolation) {
     detail::Lut3dParamHeader header{.size = lut.size,
-                                    .value_count = static_cast<std::uint32_t>(lut.values.size())};
-    std::vector<float> words((sizeof(header) / sizeof(float)) + lut.values.size());
+                                    .value_count = static_cast<std::uint32_t>(lut.values.size()),
+                                    .interpolation = interpolation};
+    const auto header_words = sizeof(header) / sizeof(float);
+    std::vector<float> words(header_words + lut.values.size());
     std::memcpy(words.data(), &header, sizeof(header));
-    std::copy(lut.values.begin(), lut.values.end(), words.begin() + 2);
+    std::copy(lut.values.begin(), lut.values.end(), words.begin() + header_words);
     return words;
 }
 
@@ -88,7 +92,9 @@ public:
             return tl::unexpected(sdk::Error{status, error});
         }
 
-        const auto param_words = make_param_blob_words(lut);
+        const auto interpolation = param_string_or(params, "interpolation", "tetrahedral");
+        const auto interpolation_id = interpolation == "trilinear" ? 1U : 0U;
+        const auto param_words = make_param_blob_words(lut, interpolation_id);
         const auto submitted = compute.submit_halide_with_params(
             "color_3d_lut", inputs, outputs, std::as_bytes(std::span<const float>{param_words}));
         if (!submitted) {

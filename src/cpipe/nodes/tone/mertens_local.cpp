@@ -4,10 +4,19 @@
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/sdk/registry.hpp>
 #include <cpipe/sdk/sdk.hpp>
+#include <cstddef>
 #include <span>
+
+#include "../ParamUtils.hpp"
 
 namespace cpipe::nodes {
 namespace {
+
+struct MertensLocalParams {
+    float weight_contrast;
+    float weight_saturation;
+    float weight_well_exposedness;
+};
 
 sdk::Result<void> require_rgba16_stack(std::span<const sdk::Buffer*> inputs,
                                        const sdk::Buffer& output) {
@@ -56,7 +65,7 @@ public:
     /// docs/research/07-classic-isp-algorithms.md §3.5 / §4.4 from Mertens 2007
     /// and the IPOL 2018 reference family.
     sdk::Result<void> process(sdk::ComputeContext& compute, sdk::InferenceContext*,
-                              const sdk::ParamView&, std::span<const sdk::Buffer*> inputs,
+                              const sdk::ParamView& params, std::span<const sdk::Buffer*> inputs,
                               std::span<sdk::Buffer*> outputs,
                               std::span<sdk::MetadataBuilder*> out_metadata) override {
         if (inputs.size() != 3 || outputs.size() != 1 || inputs[0] == nullptr ||
@@ -69,8 +78,16 @@ public:
             return tl::unexpected(valid.error());
         }
 
+        const MertensLocalParams mertens_params{
+            .weight_contrast = clamped_param_float_or(params, "weight_contrast", 0.0F, 0.0F, 2.0F),
+            .weight_saturation =
+                clamped_param_float_or(params, "weight_saturation", 1.0F, 0.0F, 2.0F),
+            .weight_well_exposedness =
+                clamped_param_float_or(params, "weight_well_exposedness", 1.0F, 0.0F, 2.0F),
+        };
+        const auto bytes = std::as_bytes(std::span<const MertensLocalParams>{&mertens_params, 1});
         const auto submitted =
-            compute.submit_halide_with_params("tone_mertens_local", inputs, outputs, {});
+            compute.submit_halide_with_params("tone_mertens_local", inputs, outputs, bytes);
         if (!submitted) {
             return tl::unexpected(submitted.error());
         }

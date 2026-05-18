@@ -218,10 +218,33 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
 )
 cpipe_add_unit_test(
+    test_node_denoise_guided_filter_params test_node_denoise_guided_filter_params.cpp
+)
+target_link_libraries(
+    test_node_denoise_guided_filter_params
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(
     test_node_denoise_wavelet_bayes_shrink test_node_denoise_wavelet_bayes_shrink.cpp
 )
 target_link_libraries(
     test_node_denoise_wavelet_bayes_shrink
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(
+    test_node_denoise_wavelet_bayes_shrink_params
+    test_node_denoise_wavelet_bayes_shrink_params.cpp
+)
+target_link_libraries(
+    test_node_denoise_wavelet_bayes_shrink_params
     PRIVATE
         cpipe::runtime
         cpipe::sdk
@@ -237,9 +260,29 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_denoise_bm3d_params test_node_denoise_bm3d_params.cpp)
+target_link_libraries(
+    test_node_denoise_bm3d_params
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_sharpen_edge_aware_usm test_node_sharpen_edge_aware_usm.cpp)
 target_link_libraries(
     test_node_sharpen_edge_aware_usm
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(
+    test_node_sharpen_edge_aware_usm_params test_node_sharpen_edge_aware_usm_params.cpp
+)
+target_link_libraries(
+    test_node_sharpen_edge_aware_usm_params
     PRIVATE
         cpipe::runtime
         cpipe::sdk
@@ -255,9 +298,27 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_tone_filmic_rgb_params test_node_tone_filmic_rgb_params.cpp)
+target_link_libraries(
+    test_node_tone_filmic_rgb_params
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_tone_aces_filmic test_node_tone_aces_filmic.cpp)
 target_link_libraries(
     test_node_tone_aces_filmic
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_tone_aces_filmic_params test_node_tone_aces_filmic_params.cpp)
+target_link_libraries(
+    test_node_tone_aces_filmic_params
     PRIVATE
         cpipe::runtime
         cpipe::sdk
@@ -273,9 +334,27 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_node_tone_reinhard_params test_node_tone_reinhard_params.cpp)
+target_link_libraries(
+    test_node_tone_reinhard_params
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 cpipe_add_unit_test(test_node_tone_mertens_local test_node_tone_mertens_local.cpp)
 target_link_libraries(
     test_node_tone_mertens_local
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
+cpipe_add_unit_test(test_node_tone_mertens_local_params test_node_tone_mertens_local_params.cpp)
+target_link_libraries(
+    test_node_tone_mertens_local_params
     PRIVATE
         cpipe::runtime
         cpipe::sdk
@@ -294,6 +373,15 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
+)
+cpipe_add_unit_test(test_node_color_3d_lut_params test_node_color_3d_lut_params.cpp)
+target_link_libraries(
+    test_node_color_3d_lut_params
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
 )
 cpipe_add_unit_test(test_ocio_config_v0_2 test_ocio_config_v0_2.cpp)
 target_compile_definitions(test_ocio_config_v0_2 PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")

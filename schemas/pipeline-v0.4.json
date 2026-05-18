@@ -91,7 +91,8 @@
                   "required": ["lut_path"],
                   "additionalProperties": false,
                   "properties": {
-                    "lut_path": { "type": "string", "minLength": 1 }
+                    "lut_path": { "type": "string", "minLength": 1 },
+                    "interpolation": { "enum": ["tetrahedral", "trilinear"] }
                   }
                 }
               }
@@ -110,6 +111,7 @@
                   "type": "object",
                   "additionalProperties": false,
                   "properties": {
+                    "sigma": { "type": "number", "minimum": 0, "maximum": 0.2 },
                     "sigma_override": { "type": "number", "minimum": 0 }
                   }
                 }

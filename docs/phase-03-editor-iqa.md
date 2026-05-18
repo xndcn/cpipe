@@ -63,7 +63,7 @@ P3 explicitly does **not** deliver: Noise XK pairing or any non-plaintext editor
 - `bench/` — new CMake subdir with the `cpipe-microbench` Google Benchmark binary (plus nanobench cases).
 - `tests/iqa/`, `tests/e2e/`, `tools/iqa/`, `tools/golden/` — four new top-level directories per the test pyramid extensions.
 - `src/cpipe/server/` — new `cpipe-server` static lib (uWebSockets + libwebp) carrying the HTTP + WS surface.
-- Schemas: `schemas/pipeline-v0.4.json` (optional `ui` object), `schemas/editor-protocol-v0.1.json` (WS framing + REST envelope JSON-Schema). `schemas/node-v0.2.json` continues from P2 — 8 nodes add live params inside their manifests per [P3-PD-37](#4-phase-decisions-p3-pd-n) without bumping the schema.
+- Schemas: `schemas/pipeline-v0.4.json` (optional `ui` object), `schemas/editor-protocol-v0.1.json` (WS framing + REST envelope JSON-Schema). `schemas/node-v0.2.json` continues from P2 — 9 nodes add live params inside their manifests per [P3-PD-37](#4-phase-decisions-p3-pd-n) / [P3-PD-62](#4-phase-decisions-p3-pd-n), with boolean param support added without bumping the schema `$id` per [P3-PD-63](#4-phase-decisions-p3-pd-n).
 - New CLI verbs: `cpipe serve`, `cpipe info`, `cpipe iqa`, `cpipe bench` ([architecture.md §10](architecture.md#10-cli-surface)).
 - `tests/corpus/manifest.json` + `tests/corpus/LICENSE.md` + `scripts/prepare_corpus.py` (manifest-only commit; CI fetch + cache job).
 - `bench/results/baseline.json` — v0.4 IQA + perf baseline.
@@ -113,8 +113,8 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-33 | `cpipe serve` flags | `cpipe serve [--port 4747] [--bind 127.0.0.1] [--pipeline <file>] [--editor-static <dir>]`. settings.json at `~/.config/cpipe/settings.json` + `$CPIPE_*` env overrides per [architecture §9](architecture.md#9-configuration). |
 | P3-PD-34 | Pipeline schema bump | `schemas/pipeline-v0.4.json` adds optional `ui` object on each node entry (`x: number?`, `y: number?`, `color: string? (hex)`, `collapsed: boolean?`). Runtime ignores `ui`. Editor falls back to auto-layout when absent. v0.3 fixtures migrate in T0. `Pipeline::load` rejects unmigrated v0.3 with a "schema version mismatch — run `tools/migrate/v03_to_v04.py`" message. |
 | P3-PD-35 | Editor protocol schema | `schemas/editor-protocol-v0.1.json` describes the WS framing (per P3-PD-9) + the REST envelope JSON-Schema (`{ ok: bool, data?: T, error?: {code, message} }`). New, no prior version. |
-| P3-PD-36 | Node manifest schema | `schemas/node-v0.2.json` unchanged from P2 (params block already supported by P2-PD-12). 8 P3-PD-37 nodes author new param-schema entries inside their existing manifests; manifest schema not bumped. |
-| P3-PD-37 | Live param exposure scope | 8 nodes author new manifest params: `tone.filmic_rgb` (ev / contrast / saturation / highlights / shadows), `tone.reinhard` (white_point), `tone.aces_filmic` (toggle), `denoise.bm3d` (+ sigma alongside the P2 `sigma_override`), `denoise.guided_filter` (radius / eps), `denoise.wavelet_bayes_shrink` (chroma_strength), `sharpen.edge_aware_usm` (strength / radius / threshold), `color.3d_lut` (+ interpolation enum: tetrahedral default, trilinear available), `tone.mertens_local` (weight_contrast / saturation / well_exposedness). `linearize`, `blacklevel`, `lens.shading_gainmap`, `lens.dng_opcode_list_3`, `wb.dual_illuminant`, `wb.greyworld_auto`, `colormatrix.dng_to_working`, `demosaic.{rcd,amaze,bilinear,quad_bayer_remosaic}`, `fusion.hdr_plus_derivative`, `color.scene_linear_to_display`, `output.heif_*` stay metadata-driven with empty / structural params. |
+| P3-PD-36 | Node manifest schema | `schemas/node-v0.2.json` carries the P2 params block from P2-PD-12 and is not `$id`-bumped in P3. T12 adds boolean param support per P3-PD-63 so the 9 P3-PD-37 / P3-PD-62 nodes can author param-schema entries inside their existing manifests. |
+| P3-PD-37 | Live param exposure scope | 9 nodes author new manifest params: `tone.filmic_rgb` (ev / contrast / saturation / highlights / shadows), `tone.reinhard` (white_point), `tone.aces_filmic` (toggle), `denoise.bm3d` (+ sigma alongside the P2 `sigma_override`), `denoise.guided_filter` (radius / eps), `denoise.wavelet_bayes_shrink` (chroma_strength), `sharpen.edge_aware_usm` (strength / radius / threshold), `color.3d_lut` (+ interpolation enum: tetrahedral default, trilinear available), `tone.mertens_local` (weight_contrast / saturation / well_exposedness). `linearize`, `blacklevel`, `lens.shading_gainmap`, `lens.dng_opcode_list_3`, `wb.dual_illuminant`, `wb.greyworld_auto`, `colormatrix.dng_to_working`, `demosaic.{rcd,amaze,bilinear,quad_bayer_remosaic}`, `fusion.hdr_plus_derivative`, `color.scene_linear_to_display`, `output.heif_*` stay metadata-driven with empty / structural params. |
 | P3-PD-38 | Test pyramid extensions | New layers: `tests/iqa/` (C++ integration tests that spawn `cpipe iqa` as a subprocess) + `tests/e2e/` (Playwright headless against `cpipe serve` + the static editor) + new `tests/unit/test_editor_server.cpp` + `tests/unit/test_editor_protocol.cpp`. Frontend: `apps/web/test/` (Vitest unit) + `apps/dashboard/test/` (Vitest unit). Architecture §13's 4-layer pyramid is preserved; the two frontend layers extend it. |
 | P3-PD-39 | CI workflow additions | `build-and-test.yml` extends with: (a) an `iqa` job (4 C++ metrics + CPU `cpipe-microbench` smoke + Playwright E2E); (b) a `corpus-fetch` cache step keyed on `tests/corpus/manifest.json` SHA-256. New `pages.yml` (editor + dashboard deploy on `main` push). New `microbench-record.yml` (`workflow_dispatch` only). |
 | P3-PD-40 | OOS scope | Strict explicit list, see §15. |
@@ -139,6 +139,8 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-59 | T6 thumbnail source | T6 ships the server-session thumbnail subscription mechanics against the current `POST /api/pipelines/active/run` stub: subscribe/unsubscribe state, libwebp encode, same-frame fan-out, per-port fps cap, INFO cap log, and `EditorServer::push_thumbnail` trace span. The emitted WebP is a deterministic placeholder until a later server task binds active runs to a concrete `Pipeline` + output `IBuffer`; the scheduler tap described in the original slice remains the integration point for that runtime-bound path. |
 | P3-PD-60 | T9 full-classic node count | The checked-in `examples/pipelines/full-classic-pipeline.cpipe.json` at T9 has 15 nodes, 14 edges, and no `ui` coordinates. T9 renders all current nodes with deterministic fallback positions and preserves declared `ui.x` / `ui.y` when present; the earlier 18-node wording was stale and is corrected in-place. |
 | P3-PD-61 | T11 offline schema fallback | T11 follows [P3-PD-13](#4-phase-decisions-p3-pd-n): the editor still does **not** bundle `schemas/node-v0.2.json` or `schemas/pipeline-v0.4.json`. No-runtime first run can open / edit / save `pipeline.cpipe.json` through FSA or fallback file IO, but schema-backed manifest validation waits for a runtime connection or a previously cached schema. The offline banner comes from runtime connection state (`no runtime connected`) rather than a schema-fetch error. |
+| P3-PD-62 | T12 node count clarification | T12 implements the 9 node IDs explicitly listed in P3-PD-37 and the T12 verification regex. The "8 nodes" wording was stale; `tone.mertens_local` is in scope for T12 live params. |
+| P3-PD-63 | T12 boolean params in node-v0.2 | T12 extends `schemas/node-v0.2.json` to allow `type: "boolean"` inside manifest `params` without bumping the schema `$id`. This keeps P3-PD-36's no-bump policy while satisfying `tone.aces_filmic.toggle`; `Pipeline::load` validates boolean values alongside enum / number / string / array params. |
 
 ---
 
@@ -164,7 +166,7 @@ The PD table locks specific values; this short narrative explains the *why* for 
 
 - **200 ms debounce server-side.** Slider drags fire dozens of `node.update_param` frames per second. The debounce sits inside `EditorServer::handle_param_update` rather than in the editor because the runtime is the authority on what re-runs are in flight; the editor never needs to know whether a particular delta was coalesced.
 
-- **8 nodes get live params for v0.4.** That's enough to satisfy DoD #1 (`tone.filmic_rgb.ev` slider) plus give the editor a meaningful interactive surface for the dashboard demo. The other 11 nodes stay metadata-driven (their manifest still declares them) so the editor shows them in the DAG but renders an empty params panel — a deliberate "not yet" signal rather than a hidden hint.
+- **9 nodes get live params for v0.4.** That's enough to satisfy DoD #1 (`tone.filmic_rgb.ev` slider) plus give the editor a meaningful interactive surface for the dashboard demo. The other nodes stay metadata-driven (their manifest still declares them) so the editor shows them in the DAG but renders an empty params panel — a deliberate "not yet" signal rather than a hidden hint.
 
 ---
 
@@ -602,11 +604,11 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 ---
 
-#### T12 — 8-node param schema authoring (P3-PD-37)
+#### T12 — 9-node param schema authoring (P3-PD-37)
 
-**Description.** Author manifest `params` entries for the 8 P3-PD-37 nodes. For each, add unit-test coverage that the param updates flow end-to-end (set in editor → runtime re-runs → output changes). Update each node's `manifest.json` with a `params` array per the node-v0.2 schema; `Pipeline::load` validates ranges on load (per P2-PD-11). Editor automatically renders the new sliders / enums.
+**Description.** Author manifest `params` entries for the 9 P3-PD-37 nodes. For each, add unit-test coverage that the param updates flow end-to-end (set in editor → runtime re-runs → output changes). Update each node's `manifest.json` with a `params` array per the node-v0.2 schema; `Pipeline::load` validates ranges on load (per P2-PD-11). Editor automatically renders the new sliders / enums.
 
-The 8 nodes:
+The 9 nodes:
 
 - `com.cpipe.tone.filmic_rgb`: `ev` (number −2..2), `contrast` (number 0.5..2), `saturation` (number 0..2), `highlights` (number 0..2), `shadows` (number 0..2).
 - `com.cpipe.tone.reinhard`: `white_point` (number 0.1..10).
@@ -620,15 +622,15 @@ The 8 nodes:
 
 **Acceptance criteria:**
 
-- [ ] All 8 manifests validate against `schemas/node-v0.2.json`.
-- [ ] Each node's `process()` honors the new params (range-clamped at runtime).
-- [ ] Editor renders the sliders / dropdowns; Ajv validation prevents out-of-range commits.
-- [ ] `tests/unit/test_node_<name>_params` green for all 8 nodes.
+- [x] All 9 manifests validate against `schemas/node-v0.2.json`.
+- [x] Each node's `process()` honors the new params (range-clamped at runtime).
+- [x] Editor renders the sliders / dropdowns; Ajv validation prevents out-of-range commits.
+- [x] `tests/unit/test_node_<name>_params` green for all 9 nodes.
 
 **Verification:**
 
-- [ ] `ctest -R 'test_node_(tone_filmic_rgb|tone_reinhard|tone_aces_filmic|denoise_bm3d|denoise_guided_filter|denoise_wavelet_bayes_shrink|sharpen_edge_aware_usm|color_3d_lut|tone_mertens_local)_params'` green.
-- [ ] `cd apps/web && npm run test` green (param form renders all 8 node variants).
+- [x] `ctest -R 'test_node_(tone_filmic_rgb|tone_reinhard|tone_aces_filmic|denoise_bm3d|denoise_guided_filter|denoise_wavelet_bayes_shrink|sharpen_edge_aware_usm|color_3d_lut|tone_mertens_local)_params'` green.
+- [x] `cd apps/web && npm run test` green (param form renders all 9 node variants).
 
 **Dependencies:** T11.
 
@@ -644,7 +646,7 @@ The 8 nodes:
 - [ ] `apps/web/` builds & installs; editor renders the 18-node DAG; schema fetch + cache works.
 - [ ] DoD #1 satisfied locally: moving `tone.filmic_rgb.ev` slider produces a thumbnail update.
 - [ ] DoD #2 satisfied locally: offline FSA + fallback round-trip works.
-- [ ] All 8 P3-PD-37 nodes have live params; tests + editor render coverage green.
+- [x] All 9 P3-PD-37 nodes have live params; tests + editor render coverage green.
 - [ ] No regression on P1 / P2 / Phase 3.A / Phase 3.B.
 
 ---
@@ -982,7 +984,7 @@ The 8 nodes:
 | 70 | `test_thumbnail_subscription` | unit | subscribe → encode → push; multi-subscriber cap |
 | 71 | `test_cpipe_serve_cli` | unit | `--port`, `--bind`, `--pipeline`, `--editor-static`, LAN warning |
 | 72 | `test_ocio_vulkan_processor` | unit | CPU↔GPU result match; cache hit; LUT upload |
-| 73 | `test_node_<8>_params` | unit | 8 nodes with new live params (1 case file each, 12+ assertions per file) |
+| 73 | `test_node_<name>_params` | unit | 9 nodes with new live params (1 case file each, 12+ assertions per file) |
 | 74 | `test_install_editor_static` | unit | CMake install rule deposits editor into share/cpipe/editor |
 | 75 | `test_iqa_cpp_metrics` | unit | PSNR / SSIM / MS-SSIM / ΔE2000 against piq within tolerance |
 | 76 | `test_iqa_subprocess` | unit | `cpipe iqa` spawns sidecar; 2-image canary |
@@ -1224,7 +1226,7 @@ Stated explicitly so contributors don't accidentally expand P3:
 - [`phase-00-foundation.md`](phase-00-foundation.md) — initial repo / CI / ABI skeleton.
 - [`architecture.md`](architecture.md) — six-target layout, threading model, lifecycle; §8 editor protocol; §17 Q8 resolved here.
 - [`buffer.md`](buffer.md) — `BufferMetadata` per-output `MetadataBuilder` flow; thumbnail tap uses freeze point.
-- [`plugin-sdk.md`](plugin-sdk.md) §3 — `cpipe_compute_suite_v1` (P2 carry, P3 unchanged); §7 manifest schema (`params` block used by P3-PD-37 8 nodes).
+- [`plugin-sdk.md`](plugin-sdk.md) §3 — `cpipe_compute_suite_v1` (P2 carry, P3 unchanged); §7 manifest schema (`params` block used by P3-PD-37 / P3-PD-62 9 nodes).
 - [`research/09-image-quality-benchmarks.md`](research/09-image-quality-benchmarks.md) — IQA library + metric matrix; harness skeleton; pyiqa license posture.
 - [`research/11-pipeline-editor-and-connectivity.md`](research/11-pipeline-editor-and-connectivity.md) — React Flow 12 case; editor architecture; per-node UI; connectivity tiers (only tier 4 used in P3).
 - [`research/03-heterogeneous-scheduler.md`](research/03-heterogeneous-scheduler.md) — scheduler tap point for thumbnail subscriptions.

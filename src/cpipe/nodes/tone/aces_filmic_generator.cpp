@@ -3,6 +3,8 @@
 
 #include <Halide.h>
 
+#include <cstdint>
+
 namespace cpipe::nodes {
 namespace {
 
@@ -35,6 +37,7 @@ Halide::Expr aces_fit(Halide::Expr value) {
 class ToneAcesFilmicGenerator final : public Halide::Generator<ToneAcesFilmicGenerator> {
 public:
     Input<Halide::Buffer<Halide::float16_t, 3>> input{"input"};
+    Input<std::int32_t> enabled{"enabled"};
     Output<Halide::Buffer<Halide::float16_t, 3>> output{"output"};
 
     /// Implements the ACES filmic curve selected in
@@ -46,7 +49,7 @@ public:
         Halide::Func value{"value"};
         value(x, y, c) = Halide::cast<float>(input(x, y, c));
         output(x, y, c) = Halide::cast<Halide::float16_t>(
-            Halide::select(c == 3, value(x, y, c), aces_fit(value(x, y, c))));
+            Halide::select(c == 3 || enabled == 0, value(x, y, c), aces_fit(value(x, y, c))));
         output.dim(2).set_bounds(0, 4);
     }
 
