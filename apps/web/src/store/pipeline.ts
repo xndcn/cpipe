@@ -48,7 +48,9 @@ export interface CpipeNodeData extends Record<string, unknown> {
   label: string;
   nodeId: string;
   outputs: CpipePort[];
+  params: Record<string, unknown>;
   typeName: string;
+  visualKind: "standard" | "convert";
 }
 
 export type CpipeFlowNode = Node<CpipeNodeData, "cpipeNode">;
@@ -70,6 +72,7 @@ export interface PipelineState {
   status: PipelineStatus;
   setStatus: (status: PipelineStatus) => void;
   setViewport: (viewport: Viewport) => void;
+  updateNodeParam: (nodeId: string, key: string, value: unknown) => void;
   viewport: Viewport;
 }
 
@@ -105,6 +108,10 @@ function nodeLabel(typeName: string) {
     .filter(Boolean)
     .map((part) => part[0].toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function nodeVisualKind(typeName: string): CpipeNodeData["visualKind"] {
+  return typeName === "com.cpipe.precision_convert" ? "convert" : "standard";
 }
 
 function fallbackPosition(index: number) {
@@ -158,7 +165,9 @@ export function pipelineToFlow(pipeline: CpipePipeline): CpipeFlowGraph {
         label: nodeLabel(node.type),
         nodeId: node.id,
         outputs: [{ id: "out", label: "Out", type: "image" }],
-        typeName: node.type
+        params: node.params ?? {},
+        typeName: node.type,
+        visualKind: nodeVisualKind(node.type)
       }
     };
   });
@@ -190,5 +199,22 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   status: "idle",
   setStatus: (status) => set({ status }),
   setViewport: (viewport) => set({ viewport }),
+  updateNodeParam: (nodeId, key, value) =>
+    set((state) => ({
+      nodes: state.nodes.map((node) =>
+        node.id === nodeId
+          ? {
+              ...node,
+              data: {
+                ...node.data,
+                params: {
+                  ...node.data.params,
+                  [key]: value
+                }
+              }
+            }
+          : node
+      )
+    })),
   viewport: { x: 0, y: 0, zoom: 1 }
 }));

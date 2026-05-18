@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 
 import { EditorShell } from "./components/EditorShell";
+import { useDeviceStore } from "./store/device";
 import type { CpipePipeline } from "./store/pipeline";
 import { usePipelineStore } from "./store/pipeline";
 import { useSchemaStore } from "./store/schema";
@@ -11,6 +12,7 @@ const defaultRuntimeUrl = "http://127.0.0.1:4747";
 export function App() {
   const loadPipeline = usePipelineStore((state) => state.loadPipeline);
   const setStatus = usePipelineStore((state) => state.setStatus);
+  const connectRuntime = useDeviceStore((state) => state.connectRuntime);
   const connectSchemas = useSchemaStore((state) => state.connect);
 
   useEffect(() => {
@@ -34,11 +36,12 @@ export function App() {
       }
     });
     void connectSchemas(defaultRuntimeUrl);
+    void connectRuntime(defaultRuntimeUrl);
 
     return () => {
       cancelled = true;
     };
-  }, [connectSchemas, loadPipeline, setStatus]);
+  }, [connectRuntime, connectSchemas, loadPipeline, setStatus]);
 
   return <EditorShell />;
 }

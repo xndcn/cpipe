@@ -559,15 +559,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] Moving the `tone.filmic_rgb.ev` slider in the editor produces a WebP thumbnail update within ~250 ms.
-- [ ] Ajv validation rejects out-of-range values; UI shows the error inline.
-- [ ] Implicit `precision_convert` nodes render in a half-height "convert" shape.
-- [ ] Param updates are coalesced server-side after 200 ms debounce; multiple slider drags within 200 ms produce one re-run.
+- [x] Moving the `tone.filmic_rgb.ev` slider in the editor produces a WebP thumbnail update within ~250 ms.
+- [x] Ajv validation rejects out-of-range values; UI shows the error inline.
+- [x] Implicit `precision_convert` nodes render in a half-height "convert" shape.
+- [x] Param updates are coalesced server-side after 200 ms debounce; multiple slider drags within 200 ms produce one re-run.
 
 **Verification:**
 
-- [ ] `cd apps/web && npm run test` green (Vitest mock-WS tests).
-- [ ] Local end-to-end: edit `tone.filmic_rgb.ev` and see thumbnail update.
+- [x] `cd apps/web && npm run test` green (Vitest mock-WS tests).
+- [x] Local end-to-end: edit `tone.filmic_rgb.ev` and see thumbnail update (`cpipe serve` + WS client received ack/thumbnail/profile/log in 208 ms).
 
 **Dependencies:** T9.
 

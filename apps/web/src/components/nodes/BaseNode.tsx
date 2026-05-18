@@ -18,8 +18,13 @@ function PortList({ ports, side }: { ports: CpipePort[]; side: "input" | "output
 }
 
 export function BaseNode({ data, selected = false }: { data: CpipeNodeData; selected?: boolean }) {
+  const isConvert = data.visualKind === "convert";
   return (
-    <article className={`base-node${selected ? " base-node--selected" : ""}`}>
+    <article
+      className={`base-node${selected ? " base-node--selected" : ""}${
+        isConvert ? " base-node--convert" : ""
+      }`}
+    >
       <header className="base-node__header" title={data.nodeId}>
         <span className="base-node__swatch" style={{ background: data.categoryColor }} />
         <span className="base-node__label">{data.label}</span>
@@ -27,7 +32,13 @@ export function BaseNode({ data, selected = false }: { data: CpipeNodeData; sele
       </header>
       <div className="base-node__body">
         <div className="base-node__thumbnail">Thumbnail</div>
-        <div className="base-node__params">Parameters</div>
+        {isConvert ? null : (
+          <div className="base-node__params">
+            {Object.keys(data.params).length === 0
+              ? "Parameters"
+              : `${Object.keys(data.params).length} params`}
+          </div>
+        )}
       </div>
       <footer className="base-node__footer">
         <PortList ports={data.inputs} side="input" />

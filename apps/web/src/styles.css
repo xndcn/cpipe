@@ -21,7 +21,7 @@ body {
 
 .editor-shell {
   display: grid;
-  grid-template-rows: 44px auto 1fr;
+  grid-template-rows: 44px auto 1fr 32px;
   min-height: 100vh;
   background: #f4f6f8;
 }
@@ -53,6 +53,12 @@ body {
   padding: 8px 16px;
 }
 
+.editor-shell__workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  min-height: 0;
+}
+
 .editor-shell__canvas {
   min-height: 0;
 }
@@ -69,6 +75,11 @@ body {
 
 .base-node--selected {
   border-color: #2563eb;
+}
+
+.base-node--convert {
+  min-height: 96px;
+  min-width: 190px;
 }
 
 .base-node__header {
@@ -123,6 +134,11 @@ body {
   aspect-ratio: 16 / 9;
 }
 
+.base-node--convert .base-node__thumbnail {
+  aspect-ratio: auto;
+  min-height: 28px;
+}
+
 .base-node__params {
   min-height: 32px;
 }
@@ -150,4 +166,87 @@ body {
   color: #475569;
   font-size: 0.68rem;
   position: relative;
+}
+
+.node-inspector {
+  background: #ffffff;
+  border-left: 1px solid #d7dde5;
+  display: grid;
+  gap: 12px;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  min-width: 0;
+  overflow: auto;
+  padding: 14px;
+}
+
+.node-inspector__header {
+  display: flex;
+  font-size: 0.86rem;
+  font-weight: 700;
+  justify-content: space-between;
+}
+
+.node-inspector__empty {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.node-inspector__thumbnail {
+  align-items: center;
+  aspect-ratio: 1 / 1;
+  background: #f8fafc;
+  border: 1px solid #d7dde5;
+  border-radius: 6px;
+  color: #64748b;
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.node-inspector__thumbnail img {
+  height: 100%;
+  object-fit: contain;
+  width: 100%;
+}
+
+.parameter-form {
+  display: grid;
+  gap: 12px;
+}
+
+.parameter-form__empty,
+.parameter-form__error {
+  color: #64748b;
+  font-size: 0.78rem;
+}
+
+.parameter-form__row {
+  display: grid;
+  gap: 5px;
+}
+
+.parameter-form__label {
+  color: #334155;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.parameter-form input[type="range"],
+.parameter-form input[type="text"],
+.parameter-form select {
+  width: 100%;
+}
+
+.parameter-form__error {
+  color: #b91c1c;
+}
+
+.device-pane {
+  align-items: center;
+  border-top: 1px solid #d7dde5;
+  color: #526070;
+  display: flex;
+  font-size: 0.76rem;
+  gap: 18px;
+  padding: 0 14px;
 }

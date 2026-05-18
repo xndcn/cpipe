@@ -16,7 +16,9 @@ describe("BaseNode", () => {
             label: "Filmic RGB",
             nodeId: "tone",
             outputs: [{ id: "out", label: "RGB", type: "rgba16f" }],
-            typeName: "com.cpipe.tone.filmic_rgb"
+            params: {},
+            typeName: "com.cpipe.tone.filmic_rgb",
+            visualKind: "standard"
           }}
           selected={false}
         />

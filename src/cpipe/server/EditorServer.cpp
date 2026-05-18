@@ -362,6 +362,7 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                                                      {{"ok", false}, {"error", route_error}});
                                      return;
                                  }
+                                 schedule_param_rerun();
                              } else if (type == "node.subscribe_thumbnail" ||
                                         type == "node.unsubscribe_thumbnail") {
                                  std::string route_error;
@@ -429,10 +430,17 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
         stop();
         return CPIPE_FAILED;
     }
+    {
+        std::lock_guard debounce_lock{param_debounce_mutex_};
+        param_debounce_stop_ = false;
+        param_debounce_pending_ = false;
+    }
+    param_debounce_thread_ = std::thread{[this] { param_debounce_loop(); }};
     return CPIPE_OK;
 }
 
 void EditorServer::stop() noexcept {
+    stop_param_debounce();
     auto* loop = static_cast<uWS::Loop*>(loop_.load());
     auto* listen_socket = static_cast<us_listen_socket_t*>(listen_socket_.load());
     if (loop != nullptr) {
@@ -550,6 +558,63 @@ nlohmann::json EditorServer::profile_payload(std::uint64_t run_id) const {
         }
     }
     return {{"type", "pipeline.profile"}, {"run_id", run_id}, {"nodes", std::move(nodes)}};
+}
+
+void EditorServer::schedule_param_rerun() {
+    {
+        std::lock_guard lock{param_debounce_mutex_};
+        param_debounce_pending_ = true;
+        param_debounce_deadline_ =
+            std::chrono::steady_clock::now() + std::chrono::milliseconds{200};
+    }
+    param_debounce_cv_.notify_one();
+}
+
+void EditorServer::param_debounce_loop() {
+    std::unique_lock lock{param_debounce_mutex_};
+    while (!param_debounce_stop_) {
+        param_debounce_cv_.wait(lock,
+                                [this] { return param_debounce_stop_ || param_debounce_pending_; });
+        while (!param_debounce_stop_ && param_debounce_pending_) {
+            const auto deadline = param_debounce_deadline_;
+            const auto rescheduled =
+                param_debounce_cv_.wait_until(lock, deadline, [this, deadline] {
+                    return param_debounce_stop_ || param_debounce_deadline_ != deadline;
+                });
+            if (rescheduled) {
+                continue;
+            }
+            param_debounce_pending_ = false;
+            lock.unlock();
+            auto* loop = static_cast<uWS::Loop*>(loop_.load());
+            if (loop != nullptr) {
+                loop->defer([this] { emit_completed_run(); });
+            }
+            lock.lock();
+        }
+    }
+}
+
+void EditorServer::stop_param_debounce() noexcept {
+    {
+        std::lock_guard lock{param_debounce_mutex_};
+        param_debounce_stop_ = true;
+        param_debounce_pending_ = false;
+    }
+    param_debounce_cv_.notify_one();
+    if (param_debounce_thread_.joinable()) {
+        param_debounce_thread_.join();
+    }
+}
+
+void EditorServer::emit_completed_run() {
+    const auto record = create_run_record();
+    const auto run_id = record.at("run_id").get<std::uint64_t>();
+    push_thumbnail_frames();
+    broadcast_json_frame(EditorFrameType::Profile, profile_payload(run_id));
+    broadcast_json_frame(EditorFrameType::Log, {{"level", "info"},
+                                                {"message", "event=pipeline_run status=completed"},
+                                                {"run_id", run_id}});
 }
 
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)

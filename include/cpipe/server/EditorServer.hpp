@@ -66,6 +66,10 @@ private:
     [[nodiscard]] cpipe_status_t apply_thumbnail_control(void* client,
                                                          const nlohmann::json& payload,
                                                          std::string* error);
+    void schedule_param_rerun();
+    void param_debounce_loop();
+    void stop_param_debounce() noexcept;
+    void emit_completed_run();
     void push_thumbnail_frames();
     void broadcast_json_frame(EditorFrameType frame_type, const nlohmann::json& payload);
 
@@ -77,6 +81,12 @@ private:
     std::set<void*> ws_clients_;
     std::unordered_map<void*, ThumbnailSubscription> thumbnail_subscriptions_;
     std::unordered_map<std::string, std::chrono::steady_clock::time_point> thumbnail_last_emit_;
+    std::mutex param_debounce_mutex_;
+    std::condition_variable param_debounce_cv_;
+    std::thread param_debounce_thread_;
+    bool param_debounce_stop_{false};
+    bool param_debounce_pending_{false};
+    std::chrono::steady_clock::time_point param_debounce_deadline_;
 
     std::thread io_thread_;
     std::atomic<void*> loop_{nullptr};

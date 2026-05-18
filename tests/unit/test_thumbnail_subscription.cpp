@@ -317,3 +317,34 @@ TEST_CASE("thumbnail subscription shares one frame across subscribers and applie
         REQUIRE(second.type != cpipe::server::EditorFrameType::Thumbnail);
     }
 }
+
+TEST_CASE("param updates debounce into one thumbnail-producing rerun") {
+    RunningServer server;
+    UniqueFd fd{connect_ws(server.port())};
+
+    send_control(fd.get(), {{"type", "node.subscribe_thumbnail"},
+                            {"node_id", "tone"},
+                            {"port", "rgb"},
+                            {"max_size", 64},
+                            {"fps", 5}});
+
+    send_control(
+        fd.get(),
+        {{"type", "node.update_param"}, {"node_id", "tone"}, {"key", "ev"}, {"value", -0.25}});
+    send_control(
+        fd.get(),
+        {{"type", "node.update_param"}, {"node_id", "tone"}, {"key", "ev"}, {"value", 0.0}});
+    send_control(
+        fd.get(),
+        {{"type", "node.update_param"}, {"node_id", "tone"}, {"key", "ev"}, {"value", 0.5}});
+
+    const auto thumbnail = recv_editor_frame(fd.get());
+    REQUIRE(thumbnail.type == cpipe::server::EditorFrameType::Thumbnail);
+    REQUIRE(is_webp(thumbnail.payload));
+    const auto profile = recv_editor_frame(fd.get());
+    const auto log = recv_editor_frame(fd.get());
+    REQUIRE(profile.type == cpipe::server::EditorFrameType::Profile);
+    REQUIRE(log.type == cpipe::server::EditorFrameType::Log);
+
+    REQUIRE_FALSE(recv_ws_binary(fd.get(), std::chrono::milliseconds{120}).has_value());
+}
