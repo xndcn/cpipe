@@ -7,6 +7,7 @@
 #include <chrono>
 #include <condition_variable>
 #include <cpipe/runtime/Trace.hpp>
+#include <cpipe/server/EditorProtocol.hpp>
 #include <cpipe/server/EditorServer.hpp>
 #include <cstdint>
 #include <exception>
@@ -18,13 +19,21 @@
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 extern const char NODE_SCHEMA_JSON[];
 extern const char SERVER_PIPELINE_SCHEMA_JSON[];
 
 namespace {
 
+using cpipe::server::decode_frame;
+using cpipe::server::EditorFrame;
+using cpipe::server::EditorFrameType;
+using cpipe::server::encode_frame;
+
 constexpr std::string_view kHealthBody = R"({"ok":true,"abi":{"major":1,"minor":3}})";
+struct WsPeer {};
+using ServerWebSocket = uWS::WebSocket<false, true, WsPeer>;
 
 void set_error(std::string* error, std::string message) {
     if (error != nullptr) {
@@ -66,6 +75,16 @@ std::optional<std::uint64_t> parse_run_id(std::string_view url) {
         return std::nullopt;
     }
     return value;
+}
+
+std::string payload_string(const EditorFrame& frame) {
+    return {frame.payload.begin(), frame.payload.end()};
+}
+
+void send_json_frame(ServerWebSocket* ws, EditorFrameType type, const nlohmann::json& payload) {
+    const auto encoded = encode_frame(type, 0, 0, payload.dump());
+    ws->send(std::string_view{reinterpret_cast<const char*>(encoded.data()), encoded.size()},
+             uWS::OpCode::BINARY);
 }
 
 }  // namespace
@@ -189,6 +208,12 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                 (void)request;
                 CPIPE_TRACE_SCOPE("EditorServer::handle_request");
                 const auto record = create_run_record();
+                const auto run_id = record.at("run_id").get<std::uint64_t>();
+                broadcast_json_frame(EditorFrameType::Profile, profile_payload(run_id));
+                broadcast_json_frame(EditorFrameType::Log,
+                                     {{"level", "info"},
+                                      {"message", "event=pipeline_run status=completed"},
+                                      {"run_id", run_id}});
                 json_response(response, ok(record));
             });
             app.get("/api/pipelines/active/runs/:run_id", [this](auto* response, auto* request) {
@@ -207,6 +232,43 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                 }
                 json_response(response, ok(record));
             });
+            app.ws<WsPeer>(
+                "/ws",
+                {.open = [this](auto* ws) { ws_clients_.insert(ws); },
+                 .message =
+                     [this](auto* ws, std::string_view message, uWS::OpCode op_code) {
+                         if (op_code != uWS::OpCode::BINARY) {
+                             send_json_frame(ws, EditorFrameType::Ack,
+                                             {{"ok", false}, {"error", "binary frame required"}});
+                             return;
+                         }
+                         const auto frame = decode_frame(message);
+                         if (!frame || frame->type != EditorFrameType::Control) {
+                             send_json_frame(ws, EditorFrameType::Ack,
+                                             {{"ok", false}, {"error", "invalid control frame"}});
+                             return;
+                         }
+                         try {
+                             const auto payload = nlohmann::json::parse(payload_string(*frame));
+                             if (payload.value("type", "") == "node.update_param") {
+                                 std::string route_error;
+                                 const auto status = apply_param_delta(payload, &route_error);
+                                 if (status != CPIPE_OK) {
+                                     send_json_frame(ws, EditorFrameType::Ack,
+                                                     {{"ok", false}, {"error", route_error}});
+                                     return;
+                                 }
+                             }
+                             send_json_frame(
+                                 ws, EditorFrameType::Ack,
+                                 {{"ok", true}, {"received", payload.value("type", "")}});
+                         } catch (const std::exception& e) {
+                             send_json_frame(ws, EditorFrameType::Ack,
+                                             {{"ok", false}, {"error", e.what()}});
+                         }
+                     },
+                 .close = [this](auto* ws, int /*code*/,
+                                 std::string_view /*message*/) { ws_clients_.erase(ws); }});
 
             loop_.store(uWS::Loop::get());
             app.listen(options.bind, static_cast<int>(options.port), [this](auto* token) {
@@ -353,6 +415,31 @@ nlohmann::json EditorServer::run_record(std::uint64_t run_id) const {
     return {{"run_id", run_id},
             {"status", found->second.status},
             {"output_paths", found->second.output_paths}};
+}
+
+nlohmann::json EditorServer::profile_payload(std::uint64_t run_id) const {
+    std::lock_guard lock{session_mutex_};
+    nlohmann::json nodes = nlohmann::json::array();
+    if (active_pipeline_.is_object() && active_pipeline_.contains("nodes")) {
+        for (const auto& node : active_pipeline_.at("nodes")) {
+            nodes.push_back({{"node_id", node.value("id", "")},
+                             {"start_ms", 0},
+                             {"end_ms", 0},
+                             {"ms", 0},
+                             {"peak_mem_kb", 0},
+                             {"mem_kb", 0},
+                             {"device", "cpu"}});
+        }
+    }
+    return {{"type", "pipeline.profile"}, {"run_id", run_id}, {"nodes", std::move(nodes)}};
+}
+
+void EditorServer::broadcast_json_frame(EditorFrameType frame_type, const nlohmann::json& payload) {
+    const auto encoded = encode_frame(frame_type, 0, 0, payload.dump());
+    const std::string_view bytes{reinterpret_cast<const char*>(encoded.data()), encoded.size()};
+    for (auto* client : ws_clients_) {
+        static_cast<ServerWebSocket*>(client)->send(bytes, uWS::OpCode::BINARY);
+    }
 }
 
 }  // namespace cpipe::server

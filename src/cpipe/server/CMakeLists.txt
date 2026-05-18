@@ -29,7 +29,15 @@ add_custom_command(
     DEPENDS "${PROJECT_SOURCE_DIR}/schemas/pipeline-v0.4.json" "${PROJECT_SOURCE_DIR}/cmake/EmbedJson.cmake"
 )
 
-add_library(cpipe-server STATIC EditorServer.cpp "${node_schema_cpp}" "${server_pipeline_schema_cpp}" stub.cpp)
+add_library(
+    cpipe-server
+    STATIC
+        EditorProtocol.cpp
+        EditorServer.cpp
+        "${node_schema_cpp}"
+        "${server_pipeline_schema_cpp}"
+        stub.cpp
+)
 add_library(cpipe::server ALIAS cpipe-server)
 
 cpipe_target_warning_flags(cpipe-server)

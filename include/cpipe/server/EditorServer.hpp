@@ -8,9 +8,11 @@
 #include <atomic>
 #include <condition_variable>
 #include <cpipe/runtime/Registry.hpp>
+#include <cpipe/server/EditorProtocol.hpp>
 #include <cstdint>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <set>
 #include <string>
 #include <thread>
 #include <unordered_map>
@@ -49,12 +51,15 @@ private:
     [[nodiscard]] cpipe_status_t apply_param_delta(const nlohmann::json& delta, std::string* error);
     [[nodiscard]] nlohmann::json create_run_record();
     [[nodiscard]] nlohmann::json run_record(std::uint64_t run_id) const;
+    [[nodiscard]] nlohmann::json profile_payload(std::uint64_t run_id) const;
+    void broadcast_json_frame(EditorFrameType frame_type, const nlohmann::json& payload);
 
     const runtime::Registry* registry_{nullptr};
     mutable std::mutex session_mutex_;
     nlohmann::json active_pipeline_;
     std::uint64_t next_run_id_{1};
     std::unordered_map<std::uint64_t, RunRecord> runs_;
+    std::set<void*> ws_clients_;
 
     std::thread io_thread_;
     std::atomic<void*> loop_{nullptr};

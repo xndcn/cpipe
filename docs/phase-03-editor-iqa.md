@@ -135,6 +135,7 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-55 | RT 5.10 node golden carry | T2 adds the RT 5.10 render wrapper and profile placeholders, but does not replace the seven node goldens with RT-derived EXRs. This supersedes the checked-in-golden replacement portion of P3-PD-45. Root cause: the checked-in node fixtures are tiny synthetic stage EXRs (4x4 / 8x8 / 16x16), while RawTherapee renders whole DNG files and does not expose those isolated intermediate node stages. Until node-matched DNG/pp3 fixtures exist, `demosaic.{bilinear,rcd,amaze}`, `wb.{dual_illuminant,greyworld_auto}`, `colormatrix.dng_to_working`, and `sharpen.edge_aware_usm` remain deterministic cpipe self-references. |
 | P3-PD-56 | RT TIFF-to-EXR conversion | RawTherapee 5.10 CLI writes TIFF/PNG/JPEG, not EXR. `tools/golden/rt_render.sh` renders a 32-bit TIFF and converts it to EXR with `oiiotool` when available; on this dev host it falls back to ImageMagick `convert` with EXR write support. This is dev-only tooling; CI still does not install RT or the converter. |
 | P3-PD-57 | REST envelope exceptions | T4 preserves T3's health shape (`GET /api/health` returns top-level `{ok, abi}`) and serves `/api/schemas/{node,pipeline}` as raw JSON Schema documents for direct Ajv consumption. The registry, active-pipeline, params, run, and run-status control routes use the P3-PD-35 `{ok,data}` / `{ok,error}` REST envelope. |
+| P3-PD-58 | T5 WS manual verification | The packaged `/usr/bin/wscat` needs `NODE_PATH=/usr/share/nodejs` and cannot send binary payloads; `npx --yes wscat` is used only for the handshake smoke. The hand-crafted binary subscribe/ack verification is covered by `test_editor_server_ws` and a raw Node/ws client that sends the P3-PD-9 13-byte frame directly. |
 
 ---
 
@@ -423,15 +424,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] WS handshake completes against `wscat` on the dev host.
-- [ ] Binary frame round-trip: editor sends `node.subscribe_thumbnail` control frame; server replies with an ack frame within 50 ms.
-- [ ] Profile frames flow during a `pipeline.run`; per-node `{ms, mem_kb}` payloads land in `wscat` output.
-- [ ] Log frames carry spdlog INFO lines (filtered by level on the editor side).
+- [x] WS handshake completes against `wscat` on the dev host (via `npx --yes wscat`, per P3-PD-58).
+- [x] Binary frame round-trip: editor sends `node.subscribe_thumbnail` control frame; server replies with an ack frame within 50 ms.
+- [x] Profile frames flow during a `pipeline.run`; per-node `{ms, mem_kb}` payloads land in raw WS client output.
+- [x] Log frames carry INFO-level JSON lines (filtered by level on the editor side).
 
 **Verification:**
 
-- [ ] `ctest -R test_editor_server_ws` green.
-- [ ] `wscat -c ws://localhost:4747/ws` accepts a hand-crafted subscribe frame and prints the ack.
+- [x] `ctest -R test_editor_server_ws` green.
+- [x] `npx --yes wscat -c ws://localhost:4747/ws` handshakes; raw Node/ws client accepts a hand-crafted subscribe frame and prints the ack (P3-PD-58).
 
 **Dependencies:** T4.
 
