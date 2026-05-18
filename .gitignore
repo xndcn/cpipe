@@ -9,3 +9,6 @@ cmake-build-*/
 compile_commands.json
 .pre-commit-cache/
 __pycache__/
+node_modules/
+apps/web/dist/
+*.tsbuildinfo

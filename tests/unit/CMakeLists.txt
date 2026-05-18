@@ -424,6 +424,13 @@ target_compile_definitions(test_cli_p3_scaffolding PRIVATE CPIPE_CLI_PATH="$<TAR
 cpipe_add_unit_test(test_cpipe_serve_cli test_cpipe_serve_cli.cpp)
 add_dependencies(test_cpipe_serve_cli cpipe)
 target_compile_definitions(test_cpipe_serve_cli PRIVATE CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>")
+cpipe_add_unit_test(test_install_editor_static test_install_editor_static.cpp)
+target_compile_definitions(
+    test_install_editor_static
+    PRIVATE
+        CMAKE_COMMAND="${CMAKE_COMMAND}"
+        CPIPE_INSTALL_EDITOR_STATIC_SCRIPT="${PROJECT_SOURCE_DIR}/cmake/InstallEditorStatic.cmake"
+)
 cpipe_add_unit_test(test_editor_server_health test_editor_server_health.cpp)
 target_link_libraries(
     test_editor_server_health

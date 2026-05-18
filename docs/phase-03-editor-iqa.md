@@ -493,12 +493,12 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 ### Checkpoint B — after T3–T7
 
-- [ ] All five tasks merged; `main` is green.
-- [ ] `cpipe serve` boots; 8 REST endpoints round-trip; WS frame format works.
-- [ ] Thumbnail subscription delivers WebP frames; per-port debounce + per-port subscriber cap honored.
-- [ ] `cpipe serve --bind 0.0.0.0` warns operators about the unauthenticated LAN exposure.
-- [ ] `cpipe serve --editor-static <dir>` mounts a static SPA path.
-- [ ] No regression on P1 / P2 / Phase 3.A tests.
+- [x] All five tasks merged; `main` is green.
+- [x] `cpipe serve` boots; 8 REST endpoints round-trip; WS frame format works.
+- [x] Thumbnail subscription delivers WebP frames; per-port debounce + per-port subscriber cap honored.
+- [x] `cpipe serve --bind 0.0.0.0` warns operators about the unauthenticated LAN exposure.
+- [x] `cpipe serve --editor-static <dir>` mounts a static SPA path.
+- [x] No regression on P1 / P2 / Phase 3.A tests.
 
 ---
 
@@ -510,15 +510,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] `cd apps/web && npm ci && npm run build` produces `apps/web/dist/index.html`.
-- [ ] `cd apps/web && npm run lint && npm run test` green.
-- [ ] `cmake --build` invoking `--target install` copies `apps/web/dist/` into `${CMAKE_INSTALL_PREFIX}/share/cpipe/editor` when `apps/web/dist/.stamp` exists.
-- [ ] Hot-reload `npm run dev` boots in <2 s.
+- [x] `cd apps/web && npm ci && npm run build` produces `apps/web/dist/index.html`.
+- [x] `cd apps/web && npm run lint && npm run test` green.
+- [x] `cmake --build` invoking `--target install` copies `apps/web/dist/` into `${CMAKE_INSTALL_PREFIX}/share/cpipe/editor` when `apps/web/dist/.stamp` exists.
+- [x] Hot-reload `npm run dev` boots in <2 s.
 
 **Verification:**
 
-- [ ] `cd apps/web && npm run build && ls dist/index.html` returns 0.
-- [ ] `ctest -R test_install_editor_static` green (verifies install rule).
+- [x] `cd apps/web && npm run build && ls dist/index.html` returns 0.
+- [x] `ctest -R test_install_editor_static` green (verifies install rule).
 
 **Dependencies:** Checkpoint B.
 
