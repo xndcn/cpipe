@@ -1,6 +1,6 @@
 # cpipe
 
-> ⚠️ **Pre-alpha.** Phase 2 (`v0.3` — Classic Nodes + HDR) is released. APIs remain unstable; the Linux DNG → SDR/HDR HEIF full-classic pipelines are usable for the pinned Pixel 8 Pro corpus path.
+> ⚠️ **Pre-alpha.** Phase 2 (`v0.3` — Classic Nodes + HDR) is released; Phase 3 (`v0.4` — Editor + Quality Harness) is in progress per [`docs/phase-03-editor-iqa.md`](docs/phase-03-editor-iqa.md). APIs remain unstable; the Linux DNG → SDR/HDR HEIF full-classic pipelines are usable for the pinned Pixel 8 Pro corpus path.
 
 A computational photography pipeline. DAG, plugin nodes, zero-copy buffers, runs on CPU + GPU + NPU.
 
@@ -73,6 +73,22 @@ memory planner to interference-graph coloring, and switches the precision
 planner to auto-insertion. Detail in
 [`docs/phase-02-classic-nodes-hdr.md`](docs/phase-02-classic-nodes-hdr.md).
 
+**Phase 3** (`v0.4` — Editor + Quality Harness) is in progress: detailed plan in
+[`docs/phase-03-editor-iqa.md`](docs/phase-03-editor-iqa.md) (7 sub-phases, 24
+T-tasks, 50 `P3-PD-N` rows locked). The phase delivers the Web Editor
+(`apps/web/`, React Flow 12 + Zustand + Ajv), the in-process editor server
+(`cpipe-server`, uWebSockets, 8 REST endpoints + WS thumbnail subscriptions),
+the IQA harness (C++ in-binary PSNR / SSIM / MS-SSIM / ΔE2000 + Python sidecar
+`tools/iqa/cpipe_iqa/` wrapping piq + pyiqa), the 50-image manifest-fetched v1
+corpus, the microbench harness (`bench/`, Google Benchmark + nanobench), and
+the Vega-Lite dashboard (`apps/dashboard/`). New CLI verbs: `cpipe serve / info
+/ iqa / bench`. New schemas: `pipeline-v0.4.json` (optional `ui` object) and
+`editor-protocol-v0.1.json`. P3 also retires two carried slips —
+[P2-PD-74](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) (OCIO
+Vulkan execution) and 7 RT 5.10 reference goldens
+([P1-PD-69 / P1-PD-70](docs/phase-01-walking-skeleton.md#4-phase-decisions-pd-n)
++ partial [P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)).
+
 ## Build From Source
 
 Requirements:
@@ -103,7 +119,7 @@ cmake --build --preset linux-release-clang -j
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | released; RawTherapee refs + full Vulkan proof slipped |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | released; real QBC/RT refs + OCIO Vulkan/Tracy capture slipped |
-| `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | planned |
+| `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | in progress; retires OCIO Vulkan + 7 RT 5.10 goldens; real QBC + Halide Vulkan AOT carry to v1.1 |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |
 | `v1.0` | P5    | Polish — docs, sample plugin, golden refresh, RC bake, GA   | planned     |
 | `v1.1` | —     | Android + HLG / UltraHDR / Apple Adaptive HDR + WSS / LNA / WebRTC / TURN editor connectivity | outlook |
@@ -124,6 +140,7 @@ Detail and RD-NN decisions: [`docs/roadmap.md`](docs/roadmap.md).
 | [`docs/phase-00-foundation.md`](docs/phase-00-foundation.md)        | Phase 0 plan and outcome (shipped)                                            |
 | [`docs/phase-01-walking-skeleton.md`](docs/phase-01-walking-skeleton.md) | Phase 1 plan and outcome (shipped)                                            |
 | [`docs/phase-02-classic-nodes-hdr.md`](docs/phase-02-classic-nodes-hdr.md) | Phase 2 shipped evidence                                                       |
+| [`docs/phase-03-editor-iqa.md`](docs/phase-03-editor-iqa.md) | Phase 3 plan in progress (`v0.4`)                                              |
 | [`docs/research/_toc.md`](docs/research/_toc.md)                    | D1–D19 locked decisions; research cluster map; methodology                    |
 | [`docs/research/00-summary.md`](docs/research/00-summary.md)        | Master research synthesis — recommended stack, cross-cluster matrix, risks    |
 

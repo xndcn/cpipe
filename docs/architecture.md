@@ -495,7 +495,7 @@ These come from [Research 00 §9](research/00-summary.md#9-consolidated-open-que
 | Q5 | v2 calibration capture flow — how invasive should the chart-photography UI be? | UX scope; out of scope in v1. |
 | Q6 | Quad Bayer DNG GainMap encoding when shooting in 4×4 native mode. | Resolved in [P2-PD-18](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) — `lens.shading_gainmap` applies per-Bayer-channel × 4 planes at the 4×4 stage before remosaic; 2×2 path is the single-plane unwrap. |
 | Q7 | Should AI demosaic ship in v1 vs v2 given Quad Bayer quality lift? | Adds an AI demosaic node; differentiation vs schedule trade-off. |
-| Q8 | Desktop-only mode for the editor (offline, no network)? | The editor already supports a local-first mode; flipping this only affects defaults. |
+| Q8 | Desktop-only mode for the editor (offline, no network)? | Resolved in [P3-PD-12 / P3-PD-47](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n) — editor ships offline-first by default via FSA + `<input type="file">` fallback + `localStorage` cache; runtime connection is optional. RD-10 closure. |
 | Q9 | Mobile-side Apple Adaptive HDR write fidelity — testing strategy. | Validation; Apple platform is v2. |
 | Q10 | Burst frame metadata — single multi-IFD DNG vs N DNGs. | Resolved: **N independent DNGs** for v1. |
 | Q11 | Plugin marketplace UI / signing model. | v2 only; no v1 surface. |

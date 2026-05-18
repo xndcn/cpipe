@@ -183,23 +183,29 @@ Each subsequent section follows the same template:
 
 ## 6. Phase 3 — Editor + Quality Harness (tag `v0.4`)
 
+**Status.** In progress; detailed plan in [`phase-03-editor-iqa.md`](phase-03-editor-iqa.md). 7 sub-phases, 24 T-tasks (T0–T23); 50 `P3-PD-N` rows locked. P3 also retires the carried [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) (OCIO Vulkan execution) and the algorithm-matched subset of [P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) + [P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) (RT 5.10 reference goldens for 7 algorithm-matched nodes). Real Pixel / alt-phone QBC corpus, direct Halide Vulkan AOT command-buffer handoff, and binary Tracy capture stay carried to v1.1 per [P3-PD-46](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n).
+
 **Objective.** Web Editor renders the DAG, edits parameters live against a running runtime, and a quality harness (golden + 50-image corpus) is in place — gated as recorded-not-blocked at GA.
 
 **Sub-domains.**
 
-- **Web Editor (`apps/web/`)**: Vite + React 19 + TypeScript + React Flow 12 + Zustand + Ajv. Custom node component with manifest-driven parameter forms. Pipeline graph load / save.
-- **Offline JSON mode** (RD-10): File System Access API + localStorage; editor opens / edits `pipeline.cpipe.json` without a runtime.
-- **Editor server (`cpipe-server`)**: uWebSockets-based HTTP server inside the cpipe runtime. **Plaintext HTTP on loopback / LAN only** (RD-8). REST endpoints from [`architecture.md` §8](architecture.md#8-editor-server-surface): `/api/health`, `/api/registry/nodes`, `/api/pipelines/:id`, `/api/pipelines/:id/params`, `/api/pipelines/:id/run`.
-- **WebSocket event plane**: framed binary thumbnail (256×256 WebP) + profile event stream. No pairing crypto (no Noise XK in v1.0 — recorded as v1.1 work).
-- **GitHub Pages deploy**: `gh-pages` branch, GitHub Actions workflow on `apps/web/**` changes.
-- **IQA harness (`tests/iqa/`)**: piq in-binary for PSNR / SSIM / MS-SSIM / ΔE2000; pyiqa subprocess for license-isolated metrics.
-- **50-image v1 corpus**: curated subset of FiveK + SIDD + DND + HDR+ + RAISE + Kalantari + Quad Bayer phone shots ([Research 09](research/09-image-quality-benchmarks.md)). Stored under `tests/corpus/` with Git LFS. Wilcoxon-signed-rank corpus check implemented but **recorded-not-gated** (RD-13).
-- **Microbenchmark harness (`bench/`)**: Google Benchmark + nanobench scaffolding. Results recorded to `bench/results/<commit>.json`; CI does not reject on regression (RD-15).
-- **Dashboard**: Vega-Lite IQA + perf dashboard published to a `gh-pages` branch path alongside the editor.
+- **Web Editor (`apps/web/`)**: Vite 6 + React 19 + TypeScript 5.5 + `@xyflow/react` 12 + Zustand 5 + Ajv 8 + Vitest (unit) + Playwright (E2E). Custom node component with manifest-driven parameter forms. Manifest schema is `fetch`-only with a 7-day `localStorage` TTL ([P3-PD-13](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)); first run needs one runtime connection. Distributed via both GitHub Pages **and** a CMake install path (`${CMAKE_INSTALL_PREFIX}/share/cpipe/editor`) ([P3-PD-14](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)).
+- **Offline JSON mode** (RD-10): File System Access API where available + `<input type="file">` + Blob URL fallback for Safari / Firefox; `localStorage` caches the last 10 graphs. Closes [Architecture §17 Q8](architecture.md#17-open-questions) per [P3-PD-12 / P3-PD-47](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n).
+- **Editor server (`cpipe-server`)**: uWebSockets-based HTTP server inside the cpipe runtime. **Plaintext HTTP on loopback / LAN only** (RD-8); no token authentication; `--bind <non-loopback>` prints a yellow stderr warning ([P3-PD-6](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). 8 REST endpoints from [`architecture.md` §8](architecture.md#8-editor-server-surface) (single active pipeline per server, last-write-wins).
+- **WebSocket event plane**: framed binary 13-byte header + 5 frame types (`0x01` thumbnail / `0x02` profile / `0x03` log / `0x04` ack / `0x10` control) per [`architecture.md §8`](architecture.md#8-editor-server-surface). Thumbnails are per-port subscriptions ([P3-PD-7](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)): 256×256 WebP q70 5 fps, only for currently selected / visible nodes. Re-render trigger: editor sends `node.update_param` deltas; runtime debounces 200 ms server-side and auto-runs ([P3-PD-10](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). No pairing crypto (no Noise XK in v1.0 — recorded as v1.1 work).
+- **CLI verbs added**: `cpipe serve`, `cpipe info` (`nodes` + `gpu`), `cpipe iqa`, `cpipe bench` ([P3-PD-31 / P3-PD-32 / P3-PD-33](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)).
+- **Schemas added**: `schemas/pipeline-v0.4.json` (optional `ui` object on nodes; v0.3 rejected at load with a migration hint) + `schemas/editor-protocol-v0.1.json` (WS framing + REST envelope). `schemas/node-v0.2.json` unchanged ([P3-PD-34 / P3-PD-35 / P3-PD-36](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)).
+- **Live params**: 8 nodes (`tone.filmic_rgb / reinhard / aces_filmic / mertens_local`, `denoise.bm3d / guided_filter / wavelet_bayes_shrink`, `sharpen.edge_aware_usm`, `color.3d_lut`) author live manifest `params` entries; the remaining 11 stay metadata-driven ([P3-PD-37](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)).
+- **GitHub Pages deploy**: single `pages.yml` workflow deploys both `apps/web/` and `apps/dashboard/` to the `gh-pages` branch on `main` push ([P3-PD-29](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)).
+- **IQA harness**: C++ in-binary PSNR / SSIM / MS-SSIM / ΔE2000 (Apache-2 reimplementations); Python sidecar `tools/iqa/cpipe_iqa/` (subprocess, pyproject.toml-pinned `piq + pyiqa + numpy + OpenImageIO-python`) for LPIPS / DISTS / HaarPSI / BRISQUE / MS-GMSD / VIFp / FSIM / VSI / MANIQA / TOPIQ / MUSIQ / CLIP-IQA. License isolation by process boundary ([P3-PD-15 / P3-PD-17](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). `cpipe iqa <pipeline> <corpus> [--report ...] [--metrics ...] [--baseline ...]` per architecture §10.
+- **50-image v1 corpus**: manifest-only commit + `scripts/prepare_corpus.py fetch / verify / list` ([P3-PD-19 / P3-PD-22](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). Composition: 15 daylight FiveK + 5 SIDD + 5 DND + 5 RAISE + 5 Kalantari HDR + 5 synthetic QBC stand-ins (continuing [P2-PD-37 / P2-PD-76](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)) + 10 cpipe-original synthetic ([P3-PD-20](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). HDR+ Burst slips to P4. CI corpus-fetch cache keyed on manifest SHA-256. Baseline-only at v0.4 ([P3-PD-21](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)); `bench/results/baseline.json` finally locks at `v1.0-rc1` per RD-13.
+- **Microbenchmark harness (`bench/`)**: Google Benchmark + nanobench scaffolding. ~25 cases covering all 18 classic nodes + scheduler / planners + DNG OpcodeList parsing + HEIF encoding ([P3-PD-23 / P3-PD-24](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). CPU smoke in `build-and-test.yml`; GPU / Vulkan runs manually on dev RTX via `microbench-record.yml` (`workflow_dispatch`). Results recorded to `bench/results/<commit>.json` committed to `main` ([P3-PD-25 / P3-PD-28](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)); CI does not reject on regression (RD-15).
+- **Dashboard (`apps/dashboard/`)**: independent npm workspace (Vite + Vega-Lite via `vega-embed`) ([P3-PD-27](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). 6 panels: PSNR / SSIM / LPIPS / ΔE2000 / wall_ms / peak_rss. 90-day trend window by default; per-commit drill-down ([P3-PD-30](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n)). Deployed alongside the editor on `gh-pages`.
+- **Retired carry items** (relative to v0.3): OCIO Vulkan execution path ([P3-PD-44](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n) → glslang via vcpkg + `OcioVulkanProcessor::compute_pass`) and 7 RT 5.10 reference goldens ([P3-PD-45](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n) → `tools/golden/rt_render.sh` + `$RAWTHERAPEE_APPIMAGE`).
 
-**Inputs.** P2 outputs (18 nodes producing meaningful images; manifest schema stable).
+**Inputs.** P2 outputs (18 nodes producing meaningful images; manifest schema stable; OCIO v0.2 Looks config; compute-suite tail extensions; `VulkanCommandBuffer`; `HalideFilterRegistry` self-registration; interference-graph memory planner; precision auto-insert + `com.cpipe.precision_convert`). Locked design docs ([`architecture.md`](architecture.md), [`buffer.md`](buffer.md), [`plugin-sdk.md`](plugin-sdk.md), [`tech.md`](tech.md)). Locked research ([`research/09`](research/09-image-quality-benchmarks.md), [`research/11`](research/11-pipeline-editor-and-connectivity.md), [`research/03`](research/03-heterogeneous-scheduler.md)). RawTherapee 5.10 AppImage installed on the dev host (new for P3).
 
-**Outputs.** Tag `v0.4`. Editor accessible at `https://<user>.github.io/cpipe/editor/`; pairs with a local runtime via `http://localhost:4747`. IQA + perf dashboard at `https://<user>.github.io/cpipe/dashboard/`. 50-image corpus committed.
+**Outputs.** Tag `v0.4`. Editor accessible at `https://<user>.github.io/cpipe/`; pairs with a local runtime via `http://localhost:4747`. IQA + perf dashboard at `https://<user>.github.io/cpipe/dashboard/`. 50-image corpus manifest committed; `bench/results/baseline.json` published; vcpkg adds `uwebsockets`, `glslang`, `libwebp`, `google-benchmark`, `nanobench`.
 
 **Definition of Done.**
 
@@ -208,11 +214,11 @@ Each subsequent section follows the same template:
 3. IQA corpus run completes for the example pipeline and posts results to the dashboard.
 4. Microbench suite runs and records baseline numbers for the 18 classic nodes on the development NVIDIA RTX machine.
 
-**Acceptance gate.** Editor → runtime → IQA dashboard end-to-end smoke test in CI (headless browser hitting a local `cpipe serve`).
+**Acceptance gate.** Editor → runtime → IQA dashboard end-to-end smoke test in CI (Playwright headless against a local `cpipe serve`); detail in [`phase-03-editor-iqa.md` §11](phase-03-editor-iqa.md#11-definition-of-done-verification-commands).
 
-**Active risks.** [R9](research/00-summary.md#7-risk-register) (Chrome 142 LNA UX) — irrelevant in v1.0 since we ship plaintext HTTP only. [R15](research/00-summary.md#7-risk-register) (pyiqa CC-BY-NC-SA) — already mitigated by subprocess isolation.
+**Active risks.** [R9](research/00-summary.md#7-risk-register) (Chrome 142 LNA UX) — irrelevant in v1.0 since we ship plaintext HTTP only. [R15](research/00-summary.md#7-risk-register) (pyiqa CC-BY-NC-SA) — mitigated by subprocess isolation. New P3-local risks `P3-R1`–`P3-R7` tracked in [`phase-03-editor-iqa.md §10`](phase-03-editor-iqa.md#10-risk-register-p3-only).
 
-**Decision points.** None deferred.
+**Decision points.** [Q8](research/00-summary.md#9-consolidated-open-questions) (editor desktop-only / offline mode) Resolved in P3-PD-12 + P3-PD-47. No new decisions deferred.
 
 ---
 
