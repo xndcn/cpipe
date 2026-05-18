@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: Apache-2.0
+# RawTherapee 5.10 profile placeholder for future node-matched USM fixtures.
+
+[Exposure]
+Auto=false
+Compensation=0
+
+[RAW]
+Method=amaze

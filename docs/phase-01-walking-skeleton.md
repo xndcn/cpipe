@@ -717,6 +717,12 @@ this as PD-69 / PD-70 and uses deterministic cpipe self-references for the five
 per-node goldens plus the cpipe pre-HEIF linear Rec.2020 reference for the
 integration PSNR gate.
 
+**Carried after P1.** Phase 3 T2 added `tools/golden/rt_render.sh`, but the
+checked-in P1/P2 node fixtures remain deterministic self-references per
+[`P3-PD-55`](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n): RawTherapee
+renders whole DNG files and cannot reproduce the current tiny node-stage EXR
+fixtures without new node-matched DNG/pp3 inputs.
+
 cpipe-owned Vulkan buffer dispatch and Tracy proof of GPU queue execution did
 not ship. P1 ships the Vulkan device-plane foundation and a Halide
 CPU+Vulkan-AOT multi-target demosaic build with a conditional Vulkan-device

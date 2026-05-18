@@ -83,11 +83,14 @@ the IQA harness (C++ in-binary PSNR / SSIM / MS-SSIM / ΔE2000 + Python sidecar
 corpus, the microbench harness (`bench/`, Google Benchmark + nanobench), and
 the Vega-Lite dashboard (`apps/dashboard/`). New CLI verbs: `cpipe serve / info
 / iqa / bench`. New schemas: `pipeline-v0.4.json` (optional `ui` object) and
-`editor-protocol-v0.1.json`. P3 also retires two carried slips —
-[P2-PD-74](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) (OCIO
-Vulkan execution) and 7 RT 5.10 reference goldens
-([P1-PD-69 / P1-PD-70](docs/phase-01-walking-skeleton.md#4-phase-decisions-pd-n)
-+ partial [P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)).
+`editor-protocol-v0.1.json`. P3 retires the OCIO Vulkan carry and adds
+RawTherapee 5.10 tooling for the remaining golden-reference carry:
+[P2-PD-74](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)
+(OCIO Vulkan execution), plus `tools/golden/rt_render.sh` for the 7 RT 5.10
+reference goldens ([P1-PD-69 / P1-PD-70](docs/phase-01-walking-skeleton.md#4-phase-decisions-pd-n)
++ partial [P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](docs/phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n));
+checked-in RT-derived replacements remain carried by
+[P3-PD-55](docs/phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n).
 
 ## Build From Source
 
@@ -119,7 +122,7 @@ cmake --build --preset linux-release-clang -j
 | `v0.1` | P0    | Foundation — repo skeleton, CI, plugin ABI, passthrough node | released    |
 | `v0.2` | P1    | Walking skeleton — DNG → SDR HEIF on Linux through 5 nodes  | released; RawTherapee refs + full Vulkan proof slipped |
 | `v0.3` | P2    | Classic + HDR — all 18 classic nodes; HDR HEIF (PQ); OCIO Looks; Quad Bayer remosaic | released; real QBC/RT refs + OCIO Vulkan/Tracy capture slipped |
-| `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | in progress; retires OCIO Vulkan + 7 RT 5.10 goldens; real QBC + Halide Vulkan AOT carry to v1.1 |
+| `v0.4` | P3    | Editor + IQA — React Flow editor, offline JSON mode, 50-image corpus, microbench harness | in progress; retires OCIO Vulkan; RT 5.10 golden replacement, real QBC, and Halide Vulkan AOT carry |
 | `v0.5` | P4    | AI nodes — NAFNet-w32, AdaInt 3D-LUT, HDR+ Wronski burst    | planned     |
 | `v1.0` | P5    | Polish — docs, sample plugin, golden refresh, RC bake, GA   | planned     |
 | `v1.1` | —     | Android + HLG / UltraHDR / Apple Adaptive HDR + WSS / LNA / WebRTC / TURN editor connectivity | outlook |

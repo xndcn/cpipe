@@ -989,6 +989,14 @@ If commands 1–12 all return zero exit status and latest `main` CI is green on 
 
 **Resolved after P2.** P2-PD-74 is Resolved-by-P3-T1: Phase 3 T1 adds `glslang`, implements `OcioVulkanProcessor::compute_pass` on cpipe-owned Vulkan command buffers, and routes `com.cpipe.color.scene_linear_to_display` through that path when Vulkan images are supplied and `CPIPE_VULKAN_AVAILABLE=ON`.
 
+**Carried after P2.** P2-PD-61, P2-PD-62, P2-PD-66, and P2-PD-67 remain
+fixture-authoring carries after P3 T2 per
+[`P3-PD-55`](phase-03-editor-iqa.md#4-phase-decisions-p3-pd-n). T2 added the
+RawTherapee 5.10 wrapper, but the current demosaic/WB/ColorMatrix/USM goldens
+are tiny synthetic node-stage EXRs; RawTherapee renders whole DNG files and
+cannot regenerate equivalent isolated node outputs without node-matched DNG/pp3
+fixtures.
+
 ---
 
 ## 13. Dependencies (vcpkg.json + FetchContent additions)

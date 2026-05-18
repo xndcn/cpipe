@@ -11,12 +11,12 @@ This document is the detailed plan for Phase 3 of the cpipe v1.0 roadmap. P3's j
 - A **microbench harness** (`bench/`, Google Benchmark + nanobench) recording per-node + planner + encoder latency to `bench/results/<commit>.json`.
 - A **dashboard** (`apps/dashboard/`, Vega-Lite) showing 90-day trend charts for IQA + perf, deployed alongside the editor on `gh-pages`.
 
-The phase also **retires two carried slips**:
+Phase 3.A addresses two carried slips before the editor-server work starts:
 
 - **OCIO Vulkan execution** ([P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)). T1 adds `glslang` via vcpkg, implements `OcioVulkanProcessor::compute_pass` on top of the P2 `VulkanCommandBuffer`, and routes `color.scene_linear_to_display` through the Vulkan compute path on the dev RTX machine.
-- **RawTherapee 5.10 reference goldens** ([P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) + the algorithm-matched subset of [P2-PD-61 .. P2-PD-67](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)). T2 lands `tools/golden/rt_render.sh` + an `$RAWTHERAPEE_APPIMAGE` detection path and regenerates seven RT-referenced EXR goldens (`demosaic.bilinear / rcd / amaze`, `wb.dual_illuminant`, `wb.greyworld_auto`, `colormatrix.dng_to_working`, `sharpen.edge_aware_usm`).
+- **RawTherapee 5.10 tooling for future reference goldens** ([P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) + the algorithm-matched subset of [P2-PD-61 .. P2-PD-67](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)). T2 lands `tools/golden/rt_render.sh` + an `$RAWTHERAPEE_APPIMAGE` detection path, but P3-PD-55 carries replacement of the seven tiny node-stage EXR goldens until node-matched DNG/pp3 fixtures exist.
 
-What **stays carried** to v1.1: real Pixel / alt-phone QBC DNG corpus ([P2-PD-37 / P2-PD-76](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)); direct Halide Vulkan AOT command-buffer handoff ([P2-PD-59](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)); binary Tracy capture in CI ([P2-PD-42 / P2-PD-76](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) — local-only evidence). P3 explicitly does **not** ship Noise XK pairing, TLS / WSS / LNA / WebRTC / TURN, HDR-aware browser preview, subgraph collapse, AI nodes (P4), or any Android / macOS surface (v1.1 / v1.2).
+What **stays carried** to v1.1: real Pixel / alt-phone QBC DNG corpus ([P2-PD-37 / P2-PD-76](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)); direct Halide Vulkan AOT command-buffer handoff ([P2-PD-59](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)); binary Tracy capture in CI ([P2-PD-42 / P2-PD-76](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) — local-only evidence). P3-PD-55 separately carries RT-derived replacement of the seven tiny node-stage goldens until node-matched DNG/pp3 fixtures exist. P3 explicitly does **not** ship Noise XK pairing, TLS / WSS / LNA / WebRTC / TURN, HDR-aware browser preview, subgraph collapse, AI nodes (P4), or any Android / macOS surface (v1.1 / v1.2).
 
 When P3 is done, the project is tagged `v0.4` and Phase 4 begins.
 
@@ -132,6 +132,8 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-52 | glslang sanitizer posture | The vcpkg glslang static library is built without the RTTI symbols needed by UBSAN's `vptr` instrumentation. T1 disables only `-fsanitize=vptr` for `OcioVulkanProcessor.cpp`; ASAN and the rest of UBSAN remain enabled. |
 | P3-PD-53 | OCIO LUT upload scope | The v0.2 `scene_linear_rec2020 -> output_{srgb,pq_rec2020}` processors used by `color.scene_linear_to_display` emit no OCIO textures or dynamic uniforms. T1 therefore implements and gates the texture-free Vulkan path needed to retire [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n); generic OCIO LUT/uniform upload remains deferred until a runtime path needs it. |
 | P3-PD-54 | T1 Vulkan correctness device | The current workspace exposes `Intel(R) UHD Graphics 770 (ADL-S GT1)` as the available Vulkan 1.3 device, not an RTX GPU. T1 correctness evidence uses that device; RTX remains the intended performance/profiling host for later P3 microbench evidence. |
+| P3-PD-55 | RT 5.10 node golden carry | T2 adds the RT 5.10 render wrapper and profile placeholders, but does not replace the seven node goldens with RT-derived EXRs. This supersedes the checked-in-golden replacement portion of P3-PD-45. Root cause: the checked-in node fixtures are tiny synthetic stage EXRs (4x4 / 8x8 / 16x16), while RawTherapee renders whole DNG files and does not expose those isolated intermediate node stages. Until node-matched DNG/pp3 fixtures exist, `demosaic.{bilinear,rcd,amaze}`, `wb.{dual_illuminant,greyworld_auto}`, `colormatrix.dng_to_working`, and `sharpen.edge_aware_usm` remain deterministic cpipe self-references. |
+| P3-PD-56 | RT TIFF-to-EXR conversion | RawTherapee 5.10 CLI writes TIFF/PNG/JPEG, not EXR. `tools/golden/rt_render.sh` renders a 32-bit TIFF and converts it to EXR with `oiiotool` when available; on this dev host it falls back to ImageMagick `convert` with EXR write support. This is dev-only tooling; CI still does not install RT or the converter. |
 
 ---
 
@@ -143,7 +145,7 @@ The PD table locks specific values; this short narrative explains the *why* for 
 
 - **OCIO Vulkan retires before the editor server.** `color.scene_linear_to_display` is the hottest node in any editor-driven re-render loop. Running it on the CPU OCIO processor (the P2 carry) would peg the editor's preview latency budget. Landing the Vulkan compute path in T1 keeps the entire preview loop GPU-resident on the dev RTX machine.
 
-- **RT 5.10 retire is selective, not blanket.** Only the 7 algorithm-matched nodes get RT regeneration. `tone.filmic_rgb`, `tone.mertens_local`, `denoise.bm3d`, `denoise.wavelet_bayes_shrink`, the OpcodeList parsers, `color.3d_lut`, `lens.shading_gainmap`, `color.scene_linear_to_display`, `fusion.hdr_plus_derivative`, and `demosaic.quad_bayer_remosaic` keep their cpipe self-references because RT does not render them comparably. Each `reference.md` records the source ([P3-PD-45](#4-phase-decisions-p3-pd-n)).
+- **RT 5.10 tooling lands before fixture replacement.** The original P3-PD-45 target was to regenerate 7 algorithm-matched node goldens with RawTherapee. P3-PD-55 narrows T2 after implementation evidence: the current goldens are tiny stage EXRs, not DNG renders, so T2 lands the RT wrapper and records the carry in each `reference.md` while keeping the deterministic self-references.
 
 - **Schema sync is fetch-only.** Bundling `schemas/node-v0.2.json` + `schemas/pipeline-v0.4.json` into the editor at build time would force a coordinated release every time the runtime ships a new node manifest field. Fetch-on-connect + 7-day `localStorage` TTL means the editor automatically picks up new node manifests when the user opens it against a newer runtime. The trade-off — first-run requires a runtime connection — is acceptable because the runtime is the source of truth, and the offline mode still works after the first connect (cache survives).
 
@@ -237,14 +239,14 @@ cpipe/
 │   ├── iqa/                        # P3-PD-38 NEW (C++ integration via cpipe iqa subprocess)
 │   │   ├── CMakeLists.txt
 │   │   └── test_iqa_corpus_run.cpp
-│   ├── golden/                     # 7 RT-regenerated EXR pairs per P3-PD-45
-│   │   ├── demosaic.bilinear/{in,out}.exr     (regenerated; reference.md → RT 5.10)
-│   │   ├── demosaic.rcd/{in,out}.exr          (regenerated)
-│   │   ├── demosaic.amaze/{in,out}.exr        (regenerated)
-│   │   ├── wb.dual_illuminant/{in,out}.exr    (regenerated)
-│   │   ├── wb.greyworld_auto/{in,out}.exr     (regenerated)
-│   │   ├── colormatrix.dng_to_working/{in,out}.exr (regenerated)
-│   │   └── sharpen.edge_aware_usm/{in,out}.exr (regenerated)
+│   ├── golden/                     # P3-PD-55 keeps current self-reference EXR pairs
+│   │   ├── demosaic.bilinear/{in,out}.exr     (self-reference; RT carry noted)
+│   │   ├── demosaic.rcd/{in,out}.exr          (self-reference; RT carry noted)
+│   │   ├── demosaic.amaze/{in,out}.exr        (self-reference; RT carry noted)
+│   │   ├── wb.dual_illuminant/{in,out}.exr    (self-reference; RT carry noted)
+│   │   ├── wb.greyworld_auto/{in,out}.exr     (self-reference; RT carry noted)
+│   │   ├── colormatrix.dng_to_working/{in,out}.exr (self-reference; RT carry noted)
+│   │   └── sharpen.edge_aware_usm/{in,out}.exr (self-reference; RT carry noted)
 │   ├── integration/
 │   │   ├── test_full_classic_pipeline_dng_to_heif_sdr.cpp (P2 carry)
 │   │   └── test_full_classic_pipeline_dng_to_heif_hdr.cpp (P2 carry)
@@ -254,7 +256,7 @@ cpipe/
 │       ├── test_ocio_vulkan_processor.cpp # P3-PD-44 NEW
 │       └── test_pipeline_v0_4_loader.cpp  # P3-PD-34 NEW
 ├── tools/
-│   ├── golden/                     # P3-PD-45 NEW
+│   ├── golden/                     # P3-PD-55 RT wrapper + carry docs
 │   │   └── rt_render.sh
 │   └── iqa/                        # P3-PD-17 NEW (Python sidecar)
 │       ├── pyproject.toml
@@ -328,39 +330,39 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 ---
 
-#### T2 — RawTherapee 5.10 tooling + 7-node golden regen (retire P1-PD-69/70 + partial P2-PD-61..67)
+#### T2 — RawTherapee 5.10 tooling + 7-node golden carry (P1-PD-69/70 + partial P2-PD-61..67)
 
-**Description.** Install RawTherapee 5.10 AppImage on the dev host at `$RAWTHERAPEE_APPIMAGE`. Commit `tools/golden/rt_render.sh` that wraps RT's CLI mode (`rawtherapee-cli`) — invokes RT with a `.pp3` profile and emits a 16-bit linear EXR. Regenerate seven RT-referenced goldens (LFS commit + `reference.md` updates): `demosaic.bilinear`, `demosaic.rcd`, `demosaic.amaze`, `wb.dual_illuminant`, `wb.greyworld_auto`, `colormatrix.dng_to_working`, `sharpen.edge_aware_usm`. For each, capture both the synthetic input pair and the RT-rendered output. PSNR ≥ 40 dB gate; if any node fails because of algorithmic divergence, leave the cpipe self-reference in place and record a new `P3-PD-N` carry row.
+**Description.** Install RawTherapee 5.10 AppImage on the dev host at `$RAWTHERAPEE_APPIMAGE`. Commit `tools/golden/rt_render.sh` that wraps RT's CLI mode (`rawtherapee-cli`) — invokes RT with a `.pp3` profile and emits EXR through a TIFF conversion step. The original target was to regenerate seven RT-referenced goldens (`demosaic.bilinear`, `demosaic.rcd`, `demosaic.amaze`, `wb.dual_illuminant`, `wb.greyworld_auto`, `colormatrix.dng_to_working`, `sharpen.edge_aware_usm`); P3-PD-55 records why those replacements remain carried and why the existing deterministic self-reference pairs stay checked in.
 
 **Acceptance criteria:**
 
-- [ ] `tools/golden/rt_render.sh <input.dng> <profile.pp3> <output.exr>` succeeds on the dev host.
-- [ ] All 7 regenerated EXR pairs pass PSNR ≥ 40 dB against the cpipe implementation under `ctest -L golden`.
-- [ ] Each `tests/golden/<node>/reference.md` updated: now references RT 5.10 AppImage SHA-256 + the `.pp3` profile name.
-- [ ] [P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) footer + the 4 partial P2-PD rows ([P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)) marked Resolved-by-P3-T2 (or carried with rationale if a node fails the 40 dB gate).
-- [ ] CI does not install RT; the regenerated LFS goldens are checked in.
+- [x] `tools/golden/rt_render.sh <input.dng> <profile.pp3> <output.exr>` succeeds on the dev host.
+- [x] All 7 existing self-reference EXR pairs pass PSNR ≥ 40 dB against the cpipe implementation under `ctest -L golden`; RT replacement is carried by P3-PD-55.
+- [x] Each `tests/golden/<node>/reference.md` updated: records deterministic self-reference provenance plus the P3-PD-55 RT carry.
+- [x] [P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) footer + the 4 partial P2-PD rows ([P2-PD-61 / P2-PD-62 / P2-PD-66 / P2-PD-67](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)) marked carried with rationale.
+- [x] CI does not install RT; no regenerated LFS goldens are checked in per P3-PD-55.
 
 **Verification:**
 
-- [ ] `ctest -L golden` PSNR ≥ 40 dB for the 7 nodes.
-- [ ] `tools/golden/rt_render.sh --self-test` returns 0 on the dev host.
+- [x] `ctest -L golden` PSNR ≥ 40 dB for the 7 nodes.
+- [x] `tools/golden/rt_render.sh --self-test` returns 0 on the dev host.
 
 **Dependencies:** T0.
 
 **Files likely touched:** `tools/golden/rt_render.sh`; `tools/golden/profiles/*.pp3`; 7 × `tests/golden/<node>/{in,out}.exr` (LFS); 7 × `tests/golden/<node>/reference.md`; `docs/phase-01-walking-skeleton.md` (PD footer); `docs/phase-02-classic-nodes-hdr.md` (PD footers).
 
-**Estimated scope:** L (1 tooling script + 14 LFS goldens regenerated + 7 reference.md + 2 phase-doc PD-row updates).
+**Estimated scope:** L (1 tooling script + RT profile placeholders + 7 reference.md + phase-doc carry updates).
 
 ---
 
 ### Checkpoint A — after T0–T2
 
-- [ ] All three tasks merged; `main` is green.
-- [ ] pipeline-v0.4 + editor-protocol-v0.1 schemas land; example pipelines migrated.
-- [ ] `cpipe serve / info / iqa / bench --help` print usage; bodies return `CPIPE_NOT_IMPLEMENTED`.
-- [ ] OCIO Vulkan processor runs `color.scene_linear_to_display` end-to-end on the dev RTX; [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) Resolved.
-- [ ] 7 RT-referenced goldens regenerated; PSNR ≥ 40 dB gate green; [P1-PD-69 / P1-PD-70](phase-01-walking-skeleton.md#4-phase-decisions-pd-n) Resolved.
-- [ ] No regression on P1 / P2 unit and integration tests.
+- [x] All three tasks merged; `main` is green.
+- [x] pipeline-v0.4 + editor-protocol-v0.1 schemas land; example pipelines migrated.
+- [x] `cpipe serve / info / iqa / bench --help` print usage; bodies return `CPIPE_NOT_IMPLEMENTED`.
+- [x] OCIO Vulkan processor runs `color.scene_linear_to_display` end-to-end on the available Vulkan host; [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) Resolved. RTX remains the later profiling host per P3-PD-54.
+- [x] RT 5.10 wrapper added and self-tested; 7 existing self-reference goldens still pass PSNR ≥ 40 dB; RT-derived replacement is carried by P3-PD-55.
+- [x] No regression on P1 / P2 unit and integration tests.
 
 ---
 
@@ -996,7 +998,7 @@ The 8 nodes:
 | `frontend` | 82, 83 | Vitest in npm workspaces |
 | `vulkan` | 72 | conditional on `CPIPE_VULKAN_AVAILABLE` |
 
-P2's tests 30–64 continue to pass; the per-node golden harness (P2 test 64) extends to cover the 7 RT-regenerated nodes.
+P2's tests 30–64 continue to pass; the per-node golden harness (P2 test 64) continues to gate the 7 RT-carry nodes as deterministic self-references per P3-PD-55.
 
 ---
 
@@ -1041,7 +1043,7 @@ cmake --build --preset linux-release-clang -j
 # 5. Run all tests under Release
 ctest --preset linux-release-clang --output-on-failure
 
-# 6. Per-node golden (18 P2 nodes + 7 RT-regenerated, PSNR ≥ 40 dB)
+# 6. Per-node golden (18 P2 nodes + 7 RT-carry self-references, PSNR ≥ 40 dB)
 ctest --preset linux-release-clang -L golden --output-on-failure
 
 # 7. IQA canary (5-image subset against bench/results/baseline.json)

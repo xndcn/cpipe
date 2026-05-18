@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: Apache-2.0
+# Minimal RawTherapee 5.10 profile used by tools/golden/rt_render.sh smoke tests.
+
+[Exposure]
+Auto=false
+Compensation=0
+
+[Color Management]
+OutputProfile=RTv2_sRGB
+
+[RAW]
+Method=amaze
