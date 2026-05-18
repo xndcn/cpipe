@@ -137,6 +137,7 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-57 | REST envelope exceptions | T4 preserves T3's health shape (`GET /api/health` returns top-level `{ok, abi}`) and serves `/api/schemas/{node,pipeline}` as raw JSON Schema documents for direct Ajv consumption. The registry, active-pipeline, params, run, and run-status control routes use the P3-PD-35 `{ok,data}` / `{ok,error}` REST envelope. |
 | P3-PD-58 | T5 WS manual verification | The packaged `/usr/bin/wscat` needs `NODE_PATH=/usr/share/nodejs` and cannot send binary payloads; `npx --yes wscat` is used only for the handshake smoke. The hand-crafted binary subscribe/ack verification is covered by `test_editor_server_ws` and a raw Node/ws client that sends the P3-PD-9 13-byte frame directly. |
 | P3-PD-59 | T6 thumbnail source | T6 ships the server-session thumbnail subscription mechanics against the current `POST /api/pipelines/active/run` stub: subscribe/unsubscribe state, libwebp encode, same-frame fan-out, per-port fps cap, INFO cap log, and `EditorServer::push_thumbnail` trace span. The emitted WebP is a deterministic placeholder until a later server task binds active runs to a concrete `Pipeline` + output `IBuffer`; the scheduler tap described in the original slice remains the integration point for that runtime-bound path. |
+| P3-PD-60 | T9 full-classic node count | The checked-in `examples/pipelines/full-classic-pipeline.cpipe.json` at T9 has 15 nodes, 14 edges, and no `ui` coordinates. T9 renders all current nodes with deterministic fallback positions and preserves declared `ui.x` / `ui.y` when present; the earlier 18-node wording was stale and is corrected in-place. |
 
 ---
 
@@ -530,19 +531,19 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 #### T9 — React Flow canvas + custom node component + schema fetch
 
-**Description.** Implement `<FlowCanvas>` wrapping `<ReactFlow>` (research 11 §3.3). Custom `<BaseNode>` renders header (category-color + label + ID-tooltip), thumbnail slot (placeholder for T10), parameter form slot (placeholder), and typed port handles. Zustand `pipelineSlice` holds nodes / edges / selectedId / viewport. `schemaSlice` fetches `/api/schemas/{node,pipeline}` on first connect and caches to localStorage with 7-day TTL keyed on `(host, port)`. Ajv compiles the manifest schema at boot; validators are exposed via the store. The editor renders the example 18-node DAG when given a v0.4 pipeline JSON (initially loaded from a hardcoded `examples/pipelines/full-classic-pipeline.cpipe.json` fetch).
+**Description.** Implement `<FlowCanvas>` wrapping `<ReactFlow>` (research 11 §3.3). Custom `<BaseNode>` renders header (category-color + label + ID-tooltip), thumbnail slot (placeholder for T10), parameter form slot (placeholder), and typed port handles. Zustand `pipelineSlice` holds nodes / edges / selectedId / viewport. `schemaSlice` fetches `/api/schemas/{node,pipeline}` on first connect and caches to localStorage with 7-day TTL keyed on `(host, port)`. Ajv compiles the manifest schema at boot; validators are exposed via the store. The editor renders the current 15-node example DAG when given a v0.4 pipeline JSON (initially loaded from a hardcoded `examples/pipelines/full-classic-pipeline.cpipe.json` fetch), per P3-PD-60.
 
 **Acceptance criteria:**
 
-- [ ] Editor renders all 18 nodes from `full-classic-pipeline.cpipe.json` in their declared `ui.x` / `ui.y` positions; missing `ui` falls back to React Flow's auto-layout.
-- [ ] Custom node component shows category color, label, ID tooltip on hover.
-- [ ] Schema fetch happens on first connect; `localStorage[cpipe.schemas]` populated with a 7-day TTL.
-- [ ] Banner shows when the cached schema is stale and the runtime is unreachable.
+- [x] Editor renders all 15 current nodes from `full-classic-pipeline.cpipe.json`; declared `ui.x` / `ui.y` positions are preserved and missing `ui` uses deterministic React Flow fallback positions (P3-PD-60).
+- [x] Custom node component shows category color, label, ID tooltip on hover.
+- [x] Schema fetch happens on first connect; `localStorage[cpipe.schemas]` populated with a 7-day TTL.
+- [x] Banner shows when the cached schema is stale and the runtime is unreachable.
 
 **Verification:**
 
-- [ ] `cd apps/web && npm run test` green (Vitest unit tests for store + components).
-- [ ] Local: `cpipe serve --pipeline examples/pipelines/full-classic-pipeline.cpipe.json &` + open `http://localhost:5173/` shows the 18-node DAG.
+- [x] `cd apps/web && npm run test` green (Vitest unit tests for store + components).
+- [x] Local: `cpipe serve --pipeline examples/pipelines/full-classic-pipeline.cpipe.json &` + open `http://localhost:5173/` shows the 15-node DAG (P3-PD-60).
 
 **Dependencies:** T8.
 
