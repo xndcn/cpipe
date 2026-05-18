@@ -517,6 +517,7 @@ target_compile_definitions(
     test_install_editor_static
     PRIVATE
         CMAKE_COMMAND="${CMAKE_COMMAND}"
+        CPIPE_BINARY_DIR="${PROJECT_BINARY_DIR}"
         CPIPE_INSTALL_EDITOR_STATIC_SCRIPT="${PROJECT_SOURCE_DIR}/cmake/InstallEditorStatic.cmake"
 )
 cpipe_add_unit_test(test_editor_server_health test_editor_server_health.cpp)

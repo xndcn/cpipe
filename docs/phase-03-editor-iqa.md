@@ -642,12 +642,12 @@ The 9 nodes:
 
 ### Checkpoint C — after T8–T12
 
-- [ ] All five tasks merged; `main` is green.
-- [ ] `apps/web/` builds & installs; editor renders the 18-node DAG; schema fetch + cache works.
-- [ ] DoD #1 satisfied locally: moving `tone.filmic_rgb.ev` slider produces a thumbnail update.
-- [ ] DoD #2 satisfied locally: offline FSA + fallback round-trip works.
+- [x] All five tasks landed on `main`; PR CI was green on each landed commit.
+- [x] `apps/web/` builds & installs; editor renders the 15-node DAG per P3-PD-60; schema fetch + cache works.
+- [x] DoD #1 satisfied locally: moving `tone.filmic_rgb.ev` slider produces a thumbnail update.
+- [x] DoD #2 satisfied locally: offline FSA + fallback round-trip works.
 - [x] All 9 P3-PD-37 nodes have live params; tests + editor render coverage green.
-- [ ] No regression on P1 / P2 / Phase 3.A / Phase 3.B.
+- [x] No regression on P1 / P2 / Phase 3.A / Phase 3.B.
 
 ---
 

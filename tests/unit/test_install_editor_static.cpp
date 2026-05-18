@@ -41,3 +41,12 @@ TEST_CASE("editor static install script copies stamped dist tree") {
     REQUIRE(std::filesystem::is_regular_file(installed / "app.js"));
     REQUIRE_FALSE(std::filesystem::exists(installed / ".stamp"));
 }
+
+TEST_CASE("configured install command parses editor static install rule") {
+    const auto root = make_temp_dir("configured_editor_install");
+    const auto prefix = root / "prefix";
+
+    const std::string command = std::string{CMAKE_COMMAND} + " --install \"" + CPIPE_BINARY_DIR +
+                                "\" --prefix \"" + prefix.string() + "\"";
+    REQUIRE(std::system(command.c_str()) == 0);
+}

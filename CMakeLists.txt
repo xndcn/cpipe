@@ -38,9 +38,7 @@ if(BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
-set(
-    CPIPE_INSTALL_EDITOR_STATIC_CODE
-    "set(CPIPE_WEB_DIST_DIR [[${CPIPE_WEB_DIST_DIR}]])\n"
-    "include([[${PROJECT_SOURCE_DIR}/cmake/InstallEditorStatic.cmake]])"
+set(CPIPE_INSTALL_EDITOR_STATIC_CODE
+    "set(CPIPE_WEB_DIST_DIR [[${CPIPE_WEB_DIST_DIR}]])\ninclude([[${PROJECT_SOURCE_DIR}/cmake/InstallEditorStatic.cmake]])"
 )
 install(CODE "${CPIPE_INSTALL_EDITOR_STATIC_CODE}")
