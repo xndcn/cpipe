@@ -30,9 +30,12 @@ export interface CpipePipelineEdge {
 }
 
 export interface CpipePipeline {
+  $schema?: string;
+  id?: string;
   version: string;
   nodes: CpipePipelineNode[];
   edges: CpipePipelineEdge[];
+  [key: string]: unknown;
 }
 
 export interface CpipePort {
@@ -67,6 +70,7 @@ export interface PipelineState {
   edges: CpipeFlowEdge[];
   loadPipeline: (pipeline: CpipePipeline) => void;
   nodes: CpipeFlowNode[];
+  pipeline: CpipePipeline | null;
   selectedId: string | null;
   setSelectedId: (selectedId: string | null) => void;
   status: PipelineStatus;
@@ -191,9 +195,10 @@ export const usePipelineStore = create<PipelineState>((set) => ({
   edges: [],
   loadPipeline: (pipeline) => {
     const graph = pipelineToFlow(pipeline);
-    set({ ...graph, status: "ready" });
+    set({ ...graph, pipeline, status: "ready" });
   },
   nodes: [],
+  pipeline: null,
   selectedId: null,
   setSelectedId: (selectedId) => set({ selectedId }),
   status: "idle",
@@ -214,7 +219,24 @@ export const usePipelineStore = create<PipelineState>((set) => ({
               }
             }
           : node
-      )
+      ),
+      pipeline:
+        state.pipeline === null
+          ? null
+          : {
+              ...state.pipeline,
+              nodes: state.pipeline.nodes.map((node) =>
+                node.id === nodeId
+                  ? {
+                      ...node,
+                      params: {
+                        ...(node.params ?? {}),
+                        [key]: value
+                      }
+                    }
+                  : node
+              )
+            }
     })),
   viewport: { x: 0, y: 0, zoom: 1 }
 }));

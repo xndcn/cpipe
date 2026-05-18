@@ -95,7 +95,7 @@ export async function synchronizeSchemas(
     };
     storeCachedSchemas({ entries: { ...cache.entries, [key]: entry } });
     return { entry, status: "ready" };
-  } catch (error) {
+  } catch {
     if (cached !== undefined) {
       return {
         banner:
@@ -105,7 +105,6 @@ export async function synchronizeSchemas(
       };
     }
     return {
-      banner: error instanceof Error ? error.message : "Runtime schema fetch failed",
       status: "error"
     };
   }

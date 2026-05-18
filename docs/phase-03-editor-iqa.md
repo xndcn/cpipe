@@ -138,6 +138,7 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-58 | T5 WS manual verification | The packaged `/usr/bin/wscat` needs `NODE_PATH=/usr/share/nodejs` and cannot send binary payloads; `npx --yes wscat` is used only for the handshake smoke. The hand-crafted binary subscribe/ack verification is covered by `test_editor_server_ws` and a raw Node/ws client that sends the P3-PD-9 13-byte frame directly. |
 | P3-PD-59 | T6 thumbnail source | T6 ships the server-session thumbnail subscription mechanics against the current `POST /api/pipelines/active/run` stub: subscribe/unsubscribe state, libwebp encode, same-frame fan-out, per-port fps cap, INFO cap log, and `EditorServer::push_thumbnail` trace span. The emitted WebP is a deterministic placeholder until a later server task binds active runs to a concrete `Pipeline` + output `IBuffer`; the scheduler tap described in the original slice remains the integration point for that runtime-bound path. |
 | P3-PD-60 | T9 full-classic node count | The checked-in `examples/pipelines/full-classic-pipeline.cpipe.json` at T9 has 15 nodes, 14 edges, and no `ui` coordinates. T9 renders all current nodes with deterministic fallback positions and preserves declared `ui.x` / `ui.y` when present; the earlier 18-node wording was stale and is corrected in-place. |
+| P3-PD-61 | T11 offline schema fallback | T11 follows [P3-PD-13](#4-phase-decisions-p3-pd-n): the editor still does **not** bundle `schemas/node-v0.2.json` or `schemas/pipeline-v0.4.json`. No-runtime first run can open / edit / save `pipeline.cpipe.json` through FSA or fallback file IO, but schema-backed manifest validation waits for a runtime connection or a previously cached schema. The offline banner comes from runtime connection state (`no runtime connected`) rather than a schema-fetch error. |
 
 ---
 
@@ -583,15 +584,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] On Chrome 142+, FSA path: opening + editing + saving a `pipeline.cpipe.json` round-trips without a runtime.
-- [ ] On Firefox 147 / Safari 19, fallback path: opens via `<input type="file">`, saves via Blob URL download.
-- [ ] localStorage maintains last 10 graphs across reloads.
-- [ ] Offline mode banner shows "no runtime connected" without breaking edits.
+- [x] On Chrome 142+, FSA path: opening + editing + saving a `pipeline.cpipe.json` round-trips without a runtime.
+- [x] On Firefox 147 / Safari 19, fallback path: opens via `<input type="file">`, saves via Blob URL download.
+- [x] localStorage maintains last 10 graphs across reloads.
+- [x] Offline mode banner shows "no runtime connected" without breaking edits.
 
 **Verification:**
 
-- [ ] `cd apps/web && npm run test` green (Vitest with FSA mock).
-- [ ] Playwright spec `tests/e2e/offline_round_trip.spec.ts` exercises both code paths (T23 lands the spec; here we verify the mechanism).
+- [x] `cd apps/web && npm run test` green (Vitest with FSA mock).
+- [x] T23 still lands Playwright spec `tests/e2e/offline_round_trip.spec.ts`; here T11 verifies the mechanism with Vitest FSA + fallback mocks.
 
 **Dependencies:** T10.
 
