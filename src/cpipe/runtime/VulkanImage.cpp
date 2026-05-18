@@ -28,8 +28,12 @@ void check_vk(VkResult result, const char* operation) {
             return VK_FORMAT_R8G8B8A8_UNORM;
         case PixelFormat::R16G16B16A16_SFLOAT:
             return VK_FORMAT_R16G16B16A16_SFLOAT;
+        case PixelFormat::R16G16B16A16_UNORM:
+            return VK_FORMAT_R16G16B16A16_UNORM;
         case PixelFormat::R32_SFLOAT:
             return VK_FORMAT_R32_SFLOAT;
+        case PixelFormat::R32G32B32A32_SFLOAT:
+            return VK_FORMAT_R32G32B32A32_SFLOAT;
         default:
             return VK_FORMAT_UNDEFINED;
     }
@@ -206,12 +210,24 @@ void VulkanImage::set_metadata(std::shared_ptr<const cpipe::compute::BufferMetad
     metadata_ = std::move(metadata);
 }
 
+std::shared_ptr<VulkanDevicePlane> VulkanImage::plane() const noexcept {
+    return plane_;
+}
+
 VkImage VulkanImage::vk_image() const noexcept {
     return image_;
 }
 
 VkFormat VulkanImage::vk_format() const noexcept {
     return format_;
+}
+
+void VulkanImage::transition_to_general() {
+    const VkImageLayout old_layout = current_layout_;
+    plane_->submit_immediate([&](VkCommandBuffer command_buffer) {
+        transition_image(command_buffer, image_, old_layout, VK_IMAGE_LAYOUT_GENERAL);
+    });
+    current_layout_ = VK_IMAGE_LAYOUT_GENERAL;
 }
 
 void* VulkanImage::lock_cpu(CpuAccess access) {

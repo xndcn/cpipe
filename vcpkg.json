@@ -22,6 +22,7 @@
       ]
     },
     "libde265",
+    "glslang",
     "vulkan-memory-allocator",
     "vulkan-headers",
     "vulkan-loader",

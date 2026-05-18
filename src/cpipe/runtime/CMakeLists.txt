@@ -4,6 +4,7 @@ find_package(nlohmann_json CONFIG REQUIRED)
 find_package(nlohmann_json_schema_validator CONFIG REQUIRED)
 find_package(libraw CONFIG REQUIRED)
 find_package(OpenColorIO CONFIG REQUIRED)
+find_package(glslang CONFIG REQUIRED)
 find_package(VulkanHeaders CONFIG REQUIRED)
 find_package(VulkanLoader CONFIG REQUIRED)
 find_package(VulkanMemoryAllocator CONFIG REQUIRED)
@@ -35,6 +36,7 @@ add_library(
         ../ingest/dng_opcode/OpcodeListParser.cpp
         ComputeContext.cpp
         BufferHandle.cpp
+        ../color/OcioVulkanProcessor.cpp
         HalideBufferAdapter.cpp
         HalideFilterRegistry.cpp
         HostContext.cpp
@@ -58,6 +60,12 @@ add_library(cpipe::runtime ALIAS cpipe-runtime)
 
 cpipe_target_warning_flags(cpipe-runtime)
 
+set_source_files_properties(
+    ../color/OcioVulkanProcessor.cpp
+    PROPERTIES
+        COMPILE_OPTIONS "-fno-sanitize=vptr"
+)
+
 target_compile_definitions(
     cpipe-runtime
     PRIVATE
@@ -78,6 +86,12 @@ target_link_libraries(
         OpenColorIO::OpenColorIO
         Taskflow::Taskflow
         Vulkan::Loader
+        glslang::GenericCodeGen
+        glslang::MachineIndependent
+        glslang::OSDependent
+        glslang::SPIRV
+        glslang::glslang
+        glslang::glslang-default-resource-limits
         yaml-cpp::yaml-cpp
         spdlog::spdlog
 )

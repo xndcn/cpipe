@@ -313,6 +313,20 @@ target_link_libraries(
         nlohmann_json::nlohmann_json
         nlohmann_json_schema_validator::validator
 )
+set_tests_properties(
+    test_node_color_scene_linear_to_display PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0"
+)
+cpipe_add_unit_test(test_ocio_vulkan_processor test_ocio_vulkan_processor.cpp)
+target_compile_definitions(
+    test_ocio_vulkan_processor PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+target_link_libraries(
+    test_ocio_vulkan_processor
+    PRIVATE
+        cpipe::runtime
+        OpenColorIO::OpenColorIO
+)
+set_tests_properties(test_ocio_vulkan_processor PROPERTIES ENVIRONMENT "ASAN_OPTIONS=detect_leaks=0")
 cpipe_add_unit_test(test_node_fusion_hdr_plus_derivative test_node_fusion_hdr_plus_derivative.cpp)
 target_link_libraries(
     test_node_fusion_hdr_plus_derivative

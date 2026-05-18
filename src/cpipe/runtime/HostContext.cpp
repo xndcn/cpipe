@@ -6,16 +6,20 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <cpipe/color/OcioVulkanProcessor.hpp>
 #include <cpipe/core/PixelFormat.hpp>
 #include <cpipe/runtime/BufferHandle.hpp>
 #include <cpipe/runtime/ComputeContext.hpp>
 #include <cpipe/runtime/HostContext.hpp>
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/ParamHandle.hpp>
+#include <cpipe/runtime/VulkanImage.hpp>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <span>
 #include <string_view>
 #include <utility>
@@ -25,6 +29,10 @@ namespace OCIO = OCIO_NAMESPACE;
 
 struct cpipe_ocio_processor_s {
     OCIO::ConstCPUProcessorRcPtr cpu_processor;
+    std::unique_ptr<cpipe::color::OcioVulkanProcessor> vulkan_processor;
+    std::string config_path;
+    std::string src_cs;
+    std::string dst_cs;
 };
 
 namespace {
@@ -88,6 +96,92 @@ std::uint16_t float_to_unorm10_top_aligned(float value) {
     const auto quantized =
         static_cast<std::uint16_t>(std::lround(std::clamp(value, 0.0F, 1.0F) * 1023.0F));
     return static_cast<std::uint16_t>(quantized << 6U);
+}
+
+bool vulkan_ocio_enabled() noexcept {
+    const auto* enabled = std::getenv("CPIPE_VULKAN_AVAILABLE");
+    return enabled != nullptr && std::string_view{enabled} == "ON";
+}
+
+std::optional<int> try_submit_vulkan_ocio(cpipe_ocio_processor_t* processor,
+                                          const std::shared_ptr<cpipe::compute::IBuffer>& input,
+                                          const std::shared_ptr<cpipe::compute::IBuffer>& output) {
+    if (!vulkan_ocio_enabled() || processor->vulkan_processor == nullptr) {
+        return std::nullopt;
+    }
+    auto vulkan_input = std::dynamic_pointer_cast<cpipe::runtime::VulkanImage>(input);
+    auto vulkan_output = std::dynamic_pointer_cast<cpipe::runtime::VulkanImage>(output);
+    if (vulkan_input == nullptr || vulkan_output == nullptr) {
+        return std::nullopt;
+    }
+    return processor->vulkan_processor->compute_pass(vulkan_input->plane(), *vulkan_input,
+                                                     *vulkan_output);
+}
+
+int validate_ocio_layouts(const cpipe::compute::BufferLayout& layout,
+                          const cpipe::compute::BufferLayout& output_layout) {
+    if (layout.kind != cpipe::compute::BufferKind::Image2D || layout.ndim != 2 ||
+        output_layout.kind != cpipe::compute::BufferKind::Image2D || output_layout.ndim != 2 ||
+        output_layout.dims[0] != layout.dims[0] || output_layout.dims[1] != layout.dims[1]) {
+        return CPIPE_BAD_INDEX;
+    }
+    if (layout.format != cpipe::compute::PixelFormat::R32G32B32A32_SFLOAT &&
+        layout.format != cpipe::compute::PixelFormat::R16G16B16A16_SFLOAT) {
+        return CPIPE_BAD_PRECISION;
+    }
+    return CPIPE_OK;
+}
+
+std::vector<float> read_ocio_input(cpipe::compute::IBuffer& input,
+                                   const cpipe::compute::BufferLayout& layout) {
+    const auto pixel_count =
+        static_cast<std::size_t>(layout.dims[0]) * static_cast<std::size_t>(layout.dims[1]);
+    std::vector<float> rgba(pixel_count * 4U);
+    if (layout.format == cpipe::compute::PixelFormat::R32G32B32A32_SFLOAT) {
+        const auto* in =
+            static_cast<const float*>(input.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Read));
+        std::copy_n(in, rgba.size(), rgba.data());
+    } else {
+        const auto* in = static_cast<const std::uint16_t*>(
+            input.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Read));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            rgba[i] = half_to_float(in[i]);
+        }
+    }
+    input.unlock_cpu();
+    return rgba;
+}
+
+int write_ocio_output(cpipe::compute::IBuffer& output,
+                      const cpipe::compute::BufferLayout& output_layout,
+                      std::span<const float> rgba) {
+    if (output_layout.format == cpipe::compute::PixelFormat::R32G32B32A32_SFLOAT) {
+        auto* out = static_cast<float*>(output.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Write));
+        std::copy(rgba.begin(), rgba.end(), out);
+    } else if (output_layout.format == cpipe::compute::PixelFormat::R16G16B16A16_SFLOAT) {
+        auto* out =
+            static_cast<std::uint16_t*>(output.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Write));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_half(rgba[i]);
+        }
+    } else if (output_layout.format == cpipe::compute::PixelFormat::R8G8B8A8_UNORM) {
+        auto* out =
+            static_cast<std::uint8_t*>(output.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Write));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_unorm8(rgba[i]);
+        }
+    } else if (output_layout.format == cpipe::compute::PixelFormat::R16G16B16A16_UNORM) {
+        auto* out =
+            static_cast<std::uint16_t*>(output.lock_cpu(cpipe::compute::IBuffer::CpuAccess::Write));
+        for (std::size_t i = 0; i < rgba.size(); ++i) {
+            out[i] = float_to_unorm10_top_aligned(rgba[i]);
+        }
+    } else {
+        return CPIPE_BAD_PRECISION;
+    }
+    output.unlock_cpu();
+    output.flush_cpu_writes();
+    return CPIPE_OK;
 }
 
 }  // namespace
@@ -871,66 +965,21 @@ int HostContext::submit_ocio_processor(cpipe_compute_t*, cpipe_ocio_processor_t*
     if (input == nullptr || output == nullptr) {
         return CPIPE_BAD_INDEX;
     }
+    if (const auto vulkan_status = try_submit_vulkan_ocio(processor, input, output)) {
+        return *vulkan_status;
+    }
+
     const auto& layout = input->layout();
     const auto& output_layout = output->layout();
-    if (layout.kind != compute::BufferKind::Image2D || layout.ndim != 2 ||
-        output_layout.kind != compute::BufferKind::Image2D || output_layout.ndim != 2 ||
-        output_layout.dims[0] != layout.dims[0] || output_layout.dims[1] != layout.dims[1]) {
-        return CPIPE_BAD_INDEX;
-    }
-    if (layout.format != compute::PixelFormat::R32G32B32A32_SFLOAT &&
-        layout.format != compute::PixelFormat::R16G16B16A16_SFLOAT) {
-        return CPIPE_BAD_PRECISION;
+    if (const auto status = validate_ocio_layouts(layout, output_layout); status != CPIPE_OK) {
+        return status;
     }
 
-    const auto pixel_count =
-        static_cast<std::size_t>(layout.dims[0]) * static_cast<std::size_t>(layout.dims[1]);
-    std::vector<float> rgba(pixel_count * 4U);
-    if (layout.format == compute::PixelFormat::R32G32B32A32_SFLOAT) {
-        const auto* in =
-            static_cast<const float*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
-        std::copy_n(in, rgba.size(), rgba.data());
-        input->unlock_cpu();
-    } else {
-        const auto* in =
-            static_cast<const std::uint16_t*>(input->lock_cpu(compute::IBuffer::CpuAccess::Read));
-        for (std::size_t i = 0; i < rgba.size(); ++i) {
-            rgba[i] = half_to_float(in[i]);
-        }
-        input->unlock_cpu();
-    }
-
+    auto rgba = read_ocio_input(*input, layout);
     OCIO::PackedImageDesc desc{rgba.data(), static_cast<long>(layout.dims[0]),
                                static_cast<long>(layout.dims[1]), 4};
     processor->cpu_processor->apply(desc);
-
-    if (output_layout.format == compute::PixelFormat::R32G32B32A32_SFLOAT) {
-        auto* out = static_cast<float*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        std::copy(rgba.begin(), rgba.end(), out);
-    } else if (output_layout.format == compute::PixelFormat::R16G16B16A16_SFLOAT) {
-        auto* out =
-            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        for (std::size_t i = 0; i < rgba.size(); ++i) {
-            out[i] = float_to_half(rgba[i]);
-        }
-    } else if (output_layout.format == compute::PixelFormat::R8G8B8A8_UNORM) {
-        auto* out =
-            static_cast<std::uint8_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        for (std::size_t i = 0; i < rgba.size(); ++i) {
-            out[i] = float_to_unorm8(rgba[i]);
-        }
-    } else if (output_layout.format == compute::PixelFormat::R16G16B16A16_UNORM) {
-        auto* out =
-            static_cast<std::uint16_t*>(output->lock_cpu(compute::IBuffer::CpuAccess::Write));
-        for (std::size_t i = 0; i < rgba.size(); ++i) {
-            out[i] = float_to_unorm10_top_aligned(rgba[i]);
-        }
-    } else {
-        return CPIPE_BAD_PRECISION;
-    }
-    output->unlock_cpu();
-    output->flush_cpu_writes();
-    return CPIPE_OK;
+    return write_ocio_output(*output, output_layout, rgba);
 }
 
 int HostContext::submit_slang(cpipe_compute_t*, const char*, const char*,
@@ -958,10 +1007,30 @@ cpipe_ocio_processor_t* HostContext::get_ocio_processor(cpipe_host_t* self, cons
     try {
         auto* context = reinterpret_cast<HostContext*>(reinterpret_cast<char*>(self) -
                                                        offsetof(HostContext, host_));
+        const std::string config_key{config_path};
+        const std::string src_key{src_cs};
+        const std::string dst_key{dst_cs};
+        const auto existing =
+            std::find_if(context->ocio_processors_.begin(), context->ocio_processors_.end(),
+                         [&](const std::unique_ptr<cpipe_ocio_processor_t>& candidate) {
+                             return candidate->config_path == config_key &&
+                                    candidate->src_cs == src_key && candidate->dst_cs == dst_key;
+                         });
+        if (existing != context->ocio_processors_.end()) {
+            return existing->get();
+        }
+
         const auto config = OCIO::Config::CreateFromFile(config_path);
         const auto processor = config->getProcessor(src_cs, dst_cs)->getDefaultCPUProcessor();
         auto handle = std::make_unique<cpipe_ocio_processor_t>();
         handle->cpu_processor = processor;
+        handle->config_path = config_key;
+        handle->src_cs = src_key;
+        handle->dst_cs = dst_key;
+        if (vulkan_ocio_enabled()) {
+            handle->vulkan_processor = std::make_unique<cpipe::color::OcioVulkanProcessor>(
+                std::filesystem::path{config_key}, src_key, dst_key);
+        }
         auto* out = handle.get();
         context->ocio_processors_.push_back(std::move(handle));
         return out;

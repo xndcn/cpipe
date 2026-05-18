@@ -35,8 +35,10 @@ public:
     [[nodiscard]] std::shared_ptr<const cpipe::compute::BufferMetadata> metadata()
         const noexcept override;
     void set_metadata(std::shared_ptr<const cpipe::compute::BufferMetadata> metadata) override;
+    [[nodiscard]] std::shared_ptr<VulkanDevicePlane> plane() const noexcept;
     [[nodiscard]] VkImage vk_image() const noexcept;
     [[nodiscard]] VkFormat vk_format() const noexcept;
+    void transition_to_general();
 
     void* lock_cpu(CpuAccess access) override;
     void unlock_cpu() override;

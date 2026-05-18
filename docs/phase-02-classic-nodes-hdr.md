@@ -987,6 +987,8 @@ If commands 1–12 all return zero exit status and latest `main` CI is green on 
 
 **What slipped.** Real RT 5.10 full-pipeline references and several per-node external-reference refreshes remain documented fixture-authoring follow-ups (P2-PD-61 through P2-PD-72). The real licensed Pixel / alternate-phone QBC DNG remains unavailable; `tests/corpus/pixel8pro-qbc.dng` is a synthetic 32x32 Sony-pattern stand-in per P2-PD-76. OCIO Vulkan execution and binary Tracy capture remain carried by P2-PD-74 / P2-PD-76; T21 records source-span evidence instead. Direct Halide Vulkan AOT command-buffer handoff remains a P2-PD-59 carry item.
 
+**Resolved after P2.** P2-PD-74 is Resolved-by-P3-T1: Phase 3 T1 adds `glslang`, implements `OcioVulkanProcessor::compute_pass` on cpipe-owned Vulkan command buffers, and routes `com.cpipe.color.scene_linear_to_display` through that path when Vulkan images are supplied and `CPIPE_VULKAN_AVAILABLE=ON`.
+
 ---
 
 ## 13. Dependencies (vcpkg.json + FetchContent additions)

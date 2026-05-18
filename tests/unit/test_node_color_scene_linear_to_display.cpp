@@ -12,7 +12,10 @@
 #include <cpipe/runtime/MetadataHandle.hpp>
 #include <cpipe/runtime/ParamHandle.hpp>
 #include <cpipe/runtime/Registry.hpp>
+#include <cpipe/runtime/VulkanDevicePlane.hpp>
+#include <cpipe/runtime/VulkanImage.hpp>
 #include <cstdint>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <memory>
@@ -53,8 +56,8 @@ std::shared_ptr<BufferMetadata> scene_metadata() {
 }
 
 cpipe_status_t process_display(const cpipe_plugin_desc_t& desc,
-                               const std::shared_ptr<CpuBuffer>& input,
-                               const std::shared_ptr<CpuBuffer>& output, std::string_view target) {
+                               const std::shared_ptr<IBuffer>& input,
+                               const std::shared_ptr<IBuffer>& output, std::string_view target) {
     cpipe::runtime::ComputeContext compute;
     cpipe::runtime::HostContext host_context;
     auto params = cpipe::runtime::make_param_handle(nlohmann::json{{"target", target}});
@@ -155,6 +158,56 @@ TEST_CASE("color.scene_linear_to_display converts scene-linear Rec2020 to sRGB R
     auto output = std::make_shared<CpuBuffer>(
         rgba_layout(PixelFormat::R8G8B8A8_UNORM, 2, 1),
         BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite);
+
+    REQUIRE(process_display(*desc, input, output, "sRGB") == CPIPE_OK);
+
+    const auto* out = static_cast<const std::uint8_t*>(output->lock_cpu(IBuffer::CpuAccess::Read));
+    REQUIRE(std::any_of(out, out + 6, [](std::uint8_t value) { return value > 0; }));
+    REQUIRE(out[3] == 255);
+    REQUIRE(out[7] >= 127);
+    REQUIRE(out[7] <= 128);
+    output->unlock_cpu();
+
+    REQUIRE(output->metadata() != nullptr);
+    REQUIRE(output->metadata()->cs_role == "output_srgb");
+    REQUIRE(output->metadata()->applied_steps.back() == "color.scene_linear_to_display");
+}
+
+TEST_CASE("color.scene_linear_to_display uses OCIO Vulkan when Vulkan images are supplied") {
+    const auto* enabled = std::getenv("CPIPE_VULKAN_AVAILABLE");
+    if (enabled == nullptr || std::string_view{enabled} != "ON") {
+        SUCCEED("CPIPE_VULKAN_AVAILABLE is not ON; skipping scene-linear Vulkan display check");
+        return;
+    }
+
+    cpipe_link_builtin_color_scene_linear_to_display();
+
+    cpipe::runtime::Registry registry;
+    registry.load_builtin_nodes();
+    const auto* desc = registry.find("com.cpipe.color.scene_linear_to_display");
+    REQUIRE(desc != nullptr);
+
+    const auto created = cpipe::runtime::VulkanDevicePlane::create();
+    REQUIRE(created.status == cpipe::compute::StatusCode::Ok);
+    REQUIRE(created.plane != nullptr);
+
+    auto input = std::make_shared<cpipe::runtime::VulkanImage>(
+        created.plane, rgba_layout(PixelFormat::R16G16B16A16_SFLOAT, 2, 1),
+        BufferUsage::Input | BufferUsage::CpuRead | BufferUsage::CpuWrite | BufferUsage::GpuStorage,
+        "scene_linear_rec2020");
+    input->set_metadata(scene_metadata());
+
+    auto* in = static_cast<std::uint16_t*>(input->lock_cpu(IBuffer::CpuAccess::Write));
+    const std::uint16_t values[] = {0x31c7, 0x3266, 0x330a, 0x3c00, 0x3733, 0x34cd, 0x2fb8, 0x3800};
+    std::copy(std::begin(values), std::end(values), in);
+    input->unlock_cpu();
+    input->flush_cpu_writes();
+
+    auto output = std::make_shared<cpipe::runtime::VulkanImage>(
+        created.plane, rgba_layout(PixelFormat::R8G8B8A8_UNORM, 2, 1),
+        BufferUsage::Output | BufferUsage::CpuRead | BufferUsage::CpuWrite |
+            BufferUsage::GpuStorage,
+        "output_srgb");
 
     REQUIRE(process_display(*desc, input, output, "sRGB") == CPIPE_OK);
 

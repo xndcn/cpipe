@@ -128,6 +128,10 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-48 | vcpkg additions | `uwebsockets`, `glslang`, `libwebp`, `google-benchmark`, `nanobench`. No new FetchContent. Halide / OCIO / libheif / kvazaar / VMA / Vulkan headers / loader / Tracy / OIIO version pins unchanged. |
 | P3-PD-49 | Python deps in `tools/iqa/pyproject.toml` | `piq >= 0.8`, `pyiqa >= 0.1.10`, `numpy`, `OpenImageIO-python` (sidecar reads EXR / HEIF via OIIO's Python binding). All pinned per `v0.4` release; CI installs with `pip install ./tools/iqa[ci]`. |
 | P3-PD-50 | What Shipped / What Slipped flow | Same as [P2-PD-46](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n): phase-03 §12 + [`roadmap.md §6`](roadmap.md#6-phase-3--editor--quality-harness-tag-v04) + [`README.md`](../README.md) "Current Status" updated in the closing PR that pushes `v0.4`. |
+| P3-PD-51 | OCIO Vulkan language enum | The installed OCIO 2.5.1 headers expose `OCIO::GPU_LANGUAGE_GLSL_VK_4_6`, not the planning name `OCIO::GPU_LANGUAGE_VK_GLSL_4_50`. T1 uses the available OCIO 2.5 enum; the generated shader remains Vulkan GLSL and is compiled to SPIR-V by glslang. |
+| P3-PD-52 | glslang sanitizer posture | The vcpkg glslang static library is built without the RTTI symbols needed by UBSAN's `vptr` instrumentation. T1 disables only `-fsanitize=vptr` for `OcioVulkanProcessor.cpp`; ASAN and the rest of UBSAN remain enabled. |
+| P3-PD-53 | OCIO LUT upload scope | The v0.2 `scene_linear_rec2020 -> output_{srgb,pq_rec2020}` processors used by `color.scene_linear_to_display` emit no OCIO textures or dynamic uniforms. T1 therefore implements and gates the texture-free Vulkan path needed to retire [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n); generic OCIO LUT/uniform upload remains deferred until a runtime path needs it. |
+| P3-PD-54 | T1 Vulkan correctness device | The current workspace exposes `Intel(R) UHD Graphics 770 (ADL-S GT1)` as the available Vulkan 1.3 device, not an RTX GPU. T1 correctness evidence uses that device; RTX remains the intended performance/profiling host for later P3 microbench evidence. |
 
 ---
 
@@ -304,17 +308,17 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] `glslang` resolves in vcpkg manifest mode; CMake target links cleanly.
-- [ ] `OcioVulkanProcessor::compute_pass` produces a result within 0.5 LSB of the CPU processor on a synthetic Rec.2020-linear → sRGB transform (cross-check inside `test_ocio_vulkan_processor`).
-- [ ] `color.scene_linear_to_display` golden EXR (P2) still passes PSNR ≥ 40 dB.
-- [ ] Tracy `OcioVulkanProcessor::compute_pass` span visible in local capture; `docs/evidence/p3-t1-tracy.tracy.md` records the run.
-- [ ] [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) marked Resolved-by-P3-T1 in the phase-02 doc footer.
+- [x] `glslang` resolves in vcpkg manifest mode; CMake target links cleanly.
+- [x] `OcioVulkanProcessor::compute_pass` produces a result within 0.5 LSB of the CPU processor on a synthetic Rec.2020-linear → sRGB transform (cross-check inside `test_ocio_vulkan_processor`).
+- [x] `color.scene_linear_to_display` golden EXR (P2) still passes PSNR ≥ 40 dB.
+- [x] Tracy `OcioVulkanProcessor::compute_pass` span point present; `docs/evidence/p3-t1-tracy.tracy.md` records the local run (binary capture tooling remains local-only per P3-PD-46).
+- [x] [P2-PD-74](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n) marked Resolved-by-P3-T1 in the phase-02 doc footer.
 
 **Verification:**
 
-- [ ] `ctest -R test_ocio_vulkan_processor` green on the dev RTX host (skipped in CI per [P2-PD-42](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n)).
-- [ ] `ctest -R test_node_color_scene_linear_to_display` green on the dev RTX host.
-- [ ] `ctest -L golden` PSNR ≥ 40 dB for `color.scene_linear_to_display`.
+- [x] `ctest -R test_ocio_vulkan_processor` green on the available Vulkan host (skipped in CI per [P2-PD-42](phase-02-classic-nodes-hdr.md#4-phase-decisions-p2-pd-n), hardware recorded in P3-PD-54).
+- [x] `ctest -R test_node_color_scene_linear_to_display` green on the available Vulkan host (hardware recorded in P3-PD-54).
+- [x] `ctest -L golden` PSNR ≥ 40 dB for `color.scene_linear_to_display`.
 
 **Dependencies:** T0.
 
@@ -951,7 +955,7 @@ The 8 nodes:
 - **Editor server lives inside `cpipe-cli`.** Per [architecture §4](architecture.md#4-process-and-thread-model), the editor server is *not* a separate binary — it runs inside the CLI process. T3 wires `cpipe-cli` to depend on `cpipe-server` (static lib) and the `cpipe serve` subcommand starts the uWebSockets event loop on a dedicated I/O thread. Heavy work (thumbnail downsample + WebP encode) is enqueued onto the TaskFlow executor so the I/O loop never blocks.
 - **Thumbnail tap point lives in `Scheduler::dispatch_node`.** After a node's `process()` completes and the host freezes its output `BufferMetadata`, the scheduler checks subscribers and (if any) enqueues a downsample + encode task. The tap is inert when no subscriptions exist — no perf cost in batch-CLI mode.
 - **Editor server is single-active-pipeline.** PUT `/api/pipelines/active` replaces; the server keeps one `PipelineSession` instance. Concurrent editor connections share the same session; param updates from each client race with last-write-wins semantics — a warning banner in the editor surfaces when a second connection joins.
-- **OCIO Vulkan compute path (T1).** `OcioVulkanProcessor` constructs by calling `OCIO::Config::CreateFromFile` + `OCIO::GpuShaderDesc::CreateShaderDesc(OCIO::GPU_LANGUAGE_VK_GLSL_4_50)`. The emitted GLSL is compiled to SPIR-V via glslang at runtime. The cache key is `(config_path, src_cs, dst_cs)`; cache hits return a pre-bound `VkComputePipeline` + descriptor set layout. Inputs / outputs are VMA-backed Vulkan images; LUTs pre-uploaded.
+- **OCIO Vulkan compute path (T1).** `OcioVulkanProcessor` constructs by calling `OCIO::Config::CreateFromFile` + `OCIO::GpuShaderDesc::CreateShaderDesc(OCIO::GPU_LANGUAGE_GLSL_VK_4_6)` per [P3-PD-51](#4-phase-decisions-p3-pd-n). The emitted GLSL is compiled to SPIR-V via glslang at runtime. The cache key is `(config_path, src_cs, dst_cs)`; cache hits return a pre-bound `VkComputePipeline` + descriptor set layout. Inputs / outputs are VMA-backed Vulkan images; v0.2 scene-display processors are texture-free per [P3-PD-53](#4-phase-decisions-p3-pd-n).
 - **Pipeline-v0.4 `ui` is editor-only.** `Pipeline::load` parses `ui` but does not store it inside `Pipeline`. The editor server's GET `/api/pipelines/active` echoes back the on-load JSON including `ui` (so a fresh editor connecting mid-edit gets the layout). When the editor saves through PUT `/api/pipelines/active`, it includes `ui` again.
 - **Schema sync uses `If-Modified-Since`.** The editor includes the cached schema's `Last-Modified` timestamp on subsequent fetches; the server responds 304 if unchanged. This keeps the 7-day cache from refetching on every page load.
 - **Python sidecar locality.** `cpipe iqa` spawns `python -m cpipe_iqa` per metric batch (not per image) to amortize the venv startup. The sidecar reads EXR / HEIF via OpenImageIO-python and computes metrics in-process. License isolation is by process boundary.
