@@ -122,8 +122,8 @@ std::filesystem::path write_bad_metadata_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_bad_metadata_steps.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
-  "version":"0.3",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.4.json",
+  "version":"0.4",
   "id":"bad-metadata-steps",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R8G8B8A8_UNORM","width":4,"height":4}],
   "nodes":[

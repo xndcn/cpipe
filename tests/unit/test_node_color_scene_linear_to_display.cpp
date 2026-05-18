@@ -91,8 +91,8 @@ cpipe_status_t process_display(const cpipe_plugin_desc_t& desc,
 
 nlohmann::json pipeline_doc(nlohmann::json params) {
     return {
-        {"$schema", "https://schemas.cpipe.dev/pipeline/v0.3.json"},
-        {"version", "0.3"},
+        {"$schema", "https://schemas.cpipe.dev/pipeline/v0.4.json"},
+        {"version", "0.4"},
         {"id", "scene-linear-to-display-schema"},
         {"inputs", nlohmann::json::array({{{"port", "rgb"},
                                            {"kind", "Image2D"},
@@ -125,7 +125,7 @@ TEST_CASE("color.scene_linear_to_display manifest and schema declare target") {
             nlohmann::json::array({"color.scene_linear_to_display"}));
 
     const auto schema_path =
-        std::filesystem::path{CPIPE_SOURCE_DIR} / "schemas" / "pipeline-v0.3.json";
+        std::filesystem::path{CPIPE_SOURCE_DIR} / "schemas" / "pipeline-v0.4.json";
     std::ifstream schema_file{schema_path};
     REQUIRE(schema_file.good());
     nlohmann::json_schema::json_validator validator;

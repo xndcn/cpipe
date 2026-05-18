@@ -278,17 +278,17 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] `cpipe serve|info|iqa|bench --help` print usage; invoking without further args returns `CPIPE_NOT_IMPLEMENTED` (exit code 100 reserved for `not implemented`).
-- [ ] `schemas/pipeline-v0.4.json` validates the three migrated example pipelines.
-- [ ] `schemas/editor-protocol-v0.1.json` validates a handcrafted thumbnail + control frame pair.
-- [ ] `Pipeline::load` accepts v0.4 fixtures; rejects v0.3 unmigrated with the expected error string.
-- [ ] `tools/migrate/v03_to_v04.py` migrates a single fixture in place (`x = y = null` left blank for non-editor fixtures).
+- [x] `cpipe serve|info|iqa|bench --help` print usage; invoking without further args returns `CPIPE_NOT_IMPLEMENTED` (exit code 100 reserved for `not implemented`).
+- [x] `schemas/pipeline-v0.4.json` validates the three migrated example pipelines.
+- [x] `schemas/editor-protocol-v0.1.json` validates a handcrafted thumbnail + control frame pair.
+- [x] `Pipeline::load` accepts v0.4 fixtures; rejects v0.3 unmigrated with the expected error string.
+- [x] `tools/migrate/v03_to_v04.py` migrates a single fixture in place (`x = y = null` left blank for non-editor fixtures).
 
 **Verification:**
 
-- [ ] `ctest -R test_pipeline_v0_4_loader` green.
-- [ ] `ctest -R test_editor_protocol_schema` green.
-- [ ] `ctest --preset linux-debug --output-on-failure` green (no regressions).
+- [x] `ctest -R test_pipeline_v0_4_loader` green.
+- [x] `ctest -R test_editor_protocol_schema` green.
+- [x] `ctest --preset linux-debug --output-on-failure` green (no regressions).
 
 **Dependencies:** None.
 

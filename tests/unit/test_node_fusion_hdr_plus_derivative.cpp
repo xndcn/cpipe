@@ -66,8 +66,8 @@ std::filesystem::path write_fusion_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_hdr_plus_stub_pipeline.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
-  "version":"0.3",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.4.json",
+  "version":"0.4",
   "id":"hdr-plus-stub-pipeline",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R16_UINT","width":4,"height":2}],
   "nodes":[

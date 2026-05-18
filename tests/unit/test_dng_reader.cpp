@@ -46,8 +46,8 @@ std::filesystem::path write_source_binding_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_dng_source_binding.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
-  "version":"0.3",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.4.json",
+  "version":"0.4",
   "id":"dng-source-binding",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R16_UINT","width":4,"height":3}],
   "nodes":[{"id":"copy","type":"com.cpipe.builtin.passthrough","params":{}}],

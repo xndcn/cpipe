@@ -18,6 +18,8 @@ enum class StatusCode : std::uint8_t {
     NeedParam = 6,
     InternalError = 7,
     Unsupported = 8,
+    NeedMetadata = 9,
+    NotImplemented = 100,
 };
 
 [[nodiscard]] constexpr bool is_ok(StatusCode code) noexcept {
@@ -44,6 +46,10 @@ enum class StatusCode : std::uint8_t {
             return "CPIPE_INTERNAL_ERROR";
         case StatusCode::Unsupported:
             return "CPIPE_UNSUPPORTED";
+        case StatusCode::NeedMetadata:
+            return "CPIPE_NEED_METADATA";
+        case StatusCode::NotImplemented:
+            return "CPIPE_NOT_IMPLEMENTED";
     }
     return "CPIPE_UNKNOWN";
 }

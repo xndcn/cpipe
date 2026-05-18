@@ -24,7 +24,8 @@ typedef enum {
     CPIPE_NEED_PARAM = 6,
     CPIPE_INTERNAL_ERROR = 7,
     CPIPE_UNSUPPORTED = 8,
-    CPIPE_NEED_METADATA = 9
+    CPIPE_NEED_METADATA = 9,
+    CPIPE_NOT_IMPLEMENTED = 100
 } cpipe_status_t;
 
 #define CPIPE_ACTION_DESCRIBE "describe"

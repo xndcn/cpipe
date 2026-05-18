@@ -198,8 +198,8 @@ std::size_t node_input_count(const cpipe_plugin_desc_t* desc) {
 
 cpipe_status_t validate_pipeline_schema(const nlohmann::json& document, std::string* error) {
     try {
-        if (document.value("version", "") != "0.3") {
-            set_error(error, "schema version mismatch: expected pipeline version 0.3");
+        if (document.value("version", "") != "0.4") {
+            set_error(error, "schema version mismatch — run tools/migrate/v03_to_v04.py");
             return CPIPE_FAILED;
         }
         nlohmann::json_schema::json_validator validator;

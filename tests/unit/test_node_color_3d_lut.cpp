@@ -176,8 +176,8 @@ cpipe_status_t process_lut(const cpipe_plugin_desc_t& desc,
 
 nlohmann::json pipeline_doc(nlohmann::json params) {
     return {
-        {"$schema", "https://schemas.cpipe.dev/pipeline/v0.3.json"},
-        {"version", "0.3"},
+        {"$schema", "https://schemas.cpipe.dev/pipeline/v0.4.json"},
+        {"version", "0.4"},
         {"id", "color-lut-schema"},
         {"inputs", nlohmann::json::array({{{"port", "raw"},
                                            {"kind", "Image2D"},
@@ -210,7 +210,7 @@ TEST_CASE("color.3d_lut manifest and pipeline schema require lut_path") {
             nlohmann::json::array({"color.3d_lut"}));
 
     const auto schema_path =
-        std::filesystem::path{CPIPE_SOURCE_DIR} / "schemas" / "pipeline-v0.3.json";
+        std::filesystem::path{CPIPE_SOURCE_DIR} / "schemas" / "pipeline-v0.4.json";
     std::ifstream schema_file{schema_path};
     REQUIRE(schema_file.good());
     nlohmann::json_schema::json_validator validator;

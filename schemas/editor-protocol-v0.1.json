@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.cpipe.dev/editor-protocol/v0.1.json",
+  "type": "object",
+  "oneOf": [
+    { "$ref": "#/$defs/restEnvelope" },
+    { "$ref": "#/$defs/websocketFrame" }
+  ],
+  "$defs": {
+    "restEnvelope": {
+      "type": "object",
+      "required": ["ok"],
+      "additionalProperties": false,
+      "properties": {
+        "ok": { "type": "boolean" },
+        "data": true,
+        "error": {
+          "type": "object",
+          "required": ["code", "message"],
+          "additionalProperties": false,
+          "properties": {
+            "code": { "type": "string", "minLength": 1 },
+            "message": { "type": "string", "minLength": 1 }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "ok": { "const": true } }, "required": ["ok"] },
+          "then": { "not": { "required": ["error"] } }
+        },
+        {
+          "if": { "properties": { "ok": { "const": false } }, "required": ["ok"] },
+          "then": { "required": ["error"] }
+        }
+      ]
+    },
+    "websocketFrame": {
+      "type": "object",
+      "required": ["frame_type", "node_id", "timestamp_ms", "payload_length"],
+      "additionalProperties": false,
+      "properties": {
+        "frame_type": {
+          "oneOf": [
+            { "enum": ["thumbnail", "profile", "log", "ack", "control"] },
+            { "enum": [1, 2, 3, 4, 16] }
+          ]
+        },
+        "node_id": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "timestamp_ms": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "payload_length": { "type": "integer", "minimum": 0, "maximum": 4294967295 },
+        "content_type": { "enum": ["application/json", "image/webp"] },
+        "payload": true
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "frame_type": { "enum": ["thumbnail", 1] } } },
+          "then": {
+            "properties": {
+              "content_type": { "const": "image/webp" },
+              "payload": {
+                "type": "object",
+                "required": ["encoding", "bytes"],
+                "additionalProperties": false,
+                "properties": {
+                  "encoding": { "const": "base64" },
+                  "bytes": { "type": "string" }
+                }
+              }
+            },
+            "required": ["content_type", "payload"]
+          }
+        },
+        {
+          "if": { "properties": { "frame_type": { "enum": ["control", 16] } } },
+          "then": {
+            "properties": {
+              "content_type": { "const": "application/json" },
+              "payload": {
+                "type": "object",
+                "required": ["type"],
+                "additionalProperties": true,
+                "properties": {
+                  "type": {
+                    "enum": ["node.subscribe_thumbnail", "node.update_param"]
+                  }
+                }
+              }
+            },
+            "required": ["content_type", "payload"]
+          }
+        }
+      ]
+    }
+  }
+}

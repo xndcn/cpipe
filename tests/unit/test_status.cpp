@@ -10,6 +10,7 @@ TEST_CASE("Status codes stringify") {
     REQUIRE(cpipe::compute::to_string(StatusCode::Ok) == "CPIPE_OK");
     REQUIRE(cpipe::compute::to_string(StatusCode::Failed) == "CPIPE_FAILED");
     REQUIRE(cpipe::compute::to_string(StatusCode::Unsupported) == "CPIPE_UNSUPPORTED");
+    REQUIRE(cpipe::compute::to_string(StatusCode::NotImplemented) == "CPIPE_NOT_IMPLEMENTED");
 }
 
 TEST_CASE("Status ok predicate matches ABI success") {

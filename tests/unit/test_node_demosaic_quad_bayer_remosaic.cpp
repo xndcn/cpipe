@@ -143,8 +143,8 @@ std::filesystem::path write_remosaic_pipeline() {
     const auto path = std::filesystem::temp_directory_path() / "cpipe_quad_remosaic_pipeline.json";
     std::ofstream out{path};
     out << R"({
-  "$schema":"https://schemas.cpipe.dev/pipeline/v0.3.json",
-  "version":"0.3",
+  "$schema":"https://schemas.cpipe.dev/pipeline/v0.4.json",
+  "version":"0.4",
   "id":"quad-remosaic-pipeline",
   "inputs":[{"port":"raw","kind":"Image2D","format":"R16_UINT","width":8,"height":8}],
   "nodes":[

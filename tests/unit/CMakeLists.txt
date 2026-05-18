@@ -381,6 +381,32 @@ target_link_libraries(
 cpipe_add_unit_test(test_pipeline_load test_pipeline_load.cpp)
 target_compile_definitions(test_pipeline_load PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
 target_link_libraries(test_pipeline_load PRIVATE cpipe::runtime cpipe::sdk cpipe::builtin_nodes)
+cpipe_add_unit_test(test_pipeline_v0_4_loader test_pipeline_v0_4_loader.cpp)
+target_compile_definitions(
+    test_pipeline_v0_4_loader PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+target_link_libraries(
+    test_pipeline_v0_4_loader
+    PRIVATE
+        cpipe::runtime
+        cpipe::sdk
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+        nlohmann_json_schema_validator::validator
+)
+cpipe_add_unit_test(test_editor_protocol_schema test_editor_protocol_schema.cpp)
+target_compile_definitions(
+    test_editor_protocol_schema PRIVATE CPIPE_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+)
+target_link_libraries(
+    test_editor_protocol_schema
+    PRIVATE
+        nlohmann_json::nlohmann_json
+        nlohmann_json_schema_validator::validator
+)
+cpipe_add_unit_test(test_cli_p3_scaffolding test_cli_p3_scaffolding.cpp)
+add_dependencies(test_cli_p3_scaffolding cpipe)
+target_compile_definitions(test_cli_p3_scaffolding PRIVATE CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>")
 
 add_halide_generator(cpipe_unit_halide_generators SOURCES noop_halide_generator.cpp)
 cpipe_add_halide_library(
