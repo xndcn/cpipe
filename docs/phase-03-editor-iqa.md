@@ -374,15 +374,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] `cpipe-server` target builds; links cleanly into `cpipe-cli`.
-- [ ] `cpipe serve --port 4747` exits 0 on `Ctrl-C`; `curl http://localhost:4747/api/health` returns 200 with valid JSON.
-- [ ] uWebSockets I/O thread is its own thread; main thread continues to drive `Pipeline::run` per [architecture §4](architecture.md#4-process-and-thread-model).
-- [ ] Tracy `EditorServer::handle_request` span visible (when `CPIPE_ENABLE_TRACY == ON`).
+- [x] `cpipe-server` target builds; links cleanly into `cpipe-cli`.
+- [x] `cpipe serve --port 4747` exits 0 on `Ctrl-C`; `curl http://localhost:4747/api/health` returns 200 with valid JSON.
+- [x] uWebSockets I/O thread is its own thread; main thread continues to drive `Pipeline::run` per [architecture §4](architecture.md#4-process-and-thread-model).
+- [x] Tracy `EditorServer::handle_request` span visible (when `CPIPE_ENABLE_TRACY == ON`).
 
 **Verification:**
 
-- [ ] `ctest -R test_editor_server_health` green.
-- [ ] `cpipe serve --port 4747 &` + `curl localhost:4747/api/health` returns 200 OK.
+- [x] `ctest -R test_editor_server_health` green.
+- [x] `cpipe serve --port 4747 &` + `curl localhost:4747/api/health` returns 200 OK.
 
 **Dependencies:** Checkpoint A.
 

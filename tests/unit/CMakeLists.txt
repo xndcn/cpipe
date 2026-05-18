@@ -421,6 +421,13 @@ target_link_libraries(
 cpipe_add_unit_test(test_cli_p3_scaffolding test_cli_p3_scaffolding.cpp)
 add_dependencies(test_cli_p3_scaffolding cpipe)
 target_compile_definitions(test_cli_p3_scaffolding PRIVATE CPIPE_CLI_PATH="$<TARGET_FILE:cpipe>")
+cpipe_add_unit_test(test_editor_server_health test_editor_server_health.cpp)
+target_link_libraries(
+    test_editor_server_health
+    PRIVATE
+        cpipe::server
+        nlohmann_json::nlohmann_json
+)
 
 add_halide_generator(cpipe_unit_halide_generators SOURCES noop_halide_generator.cpp)
 cpipe_add_halide_library(

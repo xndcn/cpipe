@@ -3,20 +3,30 @@
 
 #include <CLI/CLI.hpp>
 #include <algorithm>
+#include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cpipe/runtime/Pipeline.hpp>
 #include <cpipe/runtime/Registry.hpp>
+#include <cpipe/server/EditorServer.hpp>
+#include <csignal>
 #include <filesystem>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
+#include <thread>
 
 void cpipe_link_all_builtin_nodes();
 
 namespace {
 
 constexpr int kNotImplementedExit = 100;
+std::atomic_bool g_stop_server{false};
+
+void request_server_stop(int /*signal*/) {
+    g_stop_server.store(true);
+}
 
 bool has_dng_extension(const std::filesystem::path& path) {
     auto extension = path.extension().string();
@@ -29,6 +39,49 @@ bool has_dng_extension(const std::filesystem::path& path) {
 int not_implemented(std::string_view command) {
     std::cerr << "cpipe " << command << " is not implemented in Phase 3.A\n";
     return kNotImplementedExit;
+}
+
+std::uint16_t parse_port(const std::string& value, std::uint16_t fallback) {
+    if (value.empty()) {
+        return fallback;
+    }
+    const auto parsed = std::stoul(value);
+    if (parsed == 0 || parsed > 65535U) {
+        throw CLI::ValidationError{"--port must be in 1..65535"};
+    }
+    return static_cast<std::uint16_t>(parsed);
+}
+
+int run_serve_command(const std::string& serve_port, const std::string& serve_bind) {
+    cpipe::server::EditorServerOptions options;
+    try {
+        options.port = parse_port(serve_port, options.port);
+    } catch (const CLI::ValidationError& e) {
+        std::cerr << e.what() << '\n';
+        return static_cast<int>(CPIPE_BAD_INDEX);
+    } catch (const std::exception& e) {
+        std::cerr << "invalid --port: " << e.what() << '\n';
+        return static_cast<int>(CPIPE_BAD_INDEX);
+    }
+    if (!serve_bind.empty()) {
+        options.bind = serve_bind;
+    }
+
+    cpipe::server::EditorServer server;
+    std::string error;
+    const auto status = server.start(options, &error);
+    if (status != CPIPE_OK) {
+        std::cerr << error << '\n';
+        return static_cast<int>(status);
+    }
+
+    std::signal(SIGINT, request_server_stop);
+    std::signal(SIGTERM, request_server_stop);
+    while (!g_stop_server.load() && server.running()) {
+        std::this_thread::sleep_for(std::chrono::milliseconds{50});
+    }
+    server.stop();
+    return 0;
 }
 
 }  // namespace
@@ -83,7 +136,7 @@ int main(int argc, char** argv) {
     CLI11_PARSE(app, argc, argv);
 
     if (*serve) {
-        return not_implemented("serve");
+        return run_serve_command(serve_port, serve_bind);
     }
     if (*info) {
         return not_implemented("info");

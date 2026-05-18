@@ -161,7 +161,8 @@ Halide AOT artifacts are produced by `add_halide_library()` per node and statica
 
 | Component | Choice | Version | License | Why |
 |-----------|--------|---------|---------|-----|
-| HTTP+WebSocket server | **uWebSockets** | v20.62+ | Apache 2.0 | low-overhead, integrates with TaskFlow event loop |
+| HTTP+WebSocket server | **uWebSockets** | 20.76.0 | Apache 2.0 | low-overhead, integrates with TaskFlow event loop |
+| Thumbnail encoder | **libwebp** | 1.6.0 | BSD-3-Clause | WebP preview frames for editor thumbnail subscriptions |
 | Pairing crypto | **libsodium** + **noise-c** | 1.0.20 / latest | ISC / BSD-2 | Noise XK protocol per [Research 11 §6](research/11-pipeline-editor-and-connectivity.md) |
 | TLS — LAN-cert path | OS-supplied (system trust store) | platform | various | [Research 11 §5](research/11-pipeline-editor-and-connectivity.md) |
 | Signalling for WebRTC fallback | Cloudflare Workers (deployed separately) | — | n/a | [Research 11 §5](research/11-pipeline-editor-and-connectivity.md) |

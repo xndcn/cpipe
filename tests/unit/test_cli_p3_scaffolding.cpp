@@ -21,7 +21,8 @@ int run_command(const std::string& args) {
 }  // namespace
 
 TEST_CASE("Phase 3 CLI stubs expose help and return not implemented") {
-    for (const auto* command : {"serve", "info", "iqa", "bench"}) {
+    REQUIRE(run_command("serve --help >/dev/null") == 0);
+    for (const auto* command : {"info", "iqa", "bench"}) {
         REQUIRE(run_command(std::string{command} + " --help >/dev/null") == 0);
         REQUIRE(run_command(std::string{command} + " >/dev/null 2>/dev/null") == 100);
     }

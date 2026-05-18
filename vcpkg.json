@@ -22,7 +22,9 @@
       ]
     },
     "libde265",
+    "libwebp",
     "glslang",
+    "uwebsockets",
     "vulkan-memory-allocator",
     "vulkan-headers",
     "vulkan-loader",
