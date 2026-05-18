@@ -3,15 +3,19 @@
 
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
 #include <catch2/catch_test_macros.hpp>
+#include <chrono>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/server/EditorProtocol.hpp>
 #include <cpipe/server/EditorServer.hpp>
 #include <cstdint>
 #include <nlohmann/json.hpp>
+#include <optional>
+#include <span>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -130,7 +134,14 @@ void send_ws_binary(int fd, const std::vector<std::uint8_t>& payload) {
     REQUIRE(send(fd, frame.data(), frame.size(), 0) == static_cast<ssize_t>(frame.size()));
 }
 
-std::vector<std::uint8_t> recv_ws_binary(int fd) {
+std::optional<std::vector<std::uint8_t>> recv_ws_binary(int fd, std::chrono::milliseconds timeout) {
+    pollfd descriptor{.fd = fd, .events = POLLIN, .revents = 0};
+    const auto ready = poll(&descriptor, 1, static_cast<int>(timeout.count()));
+    if (ready == 0) {
+        return std::nullopt;
+    }
+    REQUIRE(ready == 1);
+
     std::uint8_t header[2]{};
     REQUIRE(recv(fd, header, sizeof(header), MSG_WAITALL) == 2);
     REQUIRE((header[0] & 0x0fU) == 0x02U);
@@ -139,11 +150,36 @@ std::vector<std::uint8_t> recv_ws_binary(int fd) {
         std::uint8_t extended[2]{};
         REQUIRE(recv(fd, extended, sizeof(extended), MSG_WAITALL) == 2);
         length = (static_cast<std::size_t>(extended[0]) << 8U) | extended[1];
+    } else if (length == 127U) {
+        std::uint8_t extended[8]{};
+        REQUIRE(recv(fd, extended, sizeof(extended), MSG_WAITALL) == 8);
+        length = 0;
+        for (const auto byte : extended) {
+            length = (length << 8U) | byte;
+        }
     }
+
     std::vector<std::uint8_t> payload(length);
     REQUIRE(recv(fd, payload.data(), payload.size(), MSG_WAITALL) ==
             static_cast<ssize_t>(payload.size()));
     return payload;
+}
+
+cpipe::server::EditorFrame recv_editor_frame(int fd) {
+    const auto payload = recv_ws_binary(fd, std::chrono::seconds{2});
+    REQUIRE(payload.has_value());
+    const auto frame = cpipe::server::decode_frame(*payload);
+    REQUIRE(frame.has_value());
+    return *frame;
+}
+
+void send_control(int fd, const nlohmann::json& payload) {
+    send_ws_binary(fd, cpipe::server::encode_frame(cpipe::server::EditorFrameType::Control, 0, 0,
+                                                   payload.dump()));
+    const auto ack = recv_editor_frame(fd);
+    REQUIRE(ack.type == cpipe::server::EditorFrameType::Ack);
+    REQUIRE(nlohmann::json::parse(std::string{ack.payload.begin(), ack.payload.end()}).at("ok") ==
+            true);
 }
 
 std::string http_put_pipeline(std::uint16_t port) {
@@ -151,7 +187,7 @@ std::string http_put_pipeline(std::uint16_t port) {
         nlohmann::json{
             {"$schema", "https://schemas.cpipe.dev/pipeline/v0.4.json"},
             {"version", "0.4"},
-            {"id", "ws-smoke"},
+            {"id", "thumbnail-smoke"},
             {"inputs", nlohmann::json::array(
                            {{{"port", "raw"}, {"kind", "Image2D"}, {"format", "R8G8B8A8_UNORM"}}})},
             {"nodes", nlohmann::json::array({{{"id", "tone"},
@@ -186,6 +222,12 @@ std::string http_post_run(std::uint16_t port) {
     return response;
 }
 
+bool is_webp(std::span<const std::uint8_t> bytes) {
+    return bytes.size() >= 12U && bytes[0] == 'R' && bytes[1] == 'I' && bytes[2] == 'F' &&
+           bytes[3] == 'F' && bytes[8] == 'W' && bytes[9] == 'E' && bytes[10] == 'B' &&
+           bytes[11] == 'P';
+}
+
 class RunningServer {
 public:
     RunningServer() {
@@ -197,6 +239,7 @@ public:
         server_.set_registry(&registry_);
         std::string error;
         REQUIRE(server_.start(options, &error) == CPIPE_OK);
+        REQUIRE(http_put_pipeline(port_).starts_with("HTTP/1.1 200 OK"));
     }
 
     ~RunningServer() {
@@ -215,51 +258,62 @@ private:
 
 }  // namespace
 
-TEST_CASE("editor server websocket accepts control frames and emits runtime events") {
+TEST_CASE("thumbnail subscription emits WebP frames and supports unsubscribe") {
     RunningServer server;
-    REQUIRE(http_put_pipeline(server.port()).starts_with("HTTP/1.1 200 OK"));
-
     UniqueFd fd{connect_ws(server.port())};
 
-    const auto subscribe =
-        cpipe::server::encode_frame(cpipe::server::EditorFrameType::Control, 0, 0,
-                                    nlohmann::json{{"type", "node.subscribe_thumbnail"},
-                                                   {"node_id", "tone"},
-                                                   {"port", "rgb"},
-                                                   {"max_size", 256},
-                                                   {"fps", 5}}
-                                        .dump());
-    send_ws_binary(fd.get(), subscribe);
+    send_control(fd.get(), {{"type", "node.subscribe_thumbnail"},
+                            {"node_id", "tone"},
+                            {"port", "rgb"},
+                            {"max_size", 64},
+                            {"fps", 5}});
 
-    const auto ack = cpipe::server::decode_frame(recv_ws_binary(fd.get()));
-    REQUIRE(ack.has_value());
-    REQUIRE(ack->type == cpipe::server::EditorFrameType::Ack);
-    REQUIRE(nlohmann::json::parse(std::string{ack->payload.begin(), ack->payload.end()}).at("ok") ==
-            true);
+    REQUIRE(http_post_run(server.port()).starts_with("HTTP/1.1 200 OK"));
+    const auto thumbnail = recv_editor_frame(fd.get());
+    REQUIRE(thumbnail.type == cpipe::server::EditorFrameType::Thumbnail);
+    REQUIRE(is_webp(thumbnail.payload));
+    (void)recv_editor_frame(fd.get());
+    (void)recv_editor_frame(fd.get());
 
-    const auto response = http_post_run(server.port());
-    REQUIRE(response.starts_with("HTTP/1.1 200 OK"));
+    send_control(fd.get(),
+                 {{"type", "node.unsubscribe_thumbnail"}, {"node_id", "tone"}, {"port", "rgb"}});
+    REQUIRE(http_post_run(server.port()).starts_with("HTTP/1.1 200 OK"));
+    const auto first_after_unsubscribe = recv_editor_frame(fd.get());
+    REQUIRE(first_after_unsubscribe.type != cpipe::server::EditorFrameType::Thumbnail);
+}
 
-    auto profile = cpipe::server::decode_frame(recv_ws_binary(fd.get()));
-    if (profile && profile->type == cpipe::server::EditorFrameType::Thumbnail) {
-        profile = cpipe::server::decode_frame(recv_ws_binary(fd.get()));
+TEST_CASE("thumbnail subscription shares one frame across subscribers and applies cap") {
+    RunningServer server;
+    std::vector<UniqueFd> clients;
+    for (int index = 0; index < 5; ++index) {
+        clients.emplace_back(connect_ws(server.port()));
+        send_control(clients.back().get(), {{"type", "node.subscribe_thumbnail"},
+                                            {"node_id", "tone"},
+                                            {"port", "rgb"},
+                                            {"max_size", 64},
+                                            {"fps", 60}});
     }
-    const auto log = cpipe::server::decode_frame(recv_ws_binary(fd.get()));
-    REQUIRE(profile.has_value());
-    REQUIRE(log.has_value());
-    REQUIRE(profile->type == cpipe::server::EditorFrameType::Profile);
-    REQUIRE(log->type == cpipe::server::EditorFrameType::Log);
 
-    const auto profile_payload =
-        nlohmann::json::parse(std::string{profile->payload.begin(), profile->payload.end()});
-    REQUIRE(profile_payload.at("type") == "pipeline.profile");
-    REQUIRE(profile_payload.at("nodes").at(0).at("node_id") == "tone");
-    REQUIRE(profile_payload.at("nodes").at(0).contains("ms"));
-    REQUIRE(profile_payload.at("nodes").at(0).contains("mem_kb"));
+    REQUIRE(http_post_run(server.port()).starts_with("HTTP/1.1 200 OK"));
+    std::vector<std::uint8_t> first_thumbnail;
+    for (const auto& fd : clients) {
+        const auto frame = recv_editor_frame(fd.get());
+        REQUIRE(frame.type == cpipe::server::EditorFrameType::Thumbnail);
+        REQUIRE(is_webp(frame.payload));
+        if (first_thumbnail.empty()) {
+            first_thumbnail = frame.payload;
+        } else {
+            REQUIRE(frame.payload == first_thumbnail);
+        }
+        (void)recv_editor_frame(fd.get());
+        (void)recv_editor_frame(fd.get());
+    }
 
-    const auto log_payload =
-        nlohmann::json::parse(std::string{log->payload.begin(), log->payload.end()});
-    REQUIRE(log_payload.at("level") == "info");
-    REQUIRE(log_payload.at("message").get<std::string>().find("event=pipeline_run") !=
-            std::string::npos);
+    REQUIRE(http_post_run(server.port()).starts_with("HTTP/1.1 200 OK"));
+    for (const auto& fd : clients) {
+        const auto first = recv_editor_frame(fd.get());
+        const auto second = recv_editor_frame(fd.get());
+        REQUIRE(first.type != cpipe::server::EditorFrameType::Thumbnail);
+        REQUIRE(second.type != cpipe::server::EditorFrameType::Thumbnail);
+    }
 }

@@ -444,6 +444,14 @@ target_link_libraries(
         cpipe::builtin_nodes
         nlohmann_json::nlohmann_json
 )
+cpipe_add_unit_test(test_thumbnail_subscription test_thumbnail_subscription.cpp)
+target_link_libraries(
+    test_thumbnail_subscription
+    PRIVATE
+        cpipe::server
+        cpipe::builtin_nodes
+        nlohmann_json::nlohmann_json
+)
 
 add_halide_generator(cpipe_unit_halide_generators SOURCES noop_halide_generator.cpp)
 cpipe_add_halide_library(

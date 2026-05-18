@@ -1,6 +1,7 @@
 find_package(unofficial-uwebsockets CONFIG REQUIRED)
 find_package(WebP CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 if(CPIPE_ENABLE_TRACY)
     find_package(Tracy CONFIG REQUIRED)
 endif()
@@ -34,6 +35,7 @@ add_library(
     STATIC
         EditorProtocol.cpp
         EditorServer.cpp
+        ThumbnailEncoder.cpp
         "${node_schema_cpp}"
         "${server_pipeline_schema_cpp}"
         stub.cpp
@@ -54,6 +56,7 @@ target_link_libraries(
         cpipe::runtime
     PRIVATE
         nlohmann_json::nlohmann_json
+        spdlog::spdlog
         unofficial::uwebsockets::uwebsockets
         WebP::webp
 )

@@ -47,4 +47,13 @@ TEST_CASE("editor-protocol-v0.1 validates thumbnail and control frames") {
          {"content_type", "application/json"},
          {"payload",
           {{"type", "node.update_param"}, {"node_id", "tone"}, {"key", "ev"}, {"value", 0.5}}}});
+
+    validator.validate(
+        {{"frame_type", "control"},
+         {"node_id", 7},
+         {"timestamp_ms", 131},
+         {"payload_length", 64},
+         {"content_type", "application/json"},
+         {"payload",
+          {{"type", "node.unsubscribe_thumbnail"}, {"node_id", "tone"}, {"port", "rgb"}}}});
 }

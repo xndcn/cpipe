@@ -82,7 +82,11 @@
                 "additionalProperties": true,
                 "properties": {
                   "type": {
-                    "enum": ["node.subscribe_thumbnail", "node.update_param"]
+                    "enum": [
+                      "node.subscribe_thumbnail",
+                      "node.unsubscribe_thumbnail",
+                      "node.update_param"
+                    ]
                   }
                 }
               }

@@ -2,13 +2,16 @@
 // Copyright (c) 2026 cpipe contributors
 
 #include <libusockets.h>
+#include <spdlog/spdlog.h>
 #include <uwebsockets/App.h>
 
+#include <algorithm>
 #include <chrono>
 #include <condition_variable>
 #include <cpipe/runtime/Trace.hpp>
 #include <cpipe/server/EditorProtocol.hpp>
 #include <cpipe/server/EditorServer.hpp>
+#include <cpipe/server/ThumbnailEncoder.hpp>
 #include <cstdint>
 #include <exception>
 #include <memory>
@@ -18,6 +21,7 @@
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -81,10 +85,21 @@ std::string payload_string(const EditorFrame& frame) {
     return {frame.payload.begin(), frame.payload.end()};
 }
 
-void send_json_frame(ServerWebSocket* ws, EditorFrameType type, const nlohmann::json& payload) {
-    const auto encoded = encode_frame(type, 0, 0, payload.dump());
+void send_frame(ServerWebSocket* ws, EditorFrameType type, std::string_view payload) {
+    const auto encoded = encode_frame(type, 0, 0, payload);
     ws->send(std::string_view{reinterpret_cast<const char*>(encoded.data()), encoded.size()},
              uWS::OpCode::BINARY);
+}
+
+void send_json_frame(ServerWebSocket* ws, EditorFrameType type, const nlohmann::json& payload) {
+    send_frame(ws, type, payload.dump());
+}
+
+std::string thumbnail_key(std::string_view node_id, std::string_view port) {
+    std::string key{node_id};
+    key.push_back('\n');
+    key.append(port);
+    return key;
 }
 
 }  // namespace
@@ -209,6 +224,7 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                 CPIPE_TRACE_SCOPE("EditorServer::handle_request");
                 const auto record = create_run_record();
                 const auto run_id = record.at("run_id").get<std::uint64_t>();
+                push_thumbnail_frames();
                 broadcast_json_frame(EditorFrameType::Profile, profile_payload(run_id));
                 broadcast_json_frame(EditorFrameType::Log,
                                      {{"level", "info"},
@@ -250,9 +266,20 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                          }
                          try {
                              const auto payload = nlohmann::json::parse(payload_string(*frame));
-                             if (payload.value("type", "") == "node.update_param") {
+                             const auto type = payload.value("type", "");
+                             if (type == "node.update_param") {
                                  std::string route_error;
                                  const auto status = apply_param_delta(payload, &route_error);
+                                 if (status != CPIPE_OK) {
+                                     send_json_frame(ws, EditorFrameType::Ack,
+                                                     {{"ok", false}, {"error", route_error}});
+                                     return;
+                                 }
+                             } else if (type == "node.subscribe_thumbnail" ||
+                                        type == "node.unsubscribe_thumbnail") {
+                                 std::string route_error;
+                                 const auto status =
+                                     apply_thumbnail_control(ws, payload, &route_error);
                                  if (status != CPIPE_OK) {
                                      send_json_frame(ws, EditorFrameType::Ack,
                                                      {{"ok", false}, {"error", route_error}});
@@ -267,8 +294,11 @@ cpipe_status_t EditorServer::start(const EditorServerOptions& options, std::stri
                                              {{"ok", false}, {"error", e.what()}});
                          }
                      },
-                 .close = [this](auto* ws, int /*code*/,
-                                 std::string_view /*message*/) { ws_clients_.erase(ws); }});
+                 .close =
+                     [this](auto* ws, int /*code*/, std::string_view /*message*/) {
+                         ws_clients_.erase(ws);
+                         thumbnail_subscriptions_.erase(ws);
+                     }});
 
             loop_.store(uWS::Loop::get());
             app.listen(options.bind, static_cast<int>(options.port), [this](auto* token) {
@@ -369,6 +399,7 @@ cpipe_status_t EditorServer::replace_active_pipeline(const nlohmann::json& pipel
     active_pipeline_ = pipeline;
     runs_.clear();
     next_run_id_ = 1;
+    thumbnail_last_emit_.clear();
     return CPIPE_OK;
 }
 
@@ -432,6 +463,90 @@ nlohmann::json EditorServer::profile_payload(std::uint64_t run_id) const {
         }
     }
     return {{"type", "pipeline.profile"}, {"run_id", run_id}, {"nodes", std::move(nodes)}};
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+cpipe_status_t EditorServer::apply_thumbnail_control(void* client, const nlohmann::json& payload,
+                                                     std::string* error_out) {
+    const auto type = payload.value("type", "");
+    if (type == "node.unsubscribe_thumbnail") {
+        thumbnail_subscriptions_.erase(client);
+        return CPIPE_OK;
+    }
+    if (type != "node.subscribe_thumbnail" || !payload.contains("node_id") ||
+        !payload.contains("port")) {
+        set_error(error_out, "expected thumbnail subscribe/unsubscribe control");
+        return CPIPE_BAD_INDEX;
+    }
+
+    ThumbnailSubscription subscription;
+    subscription.node_id = payload.at("node_id").get<std::string>();
+    subscription.port = payload.at("port").get<std::string>();
+    subscription.max_size = std::clamp(payload.value("max_size", 256U), 1U, 256U);
+    subscription.fps = std::clamp(payload.value("fps", 5U), 1U, 60U);
+    thumbnail_subscriptions_[client] = std::move(subscription);
+    return CPIPE_OK;
+}
+
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+void EditorServer::push_thumbnail_frames() {
+    CPIPE_TRACE_SCOPE("EditorServer::push_thumbnail");
+    struct Target {
+        void* client{nullptr};
+        ThumbnailSubscription subscription;
+    };
+
+    std::unordered_map<std::string, std::vector<Target>> groups;
+    for (const auto& [client, subscription] : thumbnail_subscriptions_) {
+        if (ws_clients_.find(client) == ws_clients_.end()) {
+            continue;
+        }
+        groups[thumbnail_key(subscription.node_id, subscription.port)].push_back(
+            Target{.client = client, .subscription = subscription});
+    }
+
+    const auto now = std::chrono::steady_clock::now();
+    for (const auto& [key, targets] : groups) {
+        if (targets.empty()) {
+            continue;
+        }
+        const auto subscriber_count = targets.size();
+        const auto effective_fps =
+            subscriber_count > 4U
+                ? 2U
+                : std::max_element(targets.begin(), targets.end(),
+                                   [](const auto& lhs, const auto& rhs) {
+                                       return lhs.subscription.fps < rhs.subscription.fps;
+                                   })
+                      ->subscription.fps;
+        const auto interval = std::chrono::milliseconds{1000 / effective_fps};
+        const auto last = thumbnail_last_emit_.find(key);
+        if (last != thumbnail_last_emit_.end() && now - last->second < interval) {
+            continue;
+        }
+        thumbnail_last_emit_[key] = now;
+
+        if (subscriber_count > 4U) {
+            spdlog::info("event=thumbnail_subscriber_cap subscribers={} effective_fps=2",
+                         subscriber_count);
+        }
+
+        const auto max_size =
+            std::max_element(targets.begin(), targets.end(), [](const auto& lhs, const auto& rhs) {
+                return lhs.subscription.max_size < rhs.subscription.max_size;
+            })->subscription.max_size;
+        const auto thumbnail = encode_placeholder_thumbnail_webp(max_size, 70.0F);
+        if (thumbnail.empty()) {
+            continue;
+        }
+        const std::string_view payload{reinterpret_cast<const char*>(thumbnail.data()),
+                                       thumbnail.size()};
+        const auto encoded = encode_frame(EditorFrameType::Thumbnail, 0, 0, payload);
+        const std::string_view bytes{reinterpret_cast<const char*>(encoded.data()), encoded.size()};
+        for (const auto& target : targets) {
+            static_cast<ServerWebSocket*>(target.client)->send(bytes, uWS::OpCode::BINARY);
+        }
+    }
 }
 
 void EditorServer::broadcast_json_frame(EditorFrameType frame_type, const nlohmann::json& payload) {

@@ -6,6 +6,7 @@
 #include <cpipe/sdk/cpipe_node.h>
 
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cpipe/runtime/Registry.hpp>
 #include <cpipe/server/EditorProtocol.hpp>
@@ -43,6 +44,12 @@ private:
         std::string status;
         nlohmann::json output_paths;
     };
+    struct ThumbnailSubscription {
+        std::string node_id;
+        std::string port;
+        std::uint32_t max_size{256};
+        std::uint32_t fps{5};
+    };
 
     [[nodiscard]] nlohmann::json registry_nodes() const;
     [[nodiscard]] nlohmann::json active_pipeline() const;
@@ -52,6 +59,10 @@ private:
     [[nodiscard]] nlohmann::json create_run_record();
     [[nodiscard]] nlohmann::json run_record(std::uint64_t run_id) const;
     [[nodiscard]] nlohmann::json profile_payload(std::uint64_t run_id) const;
+    [[nodiscard]] cpipe_status_t apply_thumbnail_control(void* client,
+                                                         const nlohmann::json& payload,
+                                                         std::string* error);
+    void push_thumbnail_frames();
     void broadcast_json_frame(EditorFrameType frame_type, const nlohmann::json& payload);
 
     const runtime::Registry* registry_{nullptr};
@@ -60,6 +71,8 @@ private:
     std::uint64_t next_run_id_{1};
     std::unordered_map<std::uint64_t, RunRecord> runs_;
     std::set<void*> ws_clients_;
+    std::unordered_map<void*, ThumbnailSubscription> thumbnail_subscriptions_;
+    std::unordered_map<std::string, std::chrono::steady_clock::time_point> thumbnail_last_emit_;
 
     std::thread io_thread_;
     std::atomic<void*> loop_{nullptr};
