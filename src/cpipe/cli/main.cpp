@@ -67,7 +67,12 @@ int run_serve_command(const std::string& serve_port, const std::string& serve_bi
         options.bind = serve_bind;
     }
 
+    cpipe_link_all_builtin_nodes();
+    cpipe::runtime::Registry registry;
+    registry.load_builtin_nodes();
+
     cpipe::server::EditorServer server;
+    server.set_registry(&registry);
     std::string error;
     const auto status = server.start(options, &error);
     if (status != CPIPE_OK) {

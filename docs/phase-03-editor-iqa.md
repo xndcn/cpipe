@@ -134,6 +134,7 @@ P3-specific decisions, locked from the planning round on 2026-05-17. PD numberin
 | P3-PD-54 | T1 Vulkan correctness device | The current workspace exposes `Intel(R) UHD Graphics 770 (ADL-S GT1)` as the available Vulkan 1.3 device, not an RTX GPU. T1 correctness evidence uses that device; RTX remains the intended performance/profiling host for later P3 microbench evidence. |
 | P3-PD-55 | RT 5.10 node golden carry | T2 adds the RT 5.10 render wrapper and profile placeholders, but does not replace the seven node goldens with RT-derived EXRs. This supersedes the checked-in-golden replacement portion of P3-PD-45. Root cause: the checked-in node fixtures are tiny synthetic stage EXRs (4x4 / 8x8 / 16x16), while RawTherapee renders whole DNG files and does not expose those isolated intermediate node stages. Until node-matched DNG/pp3 fixtures exist, `demosaic.{bilinear,rcd,amaze}`, `wb.{dual_illuminant,greyworld_auto}`, `colormatrix.dng_to_working`, and `sharpen.edge_aware_usm` remain deterministic cpipe self-references. |
 | P3-PD-56 | RT TIFF-to-EXR conversion | RawTherapee 5.10 CLI writes TIFF/PNG/JPEG, not EXR. `tools/golden/rt_render.sh` renders a 32-bit TIFF and converts it to EXR with `oiiotool` when available; on this dev host it falls back to ImageMagick `convert` with EXR write support. This is dev-only tooling; CI still does not install RT or the converter. |
+| P3-PD-57 | REST envelope exceptions | T4 preserves T3's health shape (`GET /api/health` returns top-level `{ok, abi}`) and serves `/api/schemas/{node,pipeline}` as raw JSON Schema documents for direct Ajv consumption. The registry, active-pipeline, params, run, and run-status control routes use the P3-PD-35 `{ok,data}` / `{ok,error}` REST envelope. |
 
 ---
 
@@ -398,15 +399,15 @@ Twenty-four vertical T-tasks (T0 + T1 .. T23). Seven sub-phase checkpoints. Each
 
 **Acceptance criteria:**
 
-- [ ] All 8 endpoints respond with the expected envelope; JSON validates against `schemas/editor-protocol-v0.1.json`.
-- [ ] PUT `/api/pipelines/active` with a v0.4 graph replaces the active pipeline; subsequent GET returns the same graph.
-- [ ] POST `/api/pipelines/active/params` with `{node_id: "tone", key: "ev", value: 0.5}` updates the in-memory param map.
-- [ ] POST `/api/pipelines/active/run` returns a `run_id`; GET `/api/pipelines/active/runs/:run_id` reports completion within ~5 s on the dev host.
+- [x] Control endpoints respond with the expected envelope; health and schema routes use the P3-PD-57 raw JSON exceptions.
+- [x] PUT `/api/pipelines/active` with a v0.4 graph replaces the active pipeline; subsequent GET returns the same graph.
+- [x] POST `/api/pipelines/active/params` with `{node_id: "tone", key: "ev", value: 0.5}` updates the in-memory param map.
+- [x] POST `/api/pipelines/active/run` returns a `run_id`; GET `/api/pipelines/active/runs/:run_id` reports completion within ~5 s on the dev host.
 
 **Verification:**
 
-- [ ] `ctest -R test_editor_server_rest` green.
-- [ ] `curl -X POST -d '{...}' localhost:4747/api/pipelines/active/params` returns 200 with the expected envelope.
+- [x] `ctest -R test_editor_server_rest` green.
+- [x] `curl -X POST -d '{...}' localhost:4747/api/pipelines/active/params` returns 200 with the expected envelope.
 
 **Dependencies:** T3.
 

@@ -7,10 +7,13 @@
 
 #include <atomic>
 #include <condition_variable>
+#include <cpipe/runtime/Registry.hpp>
 #include <cstdint>
 #include <mutex>
+#include <nlohmann/json.hpp>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 namespace cpipe::server {
 
@@ -28,11 +31,31 @@ public:
     EditorServer& operator=(EditorServer&&) = delete;
     ~EditorServer();
 
+    void set_registry(const runtime::Registry* registry) noexcept;
     [[nodiscard]] cpipe_status_t start(const EditorServerOptions& options, std::string* error);
     void stop() noexcept;
     [[nodiscard]] bool running() const noexcept;
 
 private:
+    struct RunRecord {
+        std::string status;
+        nlohmann::json output_paths;
+    };
+
+    [[nodiscard]] nlohmann::json registry_nodes() const;
+    [[nodiscard]] nlohmann::json active_pipeline() const;
+    [[nodiscard]] cpipe_status_t replace_active_pipeline(const nlohmann::json& pipeline,
+                                                         std::string* error);
+    [[nodiscard]] cpipe_status_t apply_param_delta(const nlohmann::json& delta, std::string* error);
+    [[nodiscard]] nlohmann::json create_run_record();
+    [[nodiscard]] nlohmann::json run_record(std::uint64_t run_id) const;
+
+    const runtime::Registry* registry_{nullptr};
+    mutable std::mutex session_mutex_;
+    nlohmann::json active_pipeline_;
+    std::uint64_t next_run_id_{1};
+    std::unordered_map<std::uint64_t, RunRecord> runs_;
+
     std::thread io_thread_;
     std::atomic<void*> loop_{nullptr};
     std::atomic<void*> listen_socket_{nullptr};
